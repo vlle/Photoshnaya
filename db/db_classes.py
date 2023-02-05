@@ -32,6 +32,7 @@ class Photos(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     hashsum: Mapped[str]
+    likes: Mapped[int]
     user_id = mapped_column(ForeignKey("user_account.id"))
 
     # user: Mapped[User] = relationship(back_populates="photos")
