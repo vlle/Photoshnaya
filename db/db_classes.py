@@ -1,7 +1,7 @@
 from typing import List
 from typing import Optional
 from sqlalchemy.orm import Mapped
-from sqlalchemy import Integer, String, ForeignKey, MetaData, create_engine
+from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -19,9 +19,9 @@ class User(Base):
     fullname: Mapped[Optional[str]]
 
     telegram_id: Mapped[str]
-    telegram_nick: Mapped[str]
+    telegram_nick: Mapped[Optional[str]]
 
-    photo: Mapped[List["Address"]] = relationship(back_populates="user")
+    # photo: Mapped[Optional[List["Photo"]]] = relationship(back_populates="user")
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r}),\
@@ -34,7 +34,7 @@ class Photos(Base):
     hashsum: Mapped[str]
     user_id = mapped_column(ForeignKey("user_account.id"))
 
-    user: Mapped[User] = relationship(back_populates="photos")
+    # user: Mapped[User] = relationship(back_populates="photos")
 
     def __repr__(self) -> str:
         return f"Address(id={self.id!r}, hashsum={self.hashsum!r})"
