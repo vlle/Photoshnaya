@@ -6,22 +6,17 @@ import unittest
 
 class TestDb(unittest.TestCase):
 
-    # def __init__(self):
-    #     self.eng = engine
-    #     self.strid = strid
-
     def test_like_photo(self):
         engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
         metadata_obj = MetaData()
         Base.metadata.create_all(engine)
-        strid = "123"
-        init_test_data(engine, strid)
-        ans = get_like_photo(engine, strid)
-        set_like_photo(strid)
-        expected = get_like_photo(engine, strid)
+        name = "Ivan"
+        tg_id = "1241"
+        init_test_data(engine, name, tg_id)
+        ans = get_like_photo(engine, name, tg_id)
+        set_like_photo(engine, name, tg_id)
+        expected = get_like_photo(engine, name, tg_id)
         self.assertEqual(ans + 1, expected, "Should be 6")
-        #set like == 1
-        #self.assertEqual(select_likes, 1)
 
     def test_remove_like_photo(self):
         pass

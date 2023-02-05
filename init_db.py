@@ -6,6 +6,6 @@ engine = create_engine("sqlite+pysqlite:///sqlite3.db", echo=True)
 metadata_obj = MetaData()
 Base.metadata.create_all(engine)
 
-init_test_data(engine, "123")
+init_test_data(engine, "Ivan")
 
 
