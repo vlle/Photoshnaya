@@ -34,14 +34,23 @@ async def tasks_queue(bot):
             await m.answer("Рассылка закончена")
             break
 
-
 @dp.message((Command(commands=["send"])))
 async def writer(m: types.Message):
-
     for i in range(0, 10):
         push = m.text.split()
         redis.rpush("queue", push[-1])
-        print("shit")
+
+@dp.message((Command(commands=["start"])))
+async def cmd_start(message: types.Message):
+    now = datetime.datetime.now()
+    redis.rpush('queue', str(now))
+    await message.answer("Hello!")
+
+async def main():
+    await asyncio.gather(dp.start_polling(bot), tasks_queue(bot))
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 
 # @dp.message((Command(commands=["listen"])))
@@ -56,19 +65,3 @@ async def writer(m: types.Message):
 #         except TimeoutError:
 #             await m.answer("Рассылка закончена")
 #             break
-
-
-@dp.message((Command(commands=["start"])))
-async def cmd_start(message: types.Message):
-    now = datetime.datetime.now()
-    redis.rpush('queue', str(now))
-    await message.answer("Hello!")
-
-# Запуск процесса поллинга новых апдейтов
-async def main():
-    await asyncio.gather(dp.start_polling(bot), tasks_queue(bot))
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
-
