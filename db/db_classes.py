@@ -21,7 +21,7 @@ class User(Base):
     telegram_id: Mapped[str]
     telegram_nick: Mapped[Optional[str]]
 
-    # photo: Mapped[Optional[List["Photo"]]] = relationship(back_populates="user")
+    photo: Mapped[Optional[List["Photos"]]] = relationship()
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r}),\
@@ -33,9 +33,8 @@ class Photos(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     hashsum: Mapped[str]
     likes: Mapped[int]
-    user_id = mapped_column(ForeignKey("user_account.id"))
-
-    # user: Mapped[User] = relationship(back_populates="photos")
+    tg_link: Mapped[str]
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"));
 
     def __repr__(self) -> str:
         return f"Address(id={self.id!r}, hashsum={self.hashsum!r})"
