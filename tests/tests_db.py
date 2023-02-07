@@ -6,38 +6,38 @@ import unittest
 
 class TestDb(unittest.TestCase):
 
-    def test_like_photo(self):
-        pass
 
-        #engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
-        #Base.metadata.create_all(engine)
-        #name = "Ivan"
-        #tg_id = "1241"
-        #init_test_data(engine, name, tg_id)
+    def setUp(self):
+        self.engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
+        self.name = "Ivan"
+        self.tg_id = "1919118841"
+        self.theme = "#текстуры"
 
-        #old_ans = get_like_photo(engine, name, tg_id)
-        #set_like_photo(engine, name, tg_id)
-        #expected = get_like_photo(engine, name, tg_id)
+        Base.metadata.create_all(self.engine)
+        init_test_data(self.engine, self.name, self.tg_id)
 
-        #self.assertEqual(old_ans + 1, expected, "Should be 6")
+
+    def test_get_like_photo(self):
+        get_register_photo(self.engine, self.tg_id)
+        likes = get_like_photo(self.engine, self.tg_id)
+        self.assertEqual(likes, 0, "Should be 0")
+
+    def test_set_like_photo(self):
+        get_register_photo(self.engine, self.tg_id)
+        likes = get_like_photo(self.engine, self.tg_id)
+        new_likes = set_like_photo(self.engine, self.tg_id)
+        self.assertEqual(likes + 1, new_likes, "Should be likes + 1")
 
     def test_remove_like_photo(self):
-        pass
         #self.assertEqual(sum((1, 2, 3)), 6, "Should be 6")
+        pass
+    def test_only_one_user_add(self):
+        pass
 
     def test_add_photo_for_contest(self):
-        engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
-        Base.metadata.create_all(engine)
-        name = "Ivan"
-        tg_id = "1241"
-        init_test_data(engine, name, tg_id)
-        expected = get_register_photo(engine, tg_id)
-        print("AAA")
-        print(expected)
-        self.assertNotEqual(expected, "0", "Should be not 0")
+        expected_link = get_register_photo(self.engine, self.tg_id)
+        self.assertNotEqual(expected_link, "0", "Should be not 0")
 
-    # def test_add_photo_for_contest(self):
-    #     self.assertEqual(sum((1, 2, 2)), 6, "Should be 6")
 
 if __name__ == '__main__':
     unittest.main()
