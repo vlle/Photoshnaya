@@ -1,6 +1,6 @@
 from sqlalchemy import MetaData, create_engine
-from db.db_classes import User, Base, Photos
-from db.db_operations import get_like_photo, get_register_photo, init_test_data, set_like_photo
+from db.db_classes import User, Base, Photo
+from db.db_operations import init_test_data, set_like_photo, set_register_photo, get_like_photo, get_register_photo 
 import unittest
 
 
@@ -18,12 +18,12 @@ class TestDb(unittest.TestCase):
 
 
     def test_get_like_photo(self):
-        get_register_photo(self.engine, self.tg_id)
+        set_register_photo(self.engine, self.tg_id)
         likes = get_like_photo(self.engine, self.tg_id)
         self.assertEqual(likes, 0, "Should be 0")
 
     def test_set_like_photo(self):
-        get_register_photo(self.engine, self.tg_id)
+        set_register_photo(self.engine, self.tg_id)
         likes = get_like_photo(self.engine, self.tg_id)
         new_likes = set_like_photo(self.engine, self.tg_id)
         self.assertEqual(likes + 1, new_likes, "Should be likes + 1")
