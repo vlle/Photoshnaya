@@ -28,8 +28,18 @@ class Photo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     hash: Mapped[str]
     likes: Mapped[int]
-    telegram_id: Mapped[str]
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"));
+
+    # projects = relationship(
+    #     "Project",
+    #     secondary=Table(
+    #         "employee_project",
+    #         Base.metadata,
+    #         Column("employee_id", Integer, ForeignKey("employee.id"), primary_key=True),
+    #         Column("project_id", Integer, ForeignKey("project.id"), primary_key=True),
+    #     ),
+    #     backref="employees",
+    # )
 
     def __repr__(self) -> str:
         return f"Photo(id={self.id!r}, hashsum={self.hash!r})"

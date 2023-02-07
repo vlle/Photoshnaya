@@ -99,10 +99,21 @@ def set_register_photo(engine, tg_id: str):
             )
     with Session(engine) as session, session.begin():
         user = session.scalars(stmt_sel).one() 
+        stmt_sel1 = (
+                select(groupUser)
+                .where(groupUser.user_id == user.id)
+                )
+        group = session.scalars(stmt_sel1).one()
         try:
-
-            photo = Photo(hash="hash", likes=0, tg_link="ss", user_id = user.id)
+            photo = Photo(hash="hash", likes=0, user_id = user.id)
             session.add(photo)
+            groupP = groupPhoto(group_id=group.id, photo_id=photo.id)
+            session.add(groupP)
+            print(photo)
+            stmt_sel = (
+                    select(Photo)
+                    .where(Photo.user_id == tg_id)
+                    )
         except:
             pass
 
@@ -135,14 +146,13 @@ def select_contest_photos(engine, group_id: str) -> list:
     with Session(engine) as session, session.begin():
         try:
             group = session.scalars(stmtG).one()
-            print(group)
+            s = group.id
             stmt = (
                     select(groupPhoto)
-                    .where(groupPhoto.group_id == group.id)
+                    .where(groupPhoto.group_id == s)
                     )
             result = session.execute(stmt)
             for i in result.scalars():
-                print(f"RES = {i}")
                 ret.append(i)
         except:
             pass
@@ -181,6 +191,5 @@ def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
         hu = session.scalars(stmt).one()
         human_group = groupUser(user_id = hu.id, group_id = gr.id)
         session.add(human_group)
-        print(human_group)
 
     set_register_photo(engine, usertg_id)
