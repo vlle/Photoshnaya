@@ -1,6 +1,6 @@
 from sqlalchemy import MetaData, create_engine
 from db.db_classes import User, Base, Photo
-from db.db_operations import init_test_data, set_like_photo, set_register_photo, get_like_photo, get_register_photo 
+from db.db_operations import init_test_data, set_like_photo, set_register_photo, get_like_photo, get_register_photo, select_contest_photos
 import unittest
 
 
@@ -11,10 +11,11 @@ class TestDb(unittest.TestCase):
         self.engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
         self.name = "Ivan"
         self.tg_id = "1919118841"
+        self.group_id = "55145151"
         self.theme = "#текстуры"
 
         Base.metadata.create_all(self.engine)
-        init_test_data(self.engine, self.name, self.tg_id)
+        init_test_data(self.engine, self.name, self.tg_id, self.group_id)
 
 
     def test_get_like_photo(self):
@@ -27,6 +28,10 @@ class TestDb(unittest.TestCase):
         likes = get_like_photo(self.engine, self.tg_id)
         new_likes = set_like_photo(self.engine, self.tg_id)
         self.assertEqual(likes + 1, new_likes, "Should be likes + 1")
+
+    def test_get_list_contest_photo(self):
+        select_contest_photos(self.engine, self.group_id)
+        pass
 
     def test_remove_like_photo(self):
         #self.assertEqual(sum((1, 2, 3)), 6, "Should be 6")

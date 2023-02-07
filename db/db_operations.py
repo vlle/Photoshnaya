@@ -1,7 +1,6 @@
 from sqlalchemy import exc
-from sqlalchemy.engine.base import ExceptionContextImpl
 from sqlalchemy.sql.coercions import expect
-from db.db_classes import User, Base, Photo
+from db.db_classes import User, Photo, Group, groupUser, groupPhoto
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -19,22 +18,14 @@ def set_like_photo_hash(engine, tg_id: str, hash: str):
             photo.likes += 1
             likes = photo.likes
             session.add(photo)
-            print("PHOTO")
-            print("PHOTO")
-            print("PHOTO")
-            print(photo)
-            print("PHOTO")
-            print("PHOTO")
-            print("PHOTO")
         except:
             pass
     return likes
 
-def set_like_photo_single(engine, tg_id: str) -> int:
+def set_like_photo_single(engine, id: str) -> int:
     stmt = (
             select(Photo)
-            .join(User.id)
-            .where(User.telegram_id == tg_id)
+            .where(Photo.id == id)
             )
     likes = -1
     with Session(engine) as session, session.begin():
@@ -135,18 +126,50 @@ def get_register_photo(engine, tg_id: str) -> int:
 def unregister_photo(engine, user_id: str, photo_id: str):
     pass
 
-def select_contest_photos(engine, user_id: str, photo_id: str):
-    pass
-
-def select_contest_winner(engine, user_id: str, photo_id: str):
-    pass
-
-def select_contest_theme(engine, user_id: str, photo_id: str):
-    pass
-
-def init_test_data(engine, name: str, tg_id: str):
-    squidward = User(name=name, full_name= name + "Foobar", telegram_id = tg_id)
+def select_contest_photos(engine, group_id: str) -> list:
+    ret = []
+    stmt = (
+            select(groupPhoto)
+            .where(groupPhoto.group_id == group_id)
+            )
     with Session(engine) as session, session.begin():
-        session.add(squidward)
+        try:
+            photos = session.scalars(stmt).all()
+            print(photos)
+        except:
+            pass
+    return ret
 
-    set_register_photo(engine, tg_id)
+def set_contest_winner(engine, user_id: str, photo_id: str):
+    pass
+
+def get_contest_winner(engine, user_id: str, photo_id: str):
+    pass
+
+def set_contest_theme(engine, user_id: str, photo_id: str):
+    pass
+
+def get_contest_theme(engine, user_id: str, photo_id: str):
+    pass
+
+
+def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
+    human = User(name=name, full_name= name + "Foobar", telegram_id = usertg_id)
+    group = Group(name="Жабы", telegram_id = tggroup_id, contest_theme = "#пляжи")
+    stmt = (
+            select(User)
+            .where(User.telegram_id == usertg_id)
+            )
+    stmtG = (
+            select(Group)
+            .where(Group.telegram_id == tggroup_id)
+            )
+    with Session(engine) as session, session.begin():
+        session.add(human)
+        session.add(group)
+        gr = session.scalars(stmtG).one()
+        hu = session.scalars(stmt).one()
+        human_group = groupUser(user_id = gr.id, group_id = hu.id)
+        session.add(human_group)
+
+    set_register_photo(engine, usertg_id)

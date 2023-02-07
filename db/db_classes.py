@@ -63,19 +63,5 @@ class groupUser(Base):
     group_id: Mapped[int] = mapped_column(ForeignKey("group.id"));
 
     def __repr__(self) -> str:
-        return f"GroupPhoto(id={self.id!r}, user_id={self.user_id!r}, group_id={self.group_id!r})"
+        return f"GroupUser(id={self.id!r}, user_id={self.user_id!r}, group_id={self.group_id!r})"
 
-# class Group(Base):
-#     __tablename__ = "group"
-# 
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     name: Mapped[str] = mapped_column(String(30))
-# 
-#     telegram_id: Mapped[str]
-#     telegram_nick: Mapped[Optional[str]]
-#     # group_membership: Mapped[Optional[List[str]]]
-# 
-# 
-#     def __repr__(self) -> str:
-#         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r}),\
-#                 telegram_id={self.telegram_id!r}, telegram_nick={self.telegram_nick}"
