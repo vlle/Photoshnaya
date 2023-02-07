@@ -8,7 +8,7 @@ class TestDb(unittest.TestCase):
 
 
     def setUp(self):
-        self.engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
+        self.engine = create_engine("sqlite+pysqlite:///:memory:", echo=False)
         self.name = "Ivan"
         self.tg_id = "1919118841"
         self.group_id = "55145151"
@@ -17,6 +17,10 @@ class TestDb(unittest.TestCase):
         Base.metadata.create_all(self.engine)
         init_test_data(self.engine, self.name, self.tg_id, self.group_id)
 
+    def test_get_list_contest_photo(self):
+        ret = select_contest_photos(self.engine, self.group_id)
+        res = []
+        self.assertNotEqual(ret, res, "Should be not equal")
 
     def test_get_like_photo(self):
         set_register_photo(self.engine, self.tg_id)
@@ -29,9 +33,7 @@ class TestDb(unittest.TestCase):
         new_likes = set_like_photo(self.engine, self.tg_id)
         self.assertEqual(likes + 1, new_likes, "Should be likes + 1")
 
-    def test_get_list_contest_photo(self):
-        select_contest_photos(self.engine, self.group_id)
-        pass
+        
 
     def test_remove_like_photo(self):
         #self.assertEqual(sum((1, 2, 3)), 6, "Should be 6")

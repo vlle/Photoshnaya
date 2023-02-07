@@ -128,14 +128,22 @@ def unregister_photo(engine, user_id: str, photo_id: str):
 
 def select_contest_photos(engine, group_id: str) -> list:
     ret = []
-    stmt = (
-            select(groupPhoto)
-            .where(groupPhoto.group_id == group_id)
+    stmtG = (
+            select(Group)
+            .where(Group.telegram_id == group_id)
             )
     with Session(engine) as session, session.begin():
         try:
-            photos = session.scalars(stmt).all()
-            print(photos)
+            group = session.scalars(stmtG).one()
+            print(group)
+            stmt = (
+                    select(groupPhoto)
+                    .where(groupPhoto.group_id == group.id)
+                    )
+            result = session.execute(stmt)
+            for i in result.scalars():
+                print(f"RES = {i}")
+                ret.append(i)
         except:
             pass
     return ret
@@ -167,9 +175,12 @@ def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
     with Session(engine) as session, session.begin():
         session.add(human)
         session.add(group)
+
+    with Session(engine) as session, session.begin():
         gr = session.scalars(stmtG).one()
         hu = session.scalars(stmt).one()
-        human_group = groupUser(user_id = gr.id, group_id = hu.id)
+        human_group = groupUser(user_id = hu.id, group_id = gr.id)
         session.add(human_group)
+        print(human_group)
 
     set_register_photo(engine, usertg_id)
