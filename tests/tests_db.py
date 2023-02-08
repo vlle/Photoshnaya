@@ -22,19 +22,25 @@ class TestDb(unittest.TestCase):
         res = []
         self.assertNotEqual(ret, res, "Should be not equal")
 
+    def test_get_listMany_contest_photo(self):
+        set_register_photo(self.engine, self.tg_id, self.group_id)
+        set_register_photo(self.engine, self.tg_id, self.group_id)
+        ret = select_contest_photos(self.engine, self.group_id)
+        self.assertEqual(len(ret), 3, "Should be equal")
+
     def test_get_like_photo(self):
-        set_register_photo(self.engine, self.tg_id)
+        set_register_photo(self.engine, self.tg_id, self.group_id)
         likes = get_like_photo(self.engine, self.tg_id)
         self.assertEqual(likes, 0, "Should be 0")
 
     def test_set_like_photo(self):
-        set_register_photo(self.engine, self.tg_id)
+        set_register_photo(self.engine, self.tg_id, self.group_id)
         likes = get_like_photo(self.engine, self.tg_id)
-        new_likes = set_like_photo(self.engine, self.tg_id)
-        self.assertEqual(likes + 1, new_likes, "Should be likes + 1")
+        new_likes = set_like_photo(self.engine, 1) # photo.id!!! 
+        new_likes = set_like_photo(self.engine, 1) # photo.id!!! 
+        self.assertEqual(likes + 2, new_likes, "Should be likes + 1")
 
         
-
     def test_remove_like_photo(self):
         #self.assertEqual(sum((1, 2, 3)), 6, "Should be 6")
         pass

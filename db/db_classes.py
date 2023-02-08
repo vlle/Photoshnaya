@@ -22,7 +22,7 @@ groupPhoto = Table(
 groupUser = Table(
     "groupUser",
     Base.metadata,
-    Column("user_id", ForeignKey("user.id", primary_key = True)),
+    Column("user_id", ForeignKey("user.id"), primary_key = True),
     Column("group_id", ForeignKey("group.id"), primary_key = True),
 )
 
@@ -50,6 +50,9 @@ class Photo(Base):
     hash: Mapped[str]
     likes: Mapped[int]
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"));
+    groups: Mapped[List["Group"]] = relationship(
+        secondary=groupPhoto, back_populates="photos"
+    )
 
 
     def __repr__(self) -> str:
@@ -64,6 +67,9 @@ class Group(Base):
     contest_theme: Mapped[str]
     users: Mapped[List["User"]] = relationship(
         secondary=groupUser, back_populates="groups"
+    )
+    photos: Mapped[List["Photo"]] = relationship(
+        secondary=groupPhoto, back_populates="groups"
     )
 
     def __repr__(self) -> str:

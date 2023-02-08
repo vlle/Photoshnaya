@@ -17,7 +17,6 @@ def set_like_photo_hash(engine, tg_id: str, hash: str):
         try:
             photo.likes += 1
             likes = photo.likes
-            session.add(photo)
         except:
             pass
     return likes
@@ -29,17 +28,16 @@ def set_like_photo_single(engine, id: str) -> int:
             )
     likes = -1
     with Session(engine) as session, session.begin():
-        try:
-            photo = session.scalars(stmt).one() 
-            photo.likes += 1
-            likes = photo.likes
-            session.add(photo)
-        except exc.NoResultFound:
-            print("Error, no result found")
-            pass
-        except exc.ArgumentError:
-            print("Error, no set available found")
-            pass
+        #try:
+        photo = session.scalars(stmt).one() 
+        photo.likes += 1
+        likes = photo.likes
+        #except exc.NoResultFound:
+        #    print("Error, no result found")
+        #    pass
+        #except exc.ArgumentError:
+        #    print("Error, no set available found")
+        #    pass
     return likes
 
 
@@ -60,8 +58,10 @@ def get_like_photo_single(engine, tg_id: str) -> int:
     likes = 0
     with Session(engine) as session, session.begin():
         try:
-            user = session.scalars(stmt).one() 
-            likes = user.likes
+            photos = session.scalars(stmt)
+            for i in photos:
+                print(i)
+            #likes = user.likes
         except exc.NoResultFound:
             pass
 
@@ -92,15 +92,22 @@ def get_like_photo(engine, tg_id: str, hash = None) -> int:
         likes = get_like_photo_single(engine, tg_id)
     return likes
 
-def set_register_photo(engine, tg_id: str):
+def set_register_photo(engine, tg_id: str, grtg_id: str):
     stmt_sel = (
             select(User)
             .where(User.telegram_id == tg_id)
             )
+    stmtG_sel = (
+            select(Group)
+            .where(Group.telegram_id == grtg_id)
+            )
     with Session(engine) as session, session.begin():
         user = session.scalars(stmt_sel).one() 
+        group = session.scalars(stmtG_sel).one() 
         try:
             photo = Photo(hash="hash", likes=0, user_id = user.id)
+            user.photos.append(photo)
+            group.photos.append(photo)
             session.add(photo)
         except:
             pass
@@ -128,22 +135,31 @@ def unregister_photo(engine, user_id: str, photo_id: str):
 def select_contest_photos(engine, group_id: str) -> list:
     ret = []
     stmtG = (
-            select(Group)
-            .where(Group.telegram_id == group_id)
+            select(Photo)
+            .join(
+                groupPhoto,
+                  (Photo.id == groupPhoto.c.photo_id) 
+                  )
             )
     with Session(engine) as session, session.begin():
-        try:
-            group = session.scalars(stmtG).one()
-            s = group.id
-            stmt = (
-                    select(groupPhoto)
-                    .where(groupPhoto.group_id == s)
-                    )
-            result = session.execute(stmt)
-            for i in result.scalars():
-                ret.append(i)
-        except:
-            pass
+        photos = session.scalars(stmtG)
+        for photo in photos:
+            print("ssSDasdasda")
+            print(photo)
+            ret.append(photo)
+    #ret = []
+    #stmtG = (
+            #        select(Group)
+            #        .join(Group.users)
+            #        .join(User.photos)
+            #        .where(Group.telegram_id == group_id)
+            #        )
+    #with Session(engine) as session, session.begin():
+    #    group = session.scalars(stmtG).one()
+    #    for a in group.users:
+    #        print(a.photos)
+    #        ret.append(a.photos)
+    #    print("Been")
     return ret
 
 def set_contest_winner(engine, user_id: str, photo_id: str):
@@ -163,20 +179,8 @@ def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
     human = User(name=name, full_name= name + "Foobar", telegram_id = usertg_id)
     groupFrog = Group(name="Жабы", telegram_id = tggroup_id, contest_theme = "#пляжи")
     human.groups.append(groupFrog)
-    stmt = (
-            select(User)
-            .where(User.telegram_id == usertg_id)
-            )
-    stmtG = (
-            select(Group)
-            .where(Group.telegram_id == tggroup_id)
-            )
     with Session(engine) as session, session.begin():
         session.add(human)
         session.add(groupFrog)
 
-    with Session(engine) as session, session.begin():
-        gr = session.scalars(stmtG).one()
-        hu = session.scalars(stmt).one()
-
-    set_register_photo(engine, usertg_id)
+    set_register_photo(engine, usertg_id, tggroup_id)
