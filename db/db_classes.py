@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import List
 from typing import Optional
 from sqlalchemy.orm import Mapped
@@ -14,15 +15,15 @@ class Base(DeclarativeBase):
 groupPhoto = Table(
     "groupPhoto",
     Base.metadata,
-    Column("photo_id", ForeignKey("photo.id")),
-    Column("group_id", ForeignKey("group.id")),
+    Column("photo_id", ForeignKey("photo.id"), primary_key = True),
+    Column("group_id", ForeignKey("group.id"), primary_key = True),
 )
 
 groupUser = Table(
     "groupUser",
     Base.metadata,
-    Column("user_id", ForeignKey("user.id")),
-    Column("group_id", ForeignKey("group.id")),
+    Column("user_id", ForeignKey("user.id", primary_key = True)),
+    Column("group_id", ForeignKey("group.id"), primary_key = True),
 )
 
 
@@ -34,6 +35,9 @@ class User(Base):
     full_name: Mapped[Optional[str]]
     telegram_id: Mapped[str]
     photos: Mapped[List["Photo"]] = relationship()
+    groups: Mapped[List["Group"]] = relationship(
+        secondary=groupUser, back_populates="users"
+    )
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r}, full_name={self.full_name!r}),\
@@ -58,6 +62,9 @@ class Group(Base):
     name: Mapped[str]
     telegram_id: Mapped[str]
     contest_theme: Mapped[str]
+    users: Mapped[List["User"]] = relationship(
+        secondary=groupUser, back_populates="groups"
+    )
 
     def __repr__(self) -> str:
         return f"Group(id={self.id!r}, name={self.name!r}, telegram_id={self.telegram_id!r}, contest_theme={self.contest_theme})"

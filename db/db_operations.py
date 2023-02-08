@@ -161,7 +161,8 @@ def get_contest_theme(engine, user_id: str, photo_id: str):
 
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
     human = User(name=name, full_name= name + "Foobar", telegram_id = usertg_id)
-    group = Group(name="Жабы", telegram_id = tggroup_id, contest_theme = "#пляжи")
+    groupFrog = Group(name="Жабы", telegram_id = tggroup_id, contest_theme = "#пляжи")
+    human.groups.append(groupFrog)
     stmt = (
             select(User)
             .where(User.telegram_id == usertg_id)
@@ -172,7 +173,7 @@ def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
             )
     with Session(engine) as session, session.begin():
         session.add(human)
-        session.add(group)
+        session.add(groupFrog)
 
     with Session(engine) as session, session.begin():
         gr = session.scalars(stmtG).one()
