@@ -47,7 +47,6 @@ class Photo(Base):
     __tablename__ = "photo"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    hash: Mapped[str]
     likes: Mapped[int]
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"));
     groups: Mapped[List["Group"]] = relationship(
@@ -56,7 +55,7 @@ class Photo(Base):
 
 
     def __repr__(self) -> str:
-        return f"Photo(id={self.id!r}, hashsum={self.hash!r})"
+        return f"Photo(id={self.id!r}), likes=({self.likes!r}), user_id = {self.user_id!r})"
 
 class Group(Base):
     __tablename__ = "group"
