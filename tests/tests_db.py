@@ -1,11 +1,12 @@
-from sqlalchemy import MetaData, create_engine
-from db.db_classes import User, Base, Photo
-from db.db_operations import init_test_data, set_like_photo, set_register_photo, get_like_photo, get_register_photo, select_contest_photos
+from sqlalchemy import create_engine
+from db.db_classes import Base
+from db.db_operations import init_test_data, set_like_photo,\
+        set_register_photo, get_like_photo, get_register_photo,\
+        select_contest_photos
 import unittest
 
 
 class TestDb(unittest.TestCase):
-
 
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:", echo=False)
@@ -36,14 +37,13 @@ class TestDb(unittest.TestCase):
     def test_set_like_photo(self):
         set_register_photo(self.engine, self.tg_id, self.group_id)
         likes = get_like_photo(self.engine, self.tg_id)
-        new_likes = set_like_photo(self.engine, 1) # photo.id!!! 
-        new_likes = set_like_photo(self.engine, 1) # photo.id!!! 
+        new_likes = set_like_photo(self.engine, 1)  # photo.id!!!
+        new_likes = set_like_photo(self.engine, 1)  # photo.id!!!
         self.assertEqual(likes + 2, new_likes, "Should be likes + 1")
 
-        
     def test_remove_like_photo(self):
-        #self.assertEqual(sum((1, 2, 3)), 6, "Should be 6")
         pass
+
     def test_only_one_user_add(self):
         pass
 
