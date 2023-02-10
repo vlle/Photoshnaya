@@ -4,22 +4,16 @@ from db.db_classes import User, Photo, Group, groupUser, groupPhoto
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-def set_like_photo_single(engine, id: str) -> int:
+def set_like_photo(engine, photo_id: str):
     stmt = (
             select(Photo)
-            .where(Photo.id == id)
+            .where(Photo.id == photo_id)
             )
     likes = -1
     with Session(engine) as session, session.begin():
         photo = session.scalars(stmt).one() 
         photo.likes += 1
         likes = photo.likes
-    return likes
-
-
-def set_like_photo(engine, photo_id: str):
-    likes = -1
-    likes = set_like_photo_single(engine, photo_id)
     return likes
 
 def get_like_photo_single(engine, tg_id: str) -> int:
