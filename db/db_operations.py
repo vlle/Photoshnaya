@@ -120,6 +120,54 @@ def build_user(name: str, full_name: str, user_id: str) -> User:
     human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
+def find_group(engine, telegram_id: str) -> bool:
+    stmt = (
+            select(Group)
+            .where(Group.telegram_id == telegram_id)
+            )
+    find_group = False
+    with Session(engine) as session, session.begin():
+        search_result = session.scalars(stmt)
+        if (search_result is not None):
+            find_group = True
+
+    return find_group
+
+def find_user(engine, telegram_id: str) -> bool:
+    stmt = (
+            select(User)
+            .where(User.telegram_id == telegram_id)
+            )
+    find_user = False
+    with Session(engine) as session, session.begin():
+        search_result = session.scalars(stmt)
+        if (search_result is not None):
+            find_user = True
+
+    return find_user
+
+
+def register_group(engine, name: str, telegram_id: str) -> str:
+    if (find_group(engine, telegram_id) == True):
+        return "Группа уже зарегистрирована. 😮"
+
+    group = build_group(name, telegram_id, "None")
+
+    with Session(engine) as session, session.begin():
+        session.add(group)
+
+    return "Зарегистрировал группу. "
+
+def register_user(engine, name: str, full_name: str, telegram_id: str) -> str:
+    if find_user == True:
+        # check user in group
+        return "User was already registered"
+
+    user = build_user(name, full_name, telegram_id)  
+    with Session(engine) as session, session.begin():
+        session.add(user)
+
+    return "User was added"
 
 def register_user_and_group(engine, group: Group, user: User) -> str:
     message = "None yet"
@@ -147,10 +195,10 @@ def register_user_and_group(engine, group: Group, user: User) -> str:
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
     #human = User(name=name, full_name=name+"Foobar", telegram_id=usertg_id)
     human = build_user(name, name+" Foobar", usertg_id)
-    groupFrog = Group(name="Жабы", telegram_id=tggroup_id, contest_theme="#пляжи")
-    human.groups.append(groupFrog)
+    group = build_group("Жабы", tggroup_id, "#пляжи")
+    human.groups.append(group)
     with Session(engine) as session, session.begin():
         session.add(human)
-        session.add(groupFrog)
+        session.add(group)
 
     set_register_photo(engine, usertg_id, tggroup_id)

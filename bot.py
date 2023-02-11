@@ -61,7 +61,7 @@ async def example(message: types.Message):#, chat: types.Chat):
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def on_user_join(message: types.Message): 
         msg = "Добавили в чат, здоров!"
-        #await bot.SendMessage(message.chat.id, msg)
+        # delete add message
         await bot.send_message(message.chat.id, msg)
 
 
