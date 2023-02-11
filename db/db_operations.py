@@ -112,6 +112,21 @@ def set_contest_theme(engine, user_id: str, photo_id: str):
 def get_contest_theme(engine, user_id: str, photo_id: str):
     pass
 
+def register_user(engine, name: str, full_name: str, user_id: str) -> str:
+    message = "None yet"
+    stmt = (
+            select(User)
+            .where(User.telegram_id == user_id)
+            )
+    with Session(engine) as session, session.begin():
+        user = session.scalars(stmt)
+        if user is None:
+            human = User(name=name, full_name=full_name, telegram_id=user_id)
+            session.add(human)
+            message = f"Зарегистрировал тебя, пользователь {name}"
+        else:
+            message = "Уже зарегистрированы."
+    return message
 
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
     human = User(name=name, full_name=name+"Foobar", telegram_id=usertg_id)

@@ -1,20 +1,25 @@
 import datetime
+from db.db_classes import Base
+from sqlalchemy import MetaData, create_engine
+from db.db_operations import set_register_photo
+from aiogram import F
 import time
 import redis
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, Chat
 
-# Включаем логирование, чтобы не пропустить важные сообщения
 logging.basicConfig(level=logging.INFO)
-# Объект бота
 bot = Bot(token="5811948834:AAGl_bFk61wHJXeS2nHLihcAVTAbwMT55JA")
-# Диспетчер
+
 dp = Dispatcher()
 pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
 redis = redis.Redis(connection_pool=pool)
+
+engine = create_engine("sqlite+pysqlite:///photo.db", echo=True)
+Base.metadata.create_all(engine)
 
 async def tasks_queue(bot):
     while True:
@@ -40,13 +45,26 @@ async def writer(m: types.Message):
         push = m.text.split()
         redis.rpush("queue", push[-1])
 
+@dp.message(F.entities)
+async def example(message: types.Message):#, chat: types.Chat):
+    message_contains_hashtag = False
+    for i in message.entities:
+        if (i.type == 'hashtag'):
+            message_contains_hashtag = True
+    if (message_contains_hashtag == True):
+        set_register_photo(engine, str(message.from_user.id), str(message.chat.id))
+        await message.answer("Зарегал фотку!")
+
+
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
     now = datetime.datetime.now()
+    print(message)
     redis.rpush('queue', str(now))
     await message.answer("Hello!")
 
 async def main():
+    txt = '1'
     await asyncio.gather(dp.start_polling(bot), tasks_queue(bot))
 
 if __name__ == "__main__":
