@@ -1,4 +1,6 @@
 import datetime
+from aiogram.methods import SendMessage
+from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION
 from db.db_classes import Base
 from sqlalchemy import MetaData, create_engine
 from db.db_operations import set_register_photo
@@ -8,8 +10,8 @@ import redis
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from aiogram.types import Message, Chat
+from aiogram.filters import Command, ChatMemberUpdatedFilter
+from aiogram.types import Message, Chat, ChatMemberUpdated
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token="5811948834:AAGl_bFk61wHJXeS2nHLihcAVTAbwMT55JA")
@@ -54,6 +56,13 @@ async def example(message: types.Message):#, chat: types.Chat):
     if (message_contains_hashtag == True):
         set_register_photo(engine, str(message.from_user.id), str(message.chat.id))
         await message.answer("Зарегал фотку!")
+
+#@dp.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> IS_MEMBER))
+@dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
+async def on_user_join(message: types.Message): 
+        msg = "Добавили в чат, здоров!"
+        #await bot.SendMessage(message.chat.id, msg)
+        await bot.send_message(message.chat.id, msg)
 
 
 @dp.message((Command(commands=["start"])))

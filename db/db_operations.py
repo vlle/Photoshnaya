@@ -112,16 +112,32 @@ def set_contest_theme(engine, user_id: str, photo_id: str):
 def get_contest_theme(engine, user_id: str, photo_id: str):
     pass
 
-def register_user(engine, name: str, full_name: str, user_id: str) -> str:
+def build_group(name: str, telegram_id: str, contest_theme: str) -> Group:
+    groupFrog = Group(name=name, telegram_id=telegram_id, contest_theme=contest_theme)
+    return groupFrog
+
+def build_user(name: str, full_name: str, user_id: str) -> User:
+    human = User(name=name, full_name=full_name, telegram_id=user_id)
+    return human
+
+
+def register_user_and_group(engine, group: Group, user: User) -> str:
     message = "None yet"
     stmt = (
             select(User)
-            .where(User.telegram_id == user_id)
+            .where(User.telegram_id == user.telegram_id)
+            )
+    stmtGroup = (
+            select(Group)
+            .where(Group.telegram_id == group.telegram_id)
             )
     with Session(engine) as session, session.begin():
-        user = session.scalars(stmt)
-        if user is None:
-            human = User(name=name, full_name=full_name, telegram_id=user_id)
+        player = session.scalars(stmt)
+        chat = session.scalars(stmtGroup)
+        if player is None:
+            if chat is None: # need to check if user registered in this group
+                session.add(chat)
+            human.groups.append(group)
             session.add(human)
             message = f"Зарегистрировал тебя, пользователь {name}"
         else:
@@ -129,7 +145,8 @@ def register_user(engine, name: str, full_name: str, user_id: str) -> str:
     return message
 
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
-    human = User(name=name, full_name=name+"Foobar", telegram_id=usertg_id)
+    #human = User(name=name, full_name=name+"Foobar", telegram_id=usertg_id)
+    human = build_user(name, name+" Foobar", usertg_id)
     groupFrog = Group(name="Жабы", telegram_id=tggroup_id, contest_theme="#пляжи")
     human.groups.append(groupFrog)
     with Session(engine) as session, session.begin():
