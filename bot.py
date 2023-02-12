@@ -3,7 +3,7 @@ from aiogram.methods import SendMessage
 from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION
 from db.db_classes import Base
 from sqlalchemy import MetaData, create_engine
-from db.db_operations import build_group, set_register_photo, register_group
+from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group
 from aiogram import F
 import time
 import redis
@@ -47,6 +47,13 @@ async def writer(m: types.Message):
         push = m.text.split()
         redis.rpush("queue", push[-1])
 
+@dp.message((Command(commands=["register"])))
+async def register(message: types.Message):
+    msg = "None yet"
+    user = build_user(message.from_user.full_name,message.from_user.full_name, message.from_user.id)
+    msg = register_user(engine, user, message.chat.id)
+    await message.answer(msg)
+
 @dp.message(F.entities)
 async def example(message: types.Message):#, chat: types.Chat):
     message_contains_hashtag = False
@@ -57,7 +64,6 @@ async def example(message: types.Message):#, chat: types.Chat):
         set_register_photo(engine, str(message.from_user.id), str(message.chat.id))
         await message.answer("Зарегал фотку!")
 
-#@dp.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> IS_MEMBER))
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def on_user_join(message: types.Message): 
         msg = "Добавили в чат, здоров!"
