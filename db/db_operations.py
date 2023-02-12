@@ -133,7 +133,7 @@ def find_group(engine, telegram_id: str) -> bool:
 
     return find_group
 
-def find_user(engine, telegram_id: str) -> bool:
+def find_user(engine, telegram_id: str, group_id = None) -> bool:
     stmt = (
             select(User)
             .where(User.telegram_id == telegram_id)
@@ -143,6 +143,15 @@ def find_user(engine, telegram_id: str) -> bool:
         search_result = session.scalars(stmt)
         if (search_result is not None):
             find_user = True
+
+    # if (find_user == False):
+
+    # # stmtGroup = (
+    # #         select(User)
+    # #         .join(User.group)
+    # #         )
+    # with Session(engine) as session, session.begin():
+    #     search_result = session.scalars(stmt)
 
     return find_user
 
@@ -159,7 +168,7 @@ def register_group(engine, name: str, telegram_id: str) -> str:
     return "Зарегистрировал группу. "
 
 def register_user(engine, name: str, full_name: str, telegram_id: str) -> str:
-    if find_user == True:
+    if (find_user(engine, telegram_id)) == True:
         # check user in group
         return "User was already registered"
 
