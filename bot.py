@@ -3,7 +3,7 @@ from aiogram.methods import SendMessage
 from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION
 from db.db_classes import Base
 from sqlalchemy import MetaData, create_engine
-from db.db_operations import set_register_photo, register_group
+from db.db_operations import build_group, set_register_photo, register_group
 from aiogram import F
 import time
 import redis
@@ -61,7 +61,8 @@ async def example(message: types.Message):#, chat: types.Chat):
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def on_user_join(message: types.Message): 
         msg = "Добавили в чат, здоров!"
-        reg_msg = register_group(engine, message.chat.full_name, str(message.chat.id))
+        group = build_group(message.chat.full_name, str(message.chat.id), "none")
+        reg_msg = register_group(engine, group)
         await bot.send_message(message.chat.id, msg)
         await bot.send_message(message.chat.id, reg_msg)
 
