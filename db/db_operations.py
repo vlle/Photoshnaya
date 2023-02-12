@@ -89,10 +89,14 @@ def select_contest_photos(engine, group_id: str) -> list:
                 groupPhoto,
                   (Photo.id == groupPhoto.c.photo_id) 
                   )
+            .where(groupPhoto.c.group_id == (
+                select(Group.id).where(Group.telegram_id == group_id).scalar_subquery()))
             )
     with Session(engine) as session, session.begin():
         photos = session.scalars(stmtG)
         for photo in photos:
+            print(photo)
+            print("Printer")
             ret.append(photo)
     return ret
 
@@ -217,5 +221,3 @@ def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
     with Session(engine) as session, session.begin():
         session.add(human)
         session.add(group)
-
-    set_register_photo(engine, usertg_id, tggroup_id)

@@ -20,8 +20,7 @@ class TestDb(unittest.TestCase):
 
     def test_get_list_contest_photo(self):
         ret = select_contest_photos(self.engine, self.group_id)
-        res = []
-        self.assertNotEqual(ret, res, "Should be not equal")
+        self.assertTrue(ret, "Should be not empty ")
 
     def test_get_listMany_contest_photo(self):
         set_register_photo(self.engine, self.tg_id, self.group_id)
@@ -52,6 +51,9 @@ class TestDb(unittest.TestCase):
 
     def test_find_user_in_group(self):
         self.assertTrue(find_user_in_group(self.engine, self.tg_id, self.group_id))
+
+    def test_find_no_user_in_group(self):
+        self.assertFalse(find_user_in_group(self.engine, self.tg_id+"empty", self.group_id))
 
     def test_add_photo_for_contest(self):
         expected_link = get_register_photo(self.engine, self.tg_id)
