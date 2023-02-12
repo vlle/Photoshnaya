@@ -176,24 +176,22 @@ def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
     return ret
 
 
-def register_group(engine, name: str, telegram_id: str) -> str:
-    if (find_group(engine, telegram_id) == True):
+def register_group(engine, group: Group) -> str:
+    if (find_group(engine, group.telegram_id) == True):
         return "Группа уже зарегистрирована. 😮"
 
-    group = build_group(name, telegram_id, "None")
 
     with Session(engine) as session, session.begin():
         session.add(group)
 
     return "Зарегистрировал группу. "
 
-def register_user(engine, name: str, full_name: str, telegram_id: str, group_telegram_id: str) -> str:
-    if (find_user(engine, telegram_id)) == True:
+def register_user(engine, user: User, tg_group_id: str) -> str:
+    if (find_user(engine, user.telegram_id)) == True:
         # check user in group
         return "User was already registered"
 
-    stmt = select(Group).where(Group.telegram_id == group_telegram_id)
-    user = build_user(name, full_name, telegram_id)  
+    stmt = select(Group).where(Group.telegram_id == tg_group_id)
     with Session(engine) as session, session.begin():
         search_result = session.scalars(stmt).one()
         user.groups.append(search_result)
@@ -201,31 +199,15 @@ def register_user(engine, name: str, full_name: str, telegram_id: str, group_tel
 
     return "User was added"
 
-def register_user_and_group(engine, group: Group, user: User) -> str:
+def register_user_and_group(engine, group: Group, user: User, group_telegram_id: str) -> str:
     message = "None yet"
-    stmt = (
-            select(User)
-            .where(User.telegram_id == user.telegram_id)
-            )
-    stmtGroup = (
-            select(Group)
-            .where(Group.telegram_id == group.telegram_id)
-            )
-    with Session(engine) as session, session.begin():
-        player = session.scalars(stmt)
-        chat = session.scalars(stmtGroup)
-        if player is None:
-            if chat is None: # need to check if user registered in this group
-                session.add(chat)
-            human.groups.append(group)
-            session.add(human)
-            message = f"Зарегистрировал тебя, пользователь {name}"
-        else:
-            message = "Уже зарегистрированы."
+    register_group(engine, group)
+    register_user(engine, user, group_telegram_id)
     return message
 
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
-    register_group(engine, "Жабы", tggroup_id)
-    register_user(engine, name, name+"Foobar", usertg_id, tggroup_id)
+    group = build_group(name, tggroup_id, "None")
+    user = build_user(name, name+" Foobar", usertg_id)  
+    register_user_and_group(engine, group, user, tggroup_id)
 
     set_register_photo(engine, usertg_id, tggroup_id)
