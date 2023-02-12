@@ -53,11 +53,15 @@ async def register(message: types.Message):
     user = build_user(message.from_user.full_name,message.from_user.full_name, message.from_user.id)
     msg = register_user(engine, user, message.chat.id)
     await message.answer(msg)
+    
+#@dp.message((Command(commands=["register"])))
+#async def set_theme(message: types.Message):
 
-@dp.message(F.entities)
+
+@dp.message(F.caption_entities)
 async def example(message: types.Message):#, chat: types.Chat):
     message_contains_hashtag = False
-    for i in message.entities:
+    for i in message.caption_entities:
         if (i.type == 'hashtag'):
             message_contains_hashtag = True
     if (message_contains_hashtag == True):
