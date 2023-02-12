@@ -133,6 +133,7 @@ def find_group(engine, telegram_id: str) -> bool:
 
     return find_group
 
+
 def find_user(engine, telegram_id: str, group_id = None) -> bool:
     stmt = (
             select(User)
@@ -144,16 +145,25 @@ def find_user(engine, telegram_id: str, group_id = None) -> bool:
         if (search_result is not None):
             find_user = True
 
-    # if (find_user == False):
-
-    # # stmtGroup = (
-    # #         select(User)
-    # #         .join(User.group)
-    # #         )
-    # with Session(engine) as session, session.begin():
-    #     search_result = session.scalars(stmt)
 
     return find_user
+
+def find_user_in_group(engine, user_id, group_telegram_id) -> bool:
+    find_group = False
+    stmt = (
+            select(User)
+            .join(
+                groupUser,
+                  #(Photo.id == groupUser.c.photo_id) 
+                  (User.id == groupUser.c.user_id) 
+                  )
+            )
+    with Session(engine) as session, session.begin():
+        search_result = session.scalars(stmt)
+        for i in search_result: 
+            print(i)
+
+    return False
 
 
 def register_group(engine, name: str, telegram_id: str) -> str:

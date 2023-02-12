@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from db.db_classes import Base
-from db.db_operations import init_test_data, set_like_photo,\
+from db.db_operations import find_user, init_test_data, set_like_photo,\
         set_register_photo, get_like_photo, get_register_photo,\
-        select_contest_photos
+        select_contest_photos, find_user
 import unittest
 
 
@@ -46,6 +46,13 @@ class TestDb(unittest.TestCase):
 
     def test_only_one_user_add(self):
         pass
+
+    def test_find_user(self):
+        self.assertTrue(find_user(self.engine, self.tg_id))
+
+    def test_find_user_in_group(self):
+        pass
+        #self.assertTrue(find_user(self.engine, self.tg_id))
 
     def test_add_photo_for_contest(self):
         expected_link = get_register_photo(self.engine, self.tg_id)
