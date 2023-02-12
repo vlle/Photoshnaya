@@ -120,50 +120,48 @@ def build_user(name: str, full_name: str, user_id: str) -> User:
     human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
-def find_group(engine, telegram_id: str) -> bool:
+def find_group(engine, telegram_id: str) -> Group:
     stmt = (
             select(Group)
             .where(Group.telegram_id == telegram_id)
             )
-    find_group = False
+    search_result = None
     with Session(engine) as session, session.begin():
-        search_result = session.scalars(stmt)
-        if (search_result is not None):
-            find_group = True
+        search_result = session.scalars(stmt).one()
 
-    return find_group
+    return search_result
 
 
-def find_user(engine, telegram_id: str, group_id = None) -> bool:
+def find_user(engine, telegram_id: str) -> User:
     stmt = (
             select(User)
             .where(User.telegram_id == telegram_id)
             )
-    find_user = False
+    search_result = None
     with Session(engine) as session, session.begin():
-        search_result = session.scalars(stmt)
-        if (search_result is not None):
-            find_user = True
+        search_result = session.scalars(stmt).one()
 
+    return search_result
 
-    return find_user
-
-def find_user_in_group(engine, user_id, group_telegram_id) -> bool:
-    find_group = False
+def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
     stmt = (
             select(User)
             .join(
                 groupUser,
-                  #(Photo.id == groupUser.c.photo_id) 
-                  (User.id == groupUser.c.user_id) 
-                  )
+                (User.id == groupUser.c.user_id) 
+                )
+            .where(groupUser.c.group_id == (
+                select(Group.id).where(Group.telegram_id == group_telegram_id).scalar_subquery()))
+            .where(groupUser.c.user_id == (select(User.id).where(User.telegram_id == telegram_user_id).scalar_subquery()))
             )
+    ret = []
     with Session(engine) as session, session.begin():
         search_result = session.scalars(stmt)
+        print(search_result)
         for i in search_result: 
-            print(i)
+            ret.append(i)
 
-    return False
+    return ret
 
 
 def register_group(engine, name: str, telegram_id: str) -> str:
