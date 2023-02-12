@@ -124,26 +124,34 @@ def build_user(name: str, full_name: str, user_id: str) -> User:
     human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
-def find_group(engine, telegram_id: str) -> Group:
+def find_group(engine, telegram_id: str) -> bool:
     stmt = (
             select(Group)
             .where(Group.telegram_id == telegram_id)
             )
-    search_result = None
+    search_result = True
     with Session(engine) as session, session.begin():
-        search_result = session.scalars(stmt).one()
+        try:
+            search = session.scalars(stmt).one()
+            search_result = search is not None
+        except exc.NoResultFound:
+            search_result = False
 
     return search_result
 
 
-def find_user(engine, telegram_id: str) -> User:
+def find_user(engine, telegram_id: str) -> bool:
     stmt = (
             select(User)
             .where(User.telegram_id == telegram_id)
             )
     search_result = None
     with Session(engine) as session, session.begin():
-        search_result = session.scalars(stmt).one()
+        try:
+            search = session.scalars(stmt).one()
+            search_result = search is not None
+        except exc.NoResultFound:
+            search_result = False
 
     return search_result
 
@@ -179,13 +187,16 @@ def register_group(engine, name: str, telegram_id: str) -> str:
 
     return "Зарегистрировал группу. "
 
-def register_user(engine, name: str, full_name: str, telegram_id: str) -> str:
+def register_user(engine, name: str, full_name: str, telegram_id: str, group_telegram_id: str) -> str:
     if (find_user(engine, telegram_id)) == True:
         # check user in group
         return "User was already registered"
 
+    stmt = select(Group).where(Group.telegram_id == group_telegram_id)
     user = build_user(name, full_name, telegram_id)  
     with Session(engine) as session, session.begin():
+        search_result = session.scalars(stmt).one()
+        user.groups.append(search_result)
         session.add(user)
 
     return "User was added"
@@ -214,12 +225,7 @@ def register_user_and_group(engine, group: Group, user: User) -> str:
     return message
 
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
-    #human = User(name=name, full_name=name+"Foobar", telegram_id=usertg_id)
-    human = build_user(name, name+" Foobar", usertg_id)
-    group = build_group("Жабы", tggroup_id, "#пляжи")
-    human.groups.append(group)
-    with Session(engine) as session, session.begin():
-        session.add(human)
-        session.add(group)
+    register_group(engine, "Жабы", tggroup_id)
+    register_user(engine, name, name+"Foobar", usertg_id, tggroup_id)
 
     set_register_photo(engine, usertg_id, tggroup_id)

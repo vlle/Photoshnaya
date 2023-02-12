@@ -79,17 +79,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-# @dp.message((Command(commands=["listen"])))
-# async def listener(m: types.Message, batch_size: int = 5, polling_timeout=10):
-#     while True:
-#         try:
-#             msgs = redis.lpop('queue')
-#             try:
-#                 await bot.send_message('1919118841', msgs.decode("utf-8"))
-#             except TelegramForbiddenError:
-#                 pass
-#         except TimeoutError:
-#             await m.answer("Рассылка закончена")
-#             break
