@@ -18,7 +18,9 @@ def set_like_photo(engine, photo_id: str):
     return likes
 
 
-def get_like_photo_single(engine, tg_id: str) -> int:
+
+def get_like_photo(engine, tg_id: str, hash = None) -> int:
+    # in specific group? or what?
     stmt = (
             select(Photo)
             .join(User)
@@ -33,12 +35,6 @@ def get_like_photo_single(engine, tg_id: str) -> int:
         except exc.NoResultFound:
             pass
 
-    return likes
-
-
-def get_like_photo(engine, tg_id: str, hash = None) -> int:
-    likes = -1
-    likes = get_like_photo_single(engine, tg_id)
     return likes
 
 

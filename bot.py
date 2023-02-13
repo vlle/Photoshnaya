@@ -54,9 +54,6 @@ async def register(message: types.Message):
     msg = register_user(engine, user, message.chat.id)
     await message.answer(msg)
     
-#@dp.message((Command(commands=["register"])))
-#async def set_theme(message: types.Message):
-
 
 @dp.message(F.caption_entities)
 async def example(message: types.Message):#, chat: types.Chat):
