@@ -26,6 +26,7 @@ class TestDb(unittest.TestCase):
         set_register_photo(self.engine, self.tg_id, self.group_id)
         set_register_photo(self.engine, self.tg_id, self.group_id)
         ret = select_contest_photos(self.engine, self.group_id)
+        #self.assertEqual(len(ret), 3, "Should be equal")
         self.assertEqual(len(ret), 3, "Should be equal")
 
     def test_get_like_photo(self):
