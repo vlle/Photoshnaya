@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine
 from db.db_classes import Base
-from db.db_operations import find_user, init_test_data, set_like_photo,\
+from db.db_operations import build_group, find_user, init_test_data, register_group, set_like_photo,\
         set_register_photo, get_like_photo, get_register_photo,\
-        select_contest_photos, find_user, find_user_in_group
+        select_contest_photos, find_user, find_user_in_group, \
+        build_group, register_group
 import unittest
 
 
@@ -21,6 +22,22 @@ class TestDb(unittest.TestCase):
     def test_get_list_contest_photo(self):
         ret = select_contest_photos(self.engine, self.group_id)
         self.assertTrue(ret, "Should be not empty ")
+
+    def test_get_speicif_list_contest_photo(self):
+        group = build_group("foo", "123", "None")
+        register_group(self.engine, group)
+        group = build_group("bar", "321", "None")
+        register_group(self.engine, group)
+        set_register_photo(self.engine, self.tg_id, "123")
+        set_register_photo(self.engine, self.tg_id, "123")
+        set_register_photo(self.engine, self.tg_id, "321")
+        set_register_photo(self.engine, self.tg_id, "321")
+        set_register_photo(self.engine, self.tg_id, "321")
+        set_register_photo(self.engine, self.tg_id, "321")
+        set_register_photo(self.engine, self.tg_id, self.group_id)
+        set_register_photo(self.engine, self.tg_id, self.group_id)
+        ret = select_contest_photos(self.engine, self.group_id)
+        assert len(ret) == 3
 
     def test_get_listMany_contest_photo(self):
         set_register_photo(self.engine, self.tg_id, self.group_id)
