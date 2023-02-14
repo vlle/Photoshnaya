@@ -1,6 +1,6 @@
 import datetime
 from aiogram.methods import SendMessage
-from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION
+from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION, IS_ADMIN
 from db.db_classes import Base
 from sqlalchemy import MetaData, create_engine
 from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group
@@ -54,6 +54,10 @@ async def register(message: types.Message):
         user = build_user(message.from_user.full_name,message.from_user.full_name, str(message.from_user.id))
         msg = register_user(engine, user, str(message.chat.id))
         await message.answer(msg)
+
+@dp.message((Command(commands=["set_theme"])))# and F.ChatMemberUpdatedFilter(IS_ADMIN)))
+async def set_theme(message: types.Message):
+    await message.answer("Поменял тему (на самом деле нет)")
     
 
 @dp.message(F.caption_entities)
@@ -73,6 +77,9 @@ async def on_user_join(message: types.Message):
         msg = "Добавили в чат, здоров!"
         group = build_group(message.chat.full_name, str(message.chat.id), "none")
         reg_msg = register_group(engine, group)
+        if (message.from_user and message.from_user.username):
+            adm_user = build_user(message.from_user.username, message.from_user.full_name, str(message.from_user.id), 1)
+            register_user(engine, adm_user, str(message.chat.id))
         if (message.chat and message.chat.id):
             await bot.send_message(message.chat.id, msg)
             await bot.send_message(message.chat.id, reg_msg)
@@ -81,7 +88,6 @@ async def on_user_join(message: types.Message):
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
     now = datetime.datetime.now()
-    print(message)
     redis.rpush('queue', str(now))
     await message.answer("Hello!")
 
