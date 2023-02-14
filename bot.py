@@ -50,28 +50,32 @@ async def writer(m: types.Message):
 @dp.message((Command(commands=["register"])))
 async def register(message: types.Message):
     msg = "None yet"
-    user = build_user(message.from_user.full_name,message.from_user.full_name, message.from_user.id)
-    msg = register_user(engine, user, message.chat.id)
-    await message.answer(msg)
+    if (message.from_user and message.from_user.full_name and message.from_user.id and message.chat and message.chat.id):
+        user = build_user(message.from_user.full_name,message.from_user.full_name, str(message.from_user.id))
+        msg = register_user(engine, user, str(message.chat.id))
+        await message.answer(msg)
     
 
 @dp.message(F.caption_entities)
 async def example(message: types.Message):#, chat: types.Chat):
     message_contains_hashtag = False
-    for i in message.caption_entities:
-        if (i.type == 'hashtag'):
-            message_contains_hashtag = True
+    if message.caption_entities is not None:
+        for i in message.caption_entities:
+            if (i.type == 'hashtag'):
+                message_contains_hashtag = True
     if (message_contains_hashtag == True):
-        set_register_photo(engine, str(message.from_user.id), str(message.chat.id))
-        await message.answer("Зарегал фотку!")
+        if (message.from_user and message.from_user.id and message.chat and message.chat.id):
+            set_register_photo(engine, str(message.from_user.id), str(message.chat.id))
+            await message.answer("Зарегал фотку!")
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def on_user_join(message: types.Message): 
         msg = "Добавили в чат, здоров!"
         group = build_group(message.chat.full_name, str(message.chat.id), "none")
         reg_msg = register_group(engine, group)
-        await bot.send_message(message.chat.id, msg)
-        await bot.send_message(message.chat.id, reg_msg)
+        if (message.chat and message.chat.id):
+            await bot.send_message(message.chat.id, msg)
+            await bot.send_message(message.chat.id, reg_msg)
 
 
 @dp.message((Command(commands=["start"])))
@@ -82,7 +86,6 @@ async def cmd_start(message: types.Message):
     await message.answer("Hello!")
 
 async def main():
-    txt = '1'
     await asyncio.gather(dp.start_polling(bot), tasks_queue(bot))
 
 if __name__ == "__main__":
