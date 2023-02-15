@@ -3,7 +3,7 @@ from aiogram.methods import SendMessage
 from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION, IS_ADMIN
 from db.db_classes import Base
 from sqlalchemy import MetaData, create_engine
-from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group, register_admin
+from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group, register_admin, get_admins, set_contest_theme, check_admin, get_contest_theme
 from aiogram import F
 import time
 import redis
@@ -61,11 +61,6 @@ async def register(message: types.Message):
         await message.answer(msg)
 
 
-@dp.message((Command(commands=["set_theme"])))
-async def set_theme(message: types.Message):
-    await message.answer("Поменял тему (на самом деле нет)")
-
-
 @dp.message(F.caption_entities)
 async def register_photo(message: types.Message):
     message_contains_hashtag = False
@@ -97,13 +92,44 @@ async def on_user_join(message: types.Message):
     if (message.from_user and message.from_user.username):
         adm_user = build_user(message.from_user.username,
                               message.from_user.full_name,
-                              str(message.from_user.id), 1)
-        register_user(engine, adm_user, str(message.chat.id))
+                              str(message.from_user.id))
+        register_admin(engine, adm_user, str(message.chat.id))
+        msg = f"Добавил в качестве админа {message.from_user.username}"
+        await bot.send_message(message.chat.id, msg)
     if (message.chat and message.chat.id):
         await bot.send_message(message.chat.id, msg)
         await bot.send_message(message.chat.id, reg_msg)
-        await bot.send_message(message.chat.id, reg_msg)
 
+
+@dp.message((Command(commands=["set_theme"])))
+async def set_theme(message: types.Message):
+    # maybe cooldown if no available
+    user_id = str(message.from_user.id)
+    group_id = str(message.chat.id)
+    user_theme = message.text.split()
+    if (len(user_theme) == 1):
+        msg = 'Забыл название темы, админ\nПример: /set_theme #пляжи'
+        await bot.send_message(message.chat.id, msg)
+        return
+    if (user_theme[1][0] != '#'):
+        theme = '#' + user_theme[1]
+    else:
+        theme = user_theme[1]
+    admin_right = check_admin(engine, user_id, group_id)
+    if admin_right is True:
+        msg = set_contest_theme(engine, user_id, group_id, theme)
+        await bot.send_message(message.chat.id, msg)
+    else:
+        msg = "Нельзя, ты не админ."
+        await bot.send_message(message.chat.id, msg)
+
+
+
+@dp.message((Command(commands=["get_theme"])))
+async def get_theme(message: types.Message):
+    theme = get_contest_theme(engine, message.chat.id)
+    msg = f"Текущая тема: {theme}"
+    await bot.send_message(message.chat.id, msg)
 
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
