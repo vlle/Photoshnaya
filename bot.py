@@ -124,12 +124,15 @@ async def set_theme(message: types.Message):
         await bot.send_message(message.chat.id, msg)
 
 
-
 @dp.message((Command(commands=["get_theme"])))
 async def get_theme(message: types.Message):
     theme = get_contest_theme(engine, message.chat.id)
     msg = f"Текущая тема: {theme}"
     await bot.send_message(message.chat.id, msg)
+
+
+#set admin -- update and etc and tests
+
 
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
