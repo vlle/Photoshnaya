@@ -3,7 +3,7 @@ from aiogram.methods import SendMessage
 from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION, IS_ADMIN
 from db.db_classes import Base
 from sqlalchemy import MetaData, create_engine
-from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group
+from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group, register_admin
 from aiogram import F
 import time
 import redis
@@ -82,6 +82,7 @@ async def register_photo(message: types.Message):
             group = build_group(message.chat.full_name,
                                 str(message.chat.id),
                                 "none")
+            register_user(engine, user, str(message.chat.id))
             set_register_photo(engine, str(message.from_user.id),
                                str(message.chat.id), user, group)
             await message.answer("Зарегал фотку!")

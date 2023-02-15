@@ -4,6 +4,7 @@ from db.db_classes import User, Photo, Group, groupUser, groupPhoto, groupAdmin
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+# Make Class!!
 
 def register_group(engine, group: Group) -> str:
     if (find_group(engine, group.telegram_id) is True):
@@ -201,30 +202,46 @@ def get_contest_winner(engine, user_id: str, photo_id: str):
     pass
 
 
-def set_contest_theme(engine, user_id: str, photo_id: str):
-    pass
+def set_contest_theme(engine, user_id: str, group_id: str, theme: str) -> str:
+    stmt = (
+            select(Group)
+            .join(groupAdmin,
+                  (Group.id == groupAdmin.c.group_id)
+                  )
+            .where(groupAdmin.c.group_id == (
+                select(Group.id).where(Group.telegram_id == group_id)
+                ).scalar_subquery())
+            .where(groupAdmin.c.user_id == (
+                select(User.id).where(User.telegram_id == user_id)
+                ).scalar_subquery())
+            )
+    ret_msg = None
+    with Session(engine) as session, session.begin():
+        try:
+            group = session.scalars(stmt).one()
+            group.contest_theme = theme
+            ret_msg = theme
+        except exc.NoResultFound:
+            ret_msg = "Ошибка, не могу поставить тему."
+    return ret_msg
 
 
 def get_contest_theme(engine, user_id: str, photo_id: str):
     pass
 
+
 def build_group(name: str, telegram_id: str, contest_theme: str) -> Group:
-    groupFrog = Group(name=name, telegram_id=telegram_id, contest_theme=contest_theme)
+    groupFrog = Group(name=name, telegram_id=telegram_id,
+                      contest_theme=contest_theme)
     return groupFrog
+
 
 def build_user(name: str, full_name: str, user_id: str) -> User:
     human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
 
-
-
-
-def register_admin(engine, adm_user: User, group_id: str):
-    # if (find_user(engine, adm_user.telegram_id)) is True:
-    #     # check user in group
-    #     return "Юзер стал администратором."
-
+def register_admin(engine, adm_user: User, group_id: str, group=None):
     stmt = select(Group).where(Group.telegram_id == group_id)
     with Session(engine) as session, session.begin():
         try:
@@ -241,7 +258,7 @@ def register_admin(engine, adm_user: User, group_id: str):
 
 
 def get_admins(engine, group_id) -> list:
-    stmt = (
+    stmt=(
             select(Group)
             .join(groupAdmin,
                   (Group.id == groupAdmin.c.group_id)
