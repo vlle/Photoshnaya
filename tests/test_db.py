@@ -4,7 +4,7 @@ from db.db_operations import build_group, find_user, init_test_data, register_gr
         set_register_photo, get_like_photo, get_register_photo,\
         select_contest_photos, find_user, find_user_in_group, \
         build_group, register_group, set_contest_theme, \
-        register_admin, build_user
+        register_admin, build_user, get_contest_theme
 import unittest
 
 
@@ -85,7 +85,18 @@ class TestDb(unittest.TestCase):
 
     def test_set_contest_theme(self):
         self.theme = "#текстуры"
-        assert self.theme == set_contest_theme(self.engine, self.ad_tg_id, self.group_id, self.theme)
+        assert self.theme == set_contest_theme(self.engine,
+                                               self.ad_tg_id,
+                                               self.group_id,
+                                               self.theme)
+
+    def test_get_contest_theme(self):
+        self.theme = "#пляжи"
+        set_contest_theme(self.engine,
+                          self.ad_tg_id,
+                          self.group_id,
+                          self.theme)
+        assert self.theme == get_contest_theme(self.engine, self.group_id)
 
 
 if __name__ == '__main__':
