@@ -38,7 +38,8 @@ def get_like_photo(engine, tg_id: str, hash = None) -> int:
     return likes
 
 
-def set_register_photo(engine, tg_id: str, grtg_id: str):
+def set_register_photo(engine, tg_id: str, grtg_id: str,
+                       user_p=None, group_p=None):
     stmt_sel = (
             select(User)
             .where(User.telegram_id == tg_id)
@@ -48,9 +49,18 @@ def set_register_photo(engine, tg_id: str, grtg_id: str):
             .where(Group.telegram_id == grtg_id)
             )
     with Session(engine) as session, session.begin():
-        user = session.scalars(stmt_sel).one() 
-        group = session.scalars(stmtG_sel).one() 
-        photo = Photo(likes=0, user_id = user.id)
+        try:
+            user = session.scalars(stmt_sel).one()
+            group = session.scalars(stmtG_sel).one()
+        except exc.NoResultFound:
+            if (user_p):
+                register_user(engine, user_p, grtg_id, group_p)
+            if (group_p):
+                register_group(engine, group_p)
+
+        user = session.scalars(stmt_sel).one()
+        group = session.scalars(stmtG_sel).one()
+        photo = Photo(likes=0, user_id=user.id)
         user.photos.append(photo)
         group.photos.append(photo)
         session.add(photo)
@@ -173,22 +183,28 @@ def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
 
 
 def register_group(engine, group: Group) -> str:
-    if (find_group(engine, group.telegram_id) == True):
+    if (find_group(engine, group.telegram_id) is True):
         return "Группа уже зарегистрирована. 😮"
-
 
     with Session(engine) as session, session.begin():
         session.add(group)
 
     return "Зарегистрировал группу. "
 
-def register_user(engine, user: User, tg_group_id: str) -> str:
-    if (find_user(engine, user.telegram_id)) == True:
+
+def register_user(engine, user: User, tg_group_id: str, group=None)\
+        -> str:
+    if (find_user(engine, user.telegram_id)) is True:
         # check user in group
         return "User was already registered"
 
     stmt = select(Group).where(Group.telegram_id == tg_group_id)
     with Session(engine) as session, session.begin():
+        try:
+            search_result = session.scalars(stmt).one()
+        except exc.NoResultFound:
+            register_group(engine, group)
+
         search_result = session.scalars(stmt).one()
         user.groups.append(search_result)
         session.add(user)
