@@ -27,6 +27,13 @@ groupUser = Table(
     Column("group_id", ForeignKey("group.id"), primary_key=True),
 )
 
+groupAdmin = Table(
+    "groupAdmin",
+    Base.metadata,
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("group_id", ForeignKey("group.id"), primary_key=True),
+)
+
 
 class User(Base):
     __tablename__ = "user"
@@ -39,6 +46,9 @@ class User(Base):
     photos: Mapped[List["Photo"]] = relationship()
     groups: Mapped[List["Group"]] = relationship(
         secondary=groupUser, back_populates="users"
+    )
+    admin_in: Mapped[List["Group"]] = relationship(
+        secondary=groupAdmin, back_populates="admins"
     )
 
     def __repr__(self) -> str:
@@ -74,6 +84,9 @@ class Group(Base):
     )
     photos: Mapped[List["Photo"]] = relationship(
         secondary=groupPhoto, back_populates="groups"
+    )
+    admins: Mapped[List["User"]] = relationship(
+        secondary=groupAdmin, back_populates="admin_in"
     )
 
     def __repr__(self) -> str:
