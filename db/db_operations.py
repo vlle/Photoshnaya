@@ -67,7 +67,7 @@ def find_group(engine, telegram_id: str) -> bool:
     return search_result
 
 
-def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
+def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> bool:
     stmt = (
             select(User)
             .join(
@@ -83,12 +83,15 @@ def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
                 .where(User.telegram_id == telegram_user_id)
                 .scalar_subquery()))
          )
-    ret = []
+    ret = False
     with Session(engine) as session, session.begin():
-        search_result = session.scalars(stmt)
-        print(search_result)
-        for i in search_result:
-            ret.append(i)
+        try:
+            search_result = session.scalars(stmt).one()
+            ret = search_result is not None
+        except exc.NoResultFound:
+            ret = False
+        except exc.MultipleResultsFound:
+            ret = True
 
     return ret
 

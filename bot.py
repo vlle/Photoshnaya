@@ -63,12 +63,14 @@ async def register(message: types.Message):
 
 @dp.message(F.caption_entities)
 async def register_photo(message: types.Message):
-    message_contains_hashtag = False
-    if message.caption_entities is not None:
-        for i in message.caption_entities:
-            if (i.type == 'hashtag'):
-                message_contains_hashtag = True
-    if (message_contains_hashtag is True):
+    theme = get_contest_theme(engine, message.chat.id)
+    message_search = message.caption.split()
+    message_contains_contest = False
+    for word in message_search:
+        if (word == theme):
+            message_contains_contest = True
+            break
+    if (message_contains_contest is True):
         if (message.from_user and message.from_user.id
                 and message.chat and message.chat.id):
             user = build_user(message.from_user.username,
@@ -80,7 +82,7 @@ async def register_photo(message: types.Message):
             register_user(engine, user, str(message.chat.id))
             set_register_photo(engine, str(message.from_user.id),
                                str(message.chat.id), user, group)
-            await message.answer("Зарегал фотку!")
+            await message.answer(f"Зарегал фотку! Тема: {theme} ")
 
 
 @dp.my_chat_member(ChatMemberUpdatedFilter(
