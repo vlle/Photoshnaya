@@ -1,8 +1,95 @@
 from sqlalchemy import exc
 from sqlalchemy.sql.coercions import expect
-from db.db_classes import User, Photo, Group, groupUser, groupPhoto
+from db.db_classes import User, Photo, Group, groupUser, groupPhoto, groupAdmin
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+
+
+def register_group(engine, group: Group) -> str:
+    if (find_group(engine, group.telegram_id) is True):
+        return "Группа уже зарегистрирована. 😮"
+
+    with Session(engine) as session, session.begin():
+        session.add(group)
+
+    return "Зарегистрировал группу. "
+
+
+def register_user(engine, user: User, tg_group_id: str, group=None)\
+        -> str:
+    if (find_user_in_group(engine, user.telegram_id, tg_group_id)) is True:
+        return "User was already registered"
+
+    stmt = select(Group).where(Group.telegram_id == tg_group_id)
+    with Session(engine) as session, session.begin():
+        try:
+            search_result = session.scalars(stmt).one()
+        except exc.NoResultFound:
+            register_group(engine, group)
+
+        search_result = session.scalars(stmt).one()
+        user.groups.append(search_result)
+        session.add(user)
+
+    return "User was added"
+
+
+def find_user(engine, user_tg: str) -> bool:
+    stmt = (
+            select(User)
+            .where(User.telegram_id == user_tg)
+            )
+    search_result = None
+    with Session(engine) as session, session.begin():
+        try:
+            search = session.scalars(stmt).one()
+            search_result = search is not None
+        except exc.NoResultFound:
+            search_result = False
+
+    return search_result
+
+
+def find_group(engine, telegram_id: str) -> bool:
+    stmt = (
+            select(Group)
+            .where(Group.telegram_id == telegram_id)
+            )
+    search_result = True
+    with Session(engine) as session, session.begin():
+        try:
+            search = session.scalars(stmt).one()
+            search_result = search is not None
+        except exc.NoResultFound:
+            search_result = False
+
+    return search_result
+
+
+def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
+    stmt = (
+            select(User)
+            .join(
+                groupUser,
+                (User.id == groupUser.c.user_id)
+                )
+            .where(groupUser.c.group_id == (
+                select(Group.id)
+                .where(Group.telegram_id == group_telegram_id)
+                .scalar_subquery()))
+            .where(groupUser.c.user_id == (
+                select(User.id)
+                .where(User.telegram_id == telegram_user_id)
+                .scalar_subquery()))
+         )
+    ret = []
+    with Session(engine) as session, session.begin():
+        search_result = session.scalars(stmt)
+        print(search_result)
+        for i in search_result:
+            ret.append(i)
+
+    return ret
 
 
 def set_like_photo(engine, photo_id: str):
@@ -12,14 +99,13 @@ def set_like_photo(engine, photo_id: str):
             )
     likes = -1
     with Session(engine) as session, session.begin():
-        photo = session.scalars(stmt).one() 
+        photo = session.scalars(stmt).one()
         photo.likes += 1
         likes = photo.likes
     return likes
 
 
-
-def get_like_photo(engine, tg_id: str, hash = None) -> int:
+def get_like_photo(engine, tg_id: str) -> int:
     # in specific group? or what?
     stmt = (
             select(Photo)
@@ -93,8 +179,8 @@ def select_contest_photos(engine, group_id: str) -> list:
             select(Photo)
             .join(
                 groupPhoto,
-                  (Photo.id == groupPhoto.c.photo_id) 
-                  )
+                (Photo.id == groupPhoto.c.photo_id) 
+                )
             .where(groupPhoto.c.group_id == (
                 select(Group.id).where(Group.telegram_id == group_id).scalar_subquery()))
             )
@@ -126,79 +212,20 @@ def build_group(name: str, telegram_id: str, contest_theme: str) -> Group:
     groupFrog = Group(name=name, telegram_id=telegram_id, contest_theme=contest_theme)
     return groupFrog
 
-def build_user(name: str, full_name: str, user_id: str, role=0) -> User:
-    human = User(name=name, full_name=full_name, telegram_id=user_id, role=role)
+def build_user(name: str, full_name: str, user_id: str) -> User:
+    human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
-def find_group(engine, telegram_id: str) -> bool:
-    stmt = (
-            select(Group)
-            .where(Group.telegram_id == telegram_id)
-            )
-    search_result = True
-    with Session(engine) as session, session.begin():
-        try:
-            search = session.scalars(stmt).one()
-            search_result = search is not None
-        except exc.NoResultFound:
-            search_result = False
-
-    return search_result
 
 
-def find_user(engine, telegram_id: str) -> bool:
-    stmt = (
-            select(User)
-            .where(User.telegram_id == telegram_id)
-            )
-    search_result = None
-    with Session(engine) as session, session.begin():
-        try:
-            search = session.scalars(stmt).one()
-            search_result = search is not None
-        except exc.NoResultFound:
-            search_result = False
-
-    return search_result
-
-def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> list:
-    stmt = (
-            select(User)
-            .join(
-                groupUser,
-                (User.id == groupUser.c.user_id) 
-                )
-            .where(groupUser.c.group_id == (
-                select(Group.id).where(Group.telegram_id == group_telegram_id).scalar_subquery()))
-            .where(groupUser.c.user_id == (select(User.id).where(User.telegram_id == telegram_user_id).scalar_subquery()))
-            )
-    ret = []
-    with Session(engine) as session, session.begin():
-        search_result = session.scalars(stmt)
-        print(search_result)
-        for i in search_result: 
-            ret.append(i)
-
-    return ret
 
 
-def register_group(engine, group: Group) -> str:
-    if (find_group(engine, group.telegram_id) is True):
-        return "Группа уже зарегистрирована. 😮"
+def register_admin(engine, adm_user: User, group_id: str):
+    # if (find_user(engine, adm_user.telegram_id)) is True:
+    #     # check user in group
+    #     return "Юзер стал администратором."
 
-    with Session(engine) as session, session.begin():
-        session.add(group)
-
-    return "Зарегистрировал группу. "
-
-
-def register_user(engine, user: User, tg_group_id: str, group=None)\
-        -> str:
-    if (find_user(engine, user.telegram_id)) is True:
-        # check user in group
-        return "User was already registered"
-
-    stmt = select(Group).where(Group.telegram_id == tg_group_id)
+    stmt = select(Group).where(Group.telegram_id == group_id)
     with Session(engine) as session, session.begin():
         try:
             search_result = session.scalars(stmt).one()
@@ -206,10 +233,31 @@ def register_user(engine, user: User, tg_group_id: str, group=None)\
             register_group(engine, group)
 
         search_result = session.scalars(stmt).one()
-        user.groups.append(search_result)
-        session.add(user)
+        adm_user.admin_in.append(search_result)
+        adm_user.groups.append(search_result)
+        session.add(adm_user)
 
-    return "User was added"
+    return "Добавил администратора."
+
+
+def get_admins(engine, group_id) -> list:
+    stmt = (
+            select(Group)
+            .join(groupAdmin,
+                  (Group.id == groupAdmin.c.group_id)
+                  )
+            .where(groupAdmin.c.group_id == (
+                select(Group.id).where(Group.telegram_id == group_id)
+                ).scalar_subquery()))
+    admin_list = []
+    with Session(engine) as session, session.begin():
+        search_result = session.scalars(stmt)
+        for admin in search_result:
+            admin_list.append(admin)
+
+    return admin_list
+
+
 
 def register_user_and_group(engine, group: Group, user: User, group_telegram_id: str) -> str:
     message = "None yet"

@@ -40,7 +40,6 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30))
-    role: Mapped[int] = mapped_column(Integer)
     full_name: Mapped[Optional[str]]
     telegram_id: Mapped[str]
     photos: Mapped[List["Photo"]] = relationship()
