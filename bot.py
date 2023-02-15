@@ -61,13 +61,13 @@ async def register(message: types.Message):
         await message.answer(msg)
 
 
-@dp.message((Command(commands=["set_theme"])))# and F.ChatMemberUpdatedFilter(IS_ADMIN)))
+@dp.message((Command(commands=["set_theme"])))
 async def set_theme(message: types.Message):
     await message.answer("Поменял тему (на самом деле нет)")
 
 
 @dp.message(F.caption_entities)
-async def register_photo(message: types.Message):#, chat: types.Chat):
+async def register_photo(message: types.Message):
     message_contains_hashtag = False
     if message.caption_entities is not None:
         for i in message.caption_entities:
@@ -86,8 +86,10 @@ async def register_photo(message: types.Message):#, chat: types.Chat):
                                str(message.chat.id), user, group)
             await message.answer("Зарегал фотку!")
 
-@dp.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
-async def on_user_join(message: types.Message): 
+
+@dp.my_chat_member(ChatMemberUpdatedFilter(
+    member_status_changed=JOIN_TRANSITION))
+async def on_user_join(message: types.Message):
     msg = "Добавили в чат, здоров!"
     group = build_group(message.chat.full_name, str(message.chat.id), "none")
     reg_msg = register_group(engine, group)
@@ -98,6 +100,7 @@ async def on_user_join(message: types.Message):
         register_user(engine, adm_user, str(message.chat.id))
     if (message.chat and message.chat.id):
         await bot.send_message(message.chat.id, msg)
+        await bot.send_message(message.chat.id, reg_msg)
         await bot.send_message(message.chat.id, reg_msg)
 
 
