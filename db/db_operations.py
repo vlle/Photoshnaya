@@ -1,10 +1,10 @@
 from sqlalchemy import exc
-from sqlalchemy.sql.coercions import expect
 from db.db_classes import User, Photo, Group, groupUser, groupPhoto, groupAdmin
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 # Make Class!!
+
 
 def register_group(engine, group: Group) -> str:
     if (find_group(engine, group.telegram_id) is True):
@@ -180,10 +180,11 @@ def select_contest_photos(engine, group_id: str) -> list:
             select(Photo)
             .join(
                 groupPhoto,
-                (Photo.id == groupPhoto.c.photo_id) 
+                (Photo.id == groupPhoto.c.photo_id)
                 )
             .where(groupPhoto.c.group_id == (
-                select(Group.id).where(Group.telegram_id == group_id).scalar_subquery()))
+                select(Group.id)
+                .where(Group.telegram_id == group_id).scalar_subquery()))
             )
     with Session(engine) as session, session.begin():
         photos = session.scalars(stmtG)
@@ -208,12 +209,9 @@ def set_contest_theme(engine, user_id: str, group_id: str, theme: str) -> str:
             .join(groupAdmin,
                   (Group.id == groupAdmin.c.group_id)
                   )
-            .where(groupAdmin.c.group_id == (
-                select(Group.id).where(Group.telegram_id == group_id)
-                ).scalar_subquery())
-            .where(groupAdmin.c.user_id == (
-                select(User.id).where(User.telegram_id == user_id)
-                ).scalar_subquery())
+            .join(User,
+                  (User.id == groupAdmin.c.user_id)
+                  )
             )
     ret_msg = None
     with Session(engine) as session, session.begin():
@@ -222,12 +220,29 @@ def set_contest_theme(engine, user_id: str, group_id: str, theme: str) -> str:
             group.contest_theme = theme
             ret_msg = theme
         except exc.NoResultFound:
-            ret_msg = "Ошибка, не могу поставить тему."
+            ret_msg = "Ошибка, не нашел группу."
+
+        except exc.MultipleResultsFound:
+            group = session.scalars(stmt)
+            group[0].contest_theme = theme
+            ret_msg = "Кое-что задублировалось, но тему поменял."
+
     return ret_msg
 
 
-def get_contest_theme(engine, user_id: str, photo_id: str):
-    pass
+def get_contest_theme(engine, group_id: str):
+    stmt = (
+        select(Group)
+        .where(Group.telegram_id == group_id)
+    )
+    theme = "Без темы?"
+    with Session(engine) as session, session.begin():
+        try:
+            group = session.scalars(stmt).one()
+        except exc.NoResultFound:
+            theme = "Ошибка, не нашел группу."
+        theme = group.contest_theme
+    return theme
 
 
 def build_group(name: str, telegram_id: str, contest_theme: str) -> Group:
@@ -258,10 +273,10 @@ def register_admin(engine, adm_user: User, group_id: str, group=None):
 
 
 def get_admins(engine, group_id) -> list:
-    stmt=(
-            select(Group)
+    stmt = (
+            select(User)
             .join(groupAdmin,
-                  (Group.id == groupAdmin.c.group_id)
+                  (User.id == groupAdmin.c.user_id)
                   )
             .where(groupAdmin.c.group_id == (
                 select(Group.id).where(Group.telegram_id == group_id)
@@ -275,16 +290,40 @@ def get_admins(engine, group_id) -> list:
     return admin_list
 
 
+def check_admin(engine, user_id: str, group_id: str) -> bool:
+    admin_right = False
+    stmt = (
+            select(User)
+            .join(groupAdmin,
+                  (User.id == groupAdmin.c.user_id)
+                  )
+            .where(groupAdmin.c.group_id == (
+                select(Group.id).where(Group.telegram_id == group_id)
+                ).scalar_subquery()))
+    with Session(engine) as session, session.begin():
+        try:
+            admin = session.scalars(stmt).one()
+            if user_id == admin.telegram_id:
+                admin_right = True
+        except exc.NoResultFound:
+            return False
+        except exc.MultipleResultsFound:
+            admin_right = True
 
-def register_user_and_group(engine, group: Group, user: User, group_telegram_id: str) -> str:
+    return admin_right
+
+
+def register_user_and_group(engine, group: Group,
+                            user: User, group_telegram_id: str) -> str:
     message = "None yet"
     register_group(engine, group)
     register_user(engine, user, group_telegram_id)
     return message
 
+
 def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
-    group = build_group(name, tggroup_id, "None")
-    user = build_user(name, name+" Foobar", usertg_id)  
+    group = build_group(name, tggroup_id, "отсутствует")
+    user = build_user(name, name+" Foobar", usertg_id)
     register_user_and_group(engine, group, user, tggroup_id)
 
     set_register_photo(engine, usertg_id, tggroup_id)
