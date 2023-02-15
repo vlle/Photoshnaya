@@ -126,8 +126,8 @@ def build_group(name: str, telegram_id: str, contest_theme: str) -> Group:
     groupFrog = Group(name=name, telegram_id=telegram_id, contest_theme=contest_theme)
     return groupFrog
 
-def build_user(name: str, full_name: str, user_id: str) -> User:
-    human = User(name=name, full_name=full_name, telegram_id=user_id)
+def build_user(name: str, full_name: str, user_id: str, role=0) -> User:
+    human = User(name=name, full_name=full_name, telegram_id=user_id, role=role)
     return human
 
 def find_group(engine, telegram_id: str) -> bool:
