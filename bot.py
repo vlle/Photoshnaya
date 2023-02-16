@@ -1,4 +1,5 @@
 import datetime
+import configparser
 from aiogram.methods import SendMessage
 from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION, IS_ADMIN
 from db.db_classes import Base
@@ -14,7 +15,11 @@ from aiogram.filters import Command, ChatMemberUpdatedFilter
 from aiogram.types import Message, Chat, ChatMemberUpdated
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token="5811948834:AAGl_bFk61wHJXeS2nHLihcAVTAbwMT55JA")
+config = configparser.ConfigParser()
+config.read('config.txt')
+token = config['DEFAULT']['token']
+print(token)
+bot = Bot(token=token)
 
 dp = Dispatcher()
 # pool = redis.ConnectionPool(host='localhost', port=6309, db=0)
