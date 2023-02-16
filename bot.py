@@ -1,49 +1,51 @@
 import datetime
 import configparser
-from aiogram.filters import JOIN_TRANSITION
-from db.db_classes import Base
-from sqlalchemy import create_engine
-from db.db_operations import build_group, build_theme, build_user, register_user, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
-from aiogram import F
 import redis
 import asyncio
 import logging
 
-from aiogram.filters import MagicData
-
+from aiogram import F
+from aiogram.filters import JOIN_TRANSITION
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, ChatMemberUpdatedFilter
 
-logging.basicConfig(level=logging.INFO)
+from sqlalchemy import create_engine
+from db.db_classes import Base
+from db.db_operations import build_group, build_theme, build_user, register_user, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
+
+
 config = configparser.ConfigParser()
 config.read('config.txt')
 token = config['DEFAULT']['token']
+redis_port = config['DEFAULT']['redis_port']
+redis_host = config['DEFAULT']['redis_host']
+redis_db = config['DEFAULT']['redis_db']
 bot = Bot(token=token)
-
 dp = Dispatcher()
-# pool = redis.ConnectionPool(host='localhost', port=6309, db=0)
-# redis = redis.Redis(connection_pool=pool)
+pool = redis.ConnectionPool(host=redis_host, port=redis_port, db=redis_db)
+redis = redis.Redis(connection_pool=pool)
 
 engine = create_engine("sqlite+pysqlite:///photo.db", echo=True)
 Base.metadata.create_all(engine)
 
-# async def tasks_queue(bot):
-#     while True:
-#         try:
-#             msgs = redis.lpop('queue')
-#             try:
-#                 st = msgs.decode("utf-8")
-#                 await bot.send_message('415791107', st)
-#                 if (st[-1] != 'd'):
-#                     try:
-#                         await asyncio.sleep(int(st[-1]))
-#                     except ValueError:
-#                         pass
-#             except AttributeError:
-#                 await asyncio.sleep(1)
-#         except TimeoutError:
-#             await m.answer("Рассылка закончена")
-#             break
+async def tasks_queue(bot):
+    chat = await bot.get_chat()
+    while True:
+        try:
+            msgs = redis.lpop(chat)
+            try:
+                st = msgs.decode("utf-8")
+                await bot.send_message(chat, st + '\n Тема закончилась')
+                if (st[-1] != 'd'):
+                    try:
+                        await asyncio.sleep(int(st[-1]))
+                    except ValueError:
+                        pass
+            except AttributeError:
+                await asyncio.sleep(1)
+        except TimeoutError:
+            await m.answer("Рассылка закончена")
+            break
 
 
 @dp.message((Command(commands=["send"])))
@@ -68,8 +70,9 @@ async def register(message: types.Message):
 @dp.message(F.caption_entities)
 @dp.edited_message(F.caption_entities)
 async def register_photo(message: types.Message):
-    print(message)
-    theme = get_contest_theme(engine, message.chat.id)
+    if not message.caption:
+        return
+    theme = get_contest_theme(engine, str(message.chat.id))
     message_search = message.caption.split()
     message_contains_contest = False
     for word in message_search:
@@ -79,9 +82,9 @@ async def register_photo(message: types.Message):
     if (message_contains_contest is True):
         if (message.from_user and message.from_user.id
                 and message.chat and message.chat.id):
-            user = build_user(message.from_user.username,
+            user = build_user(str(message.from_user.username),
                               message.from_user.full_name,
-                              message.from_user.id)
+                              str(message.from_user.id))
             group = build_group(message.chat.full_name,
                                 str(message.chat.id),
                                 "none")
@@ -123,7 +126,9 @@ async def set_theme(message: types.Message):
     admin_right = check_admin(engine, user_id, group_id)
     theme = build_theme(user_theme)
     if admin_right is True:
-        msg = set_contest_theme(engine, user_id, group_id, theme)
+        time = 604800
+        msg = set_contest_theme(engine, user_id, group_id, theme, time)
+        redis.rpush(message.chat.id, time)
         await bot.send_message(message.chat.id, msg)
     else:
         msg = "Нельзя, ты не админ."
@@ -151,7 +156,8 @@ async def cmd_start(message: types.Message):
     await message.answer("Hello!")
 
 async def main():
-    await asyncio.gather(dp.start_polling(bot))#, tasks_queue(bot))
+    logging.basicConfig(level=logging.INFO)
+    await asyncio.gather(dp.start_polling(bot), tasks_queue(bot))
 
 if __name__ == "__main__":
     asyncio.run(main())

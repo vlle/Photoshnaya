@@ -206,7 +206,7 @@ def get_contest_winner(engine, user_id: str, photo_id: str):
     pass
 
 
-def set_contest_theme(engine, user_id: str, group_id: str, theme: str) -> str:
+def set_contest_theme(engine, user_id: str, group_id: str, theme: str, contest_duration_sec = 604800) -> str:
     stmt = (
             select(Group)
             .join(groupAdmin,
@@ -221,6 +221,7 @@ def set_contest_theme(engine, user_id: str, group_id: str, theme: str) -> str:
         try:
             group = session.scalars(stmt).one()
             group.contest_theme = theme
+            group.contest_duration_sec = contest_duration_sec
             ret_msg = theme
         except exc.NoResultFound:
             ret_msg = "Ошибка, не нашел группу."
@@ -248,9 +249,13 @@ def get_contest_theme(engine, group_id: str):
     return theme
 
 
-def build_group(name: str, telegram_id: str, contest_theme: str) -> Group:
-    groupFrog = Group(name=name, telegram_id=telegram_id,
-                      contest_theme=contest_theme)
+def build_group(name: str, telegram_id: str, contest_theme: str, contest_duration_sec=None) -> Group:
+    if (contest_duration_sec):
+        groupFrog = Group(name=name, telegram_id=telegram_id,
+                          contest_theme=contest_theme, contest_duration_sec=contest_duration_sec)
+    else:
+        groupFrog = Group(name=name, telegram_id=telegram_id,
+                          contest_theme=contest_theme, contest_duration_sec=604800)
     return groupFrog
 
 
@@ -262,9 +267,13 @@ def build_theme(user_theme: list[str]) -> str:
     if (user_theme[1][0] != '#'):
         theme = '#' + user_theme[1]
     else:
-        theme = user_theme[1]
-    return theme
+        theme = '#'
+        for let in user_theme[1]: 
+            if let == '#':
+                continue
+            theme += let
 
+    return theme
 
 def register_admin(engine, adm_user: User, group_id: str, group=None):
     stmt = select(Group).where(Group.telegram_id == group_id)
@@ -272,7 +281,8 @@ def register_admin(engine, adm_user: User, group_id: str, group=None):
         try:
             search_result = session.scalars(stmt).one()
         except exc.NoResultFound:
-            register_group(engine, group)
+            if (group):
+                register_group(engine, group)
 
         search_result = session.scalars(stmt).one()
         adm_user.admin_in.append(search_result)

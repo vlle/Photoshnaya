@@ -78,6 +78,7 @@ class Group(Base):
     name: Mapped[str]
     telegram_id: Mapped[str]
     contest_theme: Mapped[str]
+    contest_duration_sec: Mapped[int]
     users: Mapped[List["User"]] = relationship(
         secondary=groupUser, back_populates="groups"
     )
