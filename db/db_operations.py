@@ -258,6 +258,13 @@ def build_user(name: str, full_name: str, user_id: str) -> User:
     human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
+def build_theme(user_theme: list[str]) -> str:
+    if (user_theme[1][0] != '#'):
+        theme = '#' + user_theme[1]
+    else:
+        theme = user_theme[1]
+    return theme
+
 
 def register_admin(engine, adm_user: User, group_id: str, group=None):
     stmt = select(Group).where(Group.telegram_id == group_id)

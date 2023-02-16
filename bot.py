@@ -1,24 +1,23 @@
 import datetime
 import configparser
-from aiogram.methods import SendMessage
-from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, JOIN_TRANSITION, IS_ADMIN
+from aiogram.filters import JOIN_TRANSITION
 from db.db_classes import Base
-from sqlalchemy import MetaData, create_engine
-from db.db_operations import build_group, build_user, register_user, set_register_photo, register_group, register_admin, get_admins, set_contest_theme, check_admin, get_contest_theme
+from sqlalchemy import create_engine
+from db.db_operations import build_group, build_theme, build_user, register_user, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
 from aiogram import F
-import time
 import redis
 import asyncio
 import logging
+
+from aiogram.filters import MagicData
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, ChatMemberUpdatedFilter
-from aiogram.types import Message, Chat, ChatMemberUpdated
 
 logging.basicConfig(level=logging.INFO)
 config = configparser.ConfigParser()
 config.read('config.txt')
 token = config['DEFAULT']['token']
-print(token)
 bot = Bot(token=token)
 
 dp = Dispatcher()
@@ -67,7 +66,9 @@ async def register(message: types.Message):
 
 
 @dp.message(F.caption_entities)
+@dp.edited_message(F.caption_entities)
 async def register_photo(message: types.Message):
+    print(message)
     theme = get_contest_theme(engine, message.chat.id)
     message_search = message.caption.split()
     message_contains_contest = False
@@ -102,7 +103,6 @@ async def on_user_join(message: types.Message):
                               str(message.from_user.id))
         register_admin(engine, adm_user, str(message.chat.id))
         msg = f"Добавил в качестве админа {message.from_user.username}"
-        await bot.send_message(message.chat.id, msg)
     if (message.chat and message.chat.id):
         await bot.send_message(message.chat.id, msg)
         await bot.send_message(message.chat.id, reg_msg)
@@ -110,19 +110,18 @@ async def on_user_join(message: types.Message):
 
 @dp.message((Command(commands=["set_theme"])))
 async def set_theme(message: types.Message):
-    # maybe cooldown if no available
-    user_id = str(message.from_user.id)
-    group_id = str(message.chat.id)
+    if not message.text or not message.from_user:
+        return
     user_theme = message.text.split()
     if (len(user_theme) == 1):
         msg = 'Забыл название темы, админ\nПример: /set_theme #пляжи'
         await bot.send_message(message.chat.id, msg)
-        return
-    if (user_theme[1][0] != '#'):
-        theme = '#' + user_theme[1]
-    else:
-        theme = user_theme[1]
+        return msg
+
+    user_id = str(message.from_user.id)
+    group_id = str(message.chat.id)
     admin_right = check_admin(engine, user_id, group_id)
+    theme = build_theme(user_theme)
     if admin_right is True:
         msg = set_contest_theme(engine, user_id, group_id, theme)
         await bot.send_message(message.chat.id, msg)
@@ -133,7 +132,11 @@ async def set_theme(message: types.Message):
 
 @dp.message((Command(commands=["get_theme"])))
 async def get_theme(message: types.Message):
-    theme = get_contest_theme(engine, message.chat.id)
+    if not message.chat or not message.chat.id:
+        return
+
+    chat_id = str(message.chat.id)
+    theme = get_contest_theme(engine, chat_id)
     msg = f"Текущая тема: {theme}"
     await bot.send_message(message.chat.id, msg)
 
