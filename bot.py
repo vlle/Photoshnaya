@@ -29,7 +29,9 @@ engine = create_engine("sqlite+pysqlite:///photo.db", echo=True)
 Base.metadata.create_all(engine)
 
 async def tasks_queue(bot):
-    chat = await bot.get_chat()
+    # chat = await bot.get_chat()
+    return
+    pass
     while True:
         try:
             msgs = redis.lpop(chat)
