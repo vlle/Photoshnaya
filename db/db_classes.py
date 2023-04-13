@@ -61,6 +61,8 @@ class Photo(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     likes: Mapped[int]
+    file_id: Mapped[str]
+    telegram_id: Mapped[Optional[int]]
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     groups: Mapped[List["Group"]] = relationship(
         secondary=groupPhoto, back_populates="photos"
@@ -68,7 +70,7 @@ class Photo(Base):
 
     def __repr__(self) -> str:
         return f"Photo(id={self.id!r}), likes=({self.likes!r}), user_id = \
-                {self.user_id!r})"
+                {self.user_id!r}, file_id = {self.file_id!r})"
 
 
 class Group(Base):

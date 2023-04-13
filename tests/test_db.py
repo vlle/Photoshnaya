@@ -33,7 +33,7 @@ class TestDb(unittest.TestCase):
         register_group(self.engine, group)
         group = build_group("bar", "321", "None")
         register_group(self.engine, group)
-        set_register_photo(self.engine, self.tg_id, "123")
+        set_register_photo(self.engine, self.tg_id, "123", "id")
         set_register_photo(self.engine, self.tg_id, "123")
         set_register_photo(self.engine, self.tg_id, "321")
         set_register_photo(self.engine, self.tg_id, "321")

@@ -129,7 +129,7 @@ def get_like_photo(engine, tg_id: str) -> int:
 
 
 def set_register_photo(engine, tg_id: str, grtg_id: str,
-                       user_p=None, group_p=None):
+                       file_get_id='-1', user_p=None, group_p=None):
     stmt_sel = (
             select(User)
             .where(User.telegram_id == tg_id)
@@ -150,7 +150,7 @@ def set_register_photo(engine, tg_id: str, grtg_id: str,
 
         user = session.scalars(stmt_sel).one()
         group = session.scalars(stmtG_sel).one()
-        photo = Photo(likes=0, user_id=user.id)
+        photo = Photo(likes=0, file_id=file_get_id, user_id=user.id)
         user.photos.append(photo)
         group.photos.append(photo)
         session.add(photo)
