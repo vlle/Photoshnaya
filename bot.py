@@ -5,13 +5,14 @@ import asyncio
 import logging
 
 from aiogram import F
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import JOIN_TRANSITION
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy import create_engine
 from db.db_classes import Base
-from db.db_operations import build_group, build_theme, build_user, register_user, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
+from db.db_operations import build_group, build_theme, build_user, register_user, select_contest_photos_ids, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
 
 
 config = configparser.ConfigParser()
@@ -91,8 +92,15 @@ async def register_photo(message: types.Message):
                                 str(message.chat.id),
                                 "none")
             register_user(engine, user, str(message.chat.id))
-            set_register_photo(engine, str(message.from_user.id),
-                               str(message.chat.id), user, group)
+            if message.photo:
+                file_id = message.photo[-1].file_id
+                set_register_photo(engine, str(message.from_user.id),
+                                   str(message.chat.id), file_get_id=file_id, user_p=user, group_p=group)
+                await message.answer(f"{file_id}")
+                await bot.send_photo(message.chat.id,file_id)
+            else:
+                set_register_photo(engine, str(message.from_user.id),
+                                   str(message.chat.id), file_get_id='-1', user_p=user, group_p=group)
             await message.answer(f"Зарегал фотку! Тема: {theme} ")
 
 
@@ -118,24 +126,39 @@ async def set_theme(message: types.Message):
     if not message.text or not message.from_user:
         return
     user_theme = message.text.split()
+    user_id = str(message.from_user.id)
+    group_id = str(message.chat.id)
+    admin_right = check_admin(engine, user_id, group_id)
+    if admin_right is False:
+        msg = "Нельзя, ты не админ."
+        await bot.send_message(message.chat.id, msg)
+        return
+    theme = build_theme(user_theme)
     if (len(user_theme) == 1):
         msg = 'Забыл название темы, админ\nПример: /set_theme #пляжи'
         await bot.send_message(message.chat.id, msg)
         return msg
 
+    time = 604800
+    msg = set_contest_theme(engine, user_id, group_id, theme, time)
+    # redis.rpush(int(message.chat.id), time)
+    await bot.send_message(message.chat.id, msg)
+
+@dp.message((Command(commands=["finish_contest"])))
+async def set_theme(message: types.Message):
+    if not message.text or not message.from_user:
+        return
+    user_theme = message.text.split()
     user_id = str(message.from_user.id)
     group_id = str(message.chat.id)
     admin_right = check_admin(engine, user_id, group_id)
-    theme = build_theme(user_theme)
-    if admin_right is True:
-        time = 604800
-        msg = set_contest_theme(engine, user_id, group_id, theme, time)
-        redis.rpush(message.chat.id, time)
-        await bot.send_message(message.chat.id, msg)
-    else:
+    if admin_right is False:
         msg = "Нельзя, ты не админ."
         await bot.send_message(message.chat.id, msg)
-
+        return
+    photo_ids = select_contest_photos_ids(engine, group_id)
+    for i in photo_ids:
+        await bot.send_photo(message.chat.id, i)
 
 @dp.message((Command(commands=["get_theme"])))
 async def get_theme(message: types.Message):
@@ -154,8 +177,19 @@ async def get_theme(message: types.Message):
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
     now = datetime.datetime.now()
-    redis.rpush('queue', str(now))
-    await message.answer("Hello!")
+
+
+    # builder = InlineKeyboardBuilder()
+    # 
+    # for index in range(1, 11):
+    #     builder.button(text=f"Set {index}", callback_data=f"set:{index}")
+    # 
+    # builder.adjust(3, 2)
+    # 
+    # await message.answer("Some text here", reply_markup=builder.as_markup())
+
+
+    await message.answer(message.text)
 
 async def main():
     logging.basicConfig(level=logging.INFO)

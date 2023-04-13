@@ -10,6 +10,8 @@ import unittest
 
 class TestDb(unittest.TestCase):
 
+    # add test multiple photo
+
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:", echo=False)
         self.name = "Ivan"

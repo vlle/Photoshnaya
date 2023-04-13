@@ -198,6 +198,25 @@ def select_contest_photos(engine, group_id: str) -> list:
     return ret
 
 
+def select_contest_photos_ids(engine, group_id: str) -> list:
+    ret = []
+    stmtG = (
+            select(Photo)
+            .join(
+                groupPhoto,
+                (Photo.id == groupPhoto.c.photo_id)
+                )
+            .where(groupPhoto.c.group_id == (
+                select(Group.id)
+                .where(Group.telegram_id == group_id).scalar_subquery()))
+            )
+    with Session(engine) as session, session.begin():
+        photos = session.scalars(stmtG)
+        for photo in photos:
+            ret.append(photo.file_id)
+    return ret
+
+
 def set_contest_winner(engine, user_id: str, photo_id: str):
     pass
 
