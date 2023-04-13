@@ -1,5 +1,6 @@
 import datetime
 import configparser
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import redis
 import asyncio
 import logging
@@ -7,13 +8,64 @@ import logging
 from aiogram import F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import JOIN_TRANSITION
+from aiogram.filters.callback_data import CallbackData
 from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy import create_engine
 from db.db_classes import Base
 from db.db_operations import build_group, build_theme, build_user, register_user, select_contest_photos_ids, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
 
+class CallbackVote(CallbackData, prefix="vote"):
+    user: str
+    action: str
+
+class Actions():
+    next = "=>"
+    prev = "<="
+    no_like = '🤍'
+    like = '❤️"'
+
+class KeyboardButtons():
+    def __init__(self, user) -> None:
+        self.actions = Actions()
+        self.callback_data = CallbackVote(user=user, action="none")
+        self.button_next = InlineKeyboardButton(
+                text=self.actions.next,
+                callback_data=CallbackVote(user=user,
+                                              action=self.
+                                              actions.next).pack()
+                )
+        self.button_prev = InlineKeyboardButton(
+                text=self.actions.prev,
+                callback_data=CallbackVote(user=user,
+                                              action=self.
+                                              actions.prev
+                                              ).pack()
+                )
+        self.button_back = InlineKeyboardButton(
+                text=self.actions.no_like,
+                callback_data=CallbackVote(user=user,
+                                              action=self.
+                                              actions.no_like).pack()
+                )
+
+
+class Keyboard():
+    def __init__(self, user: str) -> None:
+        self.buttons = KeyboardButtons(user)
+        self.keyboard_vote = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [self.buttons.button_next],
+                    [self.buttons.button_prev]
+                    ]
+                )
+        self.keyboard_back = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [self.buttons.button_back]
+                    ]
+                )
 
 config = configparser.ConfigParser()
 config.read('config.txt')
@@ -173,7 +225,20 @@ async def get_theme(message: types.Message):
 
 #set admin -- update and etc and tests
 
-# check for type private chat
+from aiogram.types import CallbackQuery
+@dp.callback_query(CallbackVote.filter(F.action == Actions.next))
+async def callback_back(query: CallbackQuery,
+                        callback_data: CallbackVote, bot: Bot):
+    if not query.message or not query.message.from_user:
+        return
+    chat_id = query.message.chat.id
+    msg_id = query.message.message_id
+    user_id = callback_data.user
+    build_keyboard = Keyboard(user_id)
+    await bot.edit_message_text("Привет.", user_id, msg_id,
+                                    parse_mode="html",
+                                    reply_markup=build_keyboard.keyboard_vote)
+    await query.answer("Возвращаюсь.")
 
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
@@ -183,6 +248,17 @@ async def cmd_start(message: types.Message):
     photo_ids = select_contest_photos_ids(engine, group_id)
     for i in photo_ids:
         await bot.send_photo(message.chat.id, i)
+
+
+    if (message.chat.type == 'private'):
+        user_id = str(message.from_user.id)
+        build_keyboard = Keyboard(user_id)
+
+        msg = "Голосуйте за фотографии!"
+        await message.answer(
+                msg,
+                reply_markup=build_keyboard.keyboard_vote
+                )
 
     print(message)
     # builder = InlineKeyboardBuilder()
@@ -202,3 +278,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
