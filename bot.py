@@ -173,12 +173,18 @@ async def get_theme(message: types.Message):
 
 #set admin -- update and etc and tests
 
+# check for type private chat
 
 @dp.message((Command(commands=["start"])))
 async def cmd_start(message: types.Message):
-    now = datetime.datetime.now()
+    if (not message.text or len(message.text.split(' ')) == 1):
+        return
+    group_id = message.text.split(' ')[1]
+    photo_ids = select_contest_photos_ids(engine, group_id)
+    for i in photo_ids:
+        await bot.send_photo(message.chat.id, i)
 
-
+    print(message)
     # builder = InlineKeyboardBuilder()
     # 
     # for index in range(1, 11):
@@ -189,7 +195,6 @@ async def cmd_start(message: types.Message):
     # await message.answer("Some text here", reply_markup=builder.as_markup())
 
 
-    await message.answer(message.text)
 
 async def main():
     logging.basicConfig(level=logging.INFO)
