@@ -223,16 +223,20 @@ def select_next_contest_photo(engine, group_id: str, current_photo: int) -> list
                 groupPhoto,
                 (Photo.id == groupPhoto.c.photo_id)
                 )
-            .where(groupPhoto.c.group_id == (
+            .where(
+                (groupPhoto.c.group_id == (
                 select(Group.id)
                 .where(Group.telegram_id == group_id).scalar_subquery())
-                   and
-                   groupPhoto.c.photo_id > current_photo)
+                   ) &
+                   (Photo.id > current_photo))
             )
     with Session(engine) as session, session.begin():
+        photos = session.scalars(stmtG)
+        for i in photos:
+            print(i)
         photos = session.scalars(stmtG).first()
-        print(photos)
         if (photos):
+            print(photos)
             ret.append(photos.file_id)
             ret.append(photos.id)
     return ret
