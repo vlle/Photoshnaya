@@ -15,73 +15,92 @@ from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy import create_engine
 from db.db_classes import Base
-from db.db_operations import build_group, build_theme, build_user, register_user, select_contest_photos_ids, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme
+from db.db_operations import build_group, build_theme, build_user, register_user, select_contest_photos_ids, set_register_photo, register_group, register_admin, set_contest_theme, check_admin, get_contest_theme, select_next_contest_photo
 
 class CallbackVote(CallbackData, prefix="vote"):
     user: str
     action: str
-    current_photo: str
+    current_photo_count: str
+    current_photo_id: str
     amount_photos: str
-    file_vote: str
+    group_id: str
 
 class Actions():
-    next = "=>"
-    prev = "<="
+    next = "➡️"
+    prev = "⬅️"
     no_like = '🤍'
     like = '❤️'
+    amount = '/'
+    count = '-'
 
 class KeyboardButtons():
-    def __init__(self, user, file_vote, current_photo, amount_photos) -> None:
+    def __init__(self, user, group_id, current_photo_id, current_photo_count, amount_photos) -> None:
         self.actions = Actions()
         self.callback_data = CallbackVote(user=user,
                                           action="none",
-                                          current_photo=current_photo,
+                                          current_photo_id=current_photo_id,
+                                          current_photo_count=current_photo_count,
                                           amount_photos=amount_photos,
-                                          file_vote=file_vote)
+                                          group_id=group_id)
         self.button_next = InlineKeyboardButton(
                 text=self.actions.next,
                 callback_data=CallbackVote(user=user,
                                            action=self.
                                            actions.next,
-                                          current_photo=current_photo,
-                                          amount_photos=amount_photos,
-                                           file_vote=file_vote).pack()
+                                           current_photo_id=current_photo_id,
+                                           current_photo_count=current_photo_count,
+                                           amount_photos=amount_photos,
+                                           group_id=group_id).pack()
                 )
         self.button_prev = InlineKeyboardButton(
                 text=self.actions.prev,
                 callback_data=CallbackVote(user=user,
                                            action=self.
                                            actions.prev,
-                                          current_photo=current_photo,
-                                          amount_photos=amount_photos,
-                                           file_vote=file_vote).pack()
+                                           current_photo_id=current_photo_id,
+                                           current_photo_count=current_photo_count,
+                                           amount_photos=amount_photos,
+                                           group_id=group_id).pack()
                 )
         self.no_like = InlineKeyboardButton(
                 text=self.actions.no_like,
                 callback_data=CallbackVote(user=user,
                                            action=self.
                                            actions.no_like,
-                                          current_photo=current_photo,
-                                          amount_photos=amount_photos,
-                                           file_vote=file_vote).pack()
+                                           current_photo_id=current_photo_id,
+                                           current_photo_count=current_photo_count,
+                                           amount_photos=amount_photos,
+                                           group_id=group_id).pack()
                 )
         self.like = InlineKeyboardButton(
                 text=self.actions.like,
                 callback_data=CallbackVote(user=user,
                                            action=self.
                                            actions.like,
-                                          current_photo='1',
-                                          amount_photos=amount_photos,
-                                           file_vote='').pack()
+                                           current_photo_id=current_photo_id,
+                                           current_photo_count=current_photo_count,
+                                           amount_photos=amount_photos,
+                                           group_id='').pack()
+                )
+        self.amount = InlineKeyboardButton(
+                text=current_photo_count+self.actions.amount+amount_photos,
+                callback_data=CallbackVote(user=user,
+                                           action=self.
+                                           actions.count,
+                                           current_photo_id=current_photo_id,
+                                           current_photo_count=current_photo_count,
+                                           amount_photos=amount_photos,
+                                           group_id=group_id).pack()
                 )
 
 
 class Keyboard():
-    def __init__(self, user: str, current_photo: str, amount_photos: str, file_vote: str) -> None:
-        self.buttons = KeyboardButtons(user, current_photo, amount_photos, file_vote)
+    def __init__(self, user: str, current_photo_id: str, current_photo_count: str, amount_photos: str, group_id: str) -> None:
+        self.buttons = KeyboardButtons(user, group_id, current_photo_id, current_photo_count, amount_photos)
         self.keyboard_vote = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [self.buttons.button_prev,
+                     self.buttons.amount,
                      self.buttons.button_next],
                     [self.buttons.no_like]
                     ]
@@ -89,6 +108,7 @@ class Keyboard():
         self.keyboard_liked_vote = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [self.buttons.button_prev,
+                     self.buttons.amount,
                      self.buttons.button_next],
                     [self.buttons.like]
                     ]
@@ -107,26 +127,6 @@ redis = redis.Redis(connection_pool=pool)
 
 engine = create_engine("sqlite+pysqlite:///photo.db", echo=True)
 Base.metadata.create_all(engine)
-
-async def tasks_queue(bot):
-    # chat = await bot.get_chat()
-    return
-    while True:
-        try:
-            msgs = redis.lpop(chat)
-            try:
-                st = msgs.decode("utf-8")
-                await bot.send_message(chat, st + '\n Тема закончилась')
-                if (st[-1] != 'd'):
-                    try:
-                        await asyncio.sleep(int(st[-1]))
-                    except ValueError:
-                        pass
-            except AttributeError:
-                await asyncio.sleep(1)
-        except TimeoutError:
-            await m.answer("Рассылка закончена")
-            break
 
 
 @dp.message((Command(commands=["send"])))
@@ -256,32 +256,30 @@ async def cmd_start(message: types.Message):
     if (not message.text or len(message.text.split(' ')) == 1):
         return
     group_id = message.text.split(' ')[1]
+    print(f"group = {group_id}")
+    if (message.chat.type != 'private'):
+        return
     photo_ids = select_contest_photos_ids(engine, group_id)
-    for i in photo_ids:
-        await bot.send_photo(message.chat.id, i)
+    amount_photo = 0
+    for _ in photo_ids:
+        amount_photo += 1
 
+    msg = "Голосуйте за фотографии!"
+    user_id = str(message.from_user.id)
+    file_id = select_next_contest_photo(engine, group_id, 0)
+    print("file file")
+    print("file file")
+    print("file file")
+    print(file_id)
+    print("file file")
+    print("file file")
+    print("file file")
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count='0', group_id=group_id)
 
-    if (message.chat.type == 'private'):
-        user_id = str(message.from_user.id)
-        photo_ids = select_contest_photos_ids(engine, group_id)
-        file_vote = ''
-        amount_photo = 0
-        current_photo = 1
-        for photo_id in photo_ids:
-            file_vote += amount_photo+photo_id+','
-            amount_photo += 1
-        build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo='1', file_vote=file_vote)
+    await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_vote)
 
-        msg = "Голосуйте за фотографии!"
-        file_id = 'https://picsum.photos/200'
-        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id, reply_markup=build_keyboard.keyboard_vote)
-    print(message)
-
-def get_next_photo(file_vote: str, current_photo: str):
-    list_words = file_vote.split(',')
-    print(list_words)
-    for let in file_vote:
-        pass
+def get_next_photo(file_vote: str, current_photo: int):
+    return 
 
 
 from aiogram.types import CallbackQuery
@@ -290,20 +288,22 @@ async def callback_back(query: CallbackQuery,
                         callback_data: CallbackVote, bot: Bot):
     if not query.message or not query.message.from_user:
         return
-    file_vote = callback_data.file_vote
+    print(callback_data)
+
+    group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
-    current_photo = callback_data.current_photo
-    if (current_photo == amount_photo):
+    current_photo_id = callback_data.current_photo_id
+    if (current_photo_id == amount_photo):
         return
     msg_id = query.message.message_id
     user_id = callback_data.user
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo='1', file_vote=file_vote)
-    file_id = 'https://picsum.photos/200'
+    file_id = select_next_contest_photo(engine, group_id, int(current_photo_id))
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count='0', group_id=group_id)
     #obj = InputMediaPhoto(type='photo', media='AgACAgIAAx0CbZceowACg2tkOCCQpjGRr7EodlW--7-hh47TUAACwM8xG076wUni_vosbbwAAfkBAAMCAAN5AAMvBA')
-    obj = InputMediaPhoto(type='photo', media=file_id)
-    file_id = get_next_photo(file_vote, current_photo)
+    print(file_id)
+    obj = InputMediaPhoto(type='photo', media=file_id[0])
     await bot.edit_message_media(obj, user_id, msg_id,
-                                reply_markup=build_keyboard.keyboard_vote)
+                                 reply_markup=build_keyboard.keyboard_vote)
     await query.answer("Возвращаюсь.")
 
 @dp.callback_query(CallbackVote.filter(F.action == Actions.no_like))
@@ -311,14 +311,15 @@ async def callback_set_like(query: CallbackQuery,
                             callback_data: CallbackVote, bot: Bot):
     if not query.message or not query.message.from_user:
         return
-    file_vote = callback_data.file_vote
+    group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
-    current_photo = callback_data.current_photo
-    #if (current_photo == amount_photo):
+    current_photo_id = callback_data.current_photo_id
+    current_photo_count = callback_data.current_photo_count
+    #if (current_photo_id == amount_photo):
     #    return
     msg_id = query.message.message_id
     user_id = callback_data.user
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo='1', file_vote=file_vote)
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id='0', current_photo_count='0', group_id=group_id)
     msg_id = query.message.message_id
     user_id = callback_data.user
     await bot.edit_message_reply_markup(user_id, msg_id,
@@ -329,14 +330,11 @@ async def callback_set_no_like(query: CallbackQuery,
                                callback_data: CallbackVote, bot: Bot):
     if not query.message or not query.message.from_user:
         return
-    file_vote = callback_data.file_vote
+    group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
-    current_photo = callback_data.current_photo
-    #if (current_photo == amount_photo):
-    #    return
     msg_id = query.message.message_id
     user_id = callback_data.user
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo='1', file_vote=file_vote)
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id='0', current_photo_count='0', group_id=group_id)
     msg_id = query.message.message_id
     user_id = callback_data.user
     await bot.edit_message_reply_markup(user_id, msg_id,
@@ -346,7 +344,7 @@ async def callback_set_no_like(query: CallbackQuery,
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    await asyncio.gather(dp.start_polling(bot), tasks_queue(bot))
+    await asyncio.gather(dp.start_polling(bot))
 
 if __name__ == "__main__":
     asyncio.run(main())

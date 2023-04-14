@@ -193,7 +193,6 @@ def select_contest_photos(engine, group_id: str) -> list:
         photos = session.scalars(stmtG)
         for photo in photos:
             print(photo)
-            print("Printer")
             ret.append(photo)
     return ret
 
@@ -214,6 +213,28 @@ def select_contest_photos_ids(engine, group_id: str) -> list:
         photos = session.scalars(stmtG)
         for photo in photos:
             ret.append(photo.file_id)
+    return ret
+
+def select_next_contest_photo(engine, group_id: str, current_photo: int) -> list[str]:
+    ret = []
+    stmtG = (
+            select(Photo)
+            .join(
+                groupPhoto,
+                (Photo.id == groupPhoto.c.photo_id)
+                )
+            .where(groupPhoto.c.group_id == (
+                select(Group.id)
+                .where(Group.telegram_id == group_id).scalar_subquery())
+                   and
+                   groupPhoto.c.photo_id > current_photo)
+            )
+    with Session(engine) as session, session.begin():
+        photos = session.scalars(stmtG).first()
+        print(photos)
+        if (photos):
+            ret.append(photos.file_id)
+            ret.append(photos.id)
     return ret
 
 
