@@ -215,6 +215,28 @@ def select_contest_photos_ids(engine, group_id: str) -> list:
             ret.append(photo.file_id)
     return ret
 
+def select_prev_contest_photo(engine, group_id: str, current_photo: int) -> list[str]:
+    ret = []
+    stmtG = (
+            select(Photo)
+            .join(
+                groupPhoto,
+                (Photo.id == groupPhoto.c.photo_id)
+                )
+            .where(
+                (groupPhoto.c.group_id == (
+                select(Group.id)
+                .where(Group.telegram_id == group_id).scalar_subquery())
+                   ) &
+                   (Photo.id < current_photo))
+            )
+    with Session(engine) as session, session.begin():
+        photos = session.scalars(stmtG).first()
+        if (photos):
+            ret.append(photos.file_id)
+            ret.append(photos.id)
+    return ret
+
 def select_next_contest_photo(engine, group_id: str, current_photo: int) -> list[str]:
     ret = []
     stmtG = (
@@ -231,12 +253,8 @@ def select_next_contest_photo(engine, group_id: str, current_photo: int) -> list
                    (Photo.id > current_photo))
             )
     with Session(engine) as session, session.begin():
-        photos = session.scalars(stmtG)
-        for i in photos:
-            print(i)
         photos = session.scalars(stmtG).first()
         if (photos):
-            print(photos)
             ret.append(photos.file_id)
             ret.append(photos.id)
     return ret
@@ -259,6 +277,7 @@ def set_contest_theme(engine, user_id: str, group_id: str, theme: str, contest_d
             .join(User,
                   (User.id == groupAdmin.c.user_id)
                   )
+            .where(Group.telegram_id == group_id)
             )
     ret_msg = None
     with Session(engine) as session, session.begin():
@@ -272,7 +291,9 @@ def set_contest_theme(engine, user_id: str, group_id: str, theme: str, contest_d
 
         except exc.MultipleResultsFound:
             group = session.scalars(stmt)
-            group[0].contest_theme = theme
+            for i in group:
+                print(i)
+            #group[0].contest_theme = theme
             ret_msg = "Кое-что задублировалось, но тему поменял."
 
     return ret_msg
@@ -287,9 +308,9 @@ def get_contest_theme(engine, group_id: str):
     with Session(engine) as session, session.begin():
         try:
             group = session.scalars(stmt).one()
+            theme = group.contest_theme
         except exc.NoResultFound:
             theme = "Ошибка, не нашел группу."
-        theme = group.contest_theme
     return theme
 
 
