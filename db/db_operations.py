@@ -78,7 +78,7 @@ def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> bool:
                 select(Group.id)
                 .where(Group.telegram_id == group_telegram_id)
                 .scalar_subquery()))
-            .where(groupUser.c.user_id == (
+            .where(groupUser.c.user_id.in_(
                 select(User.id)
                 .where(User.telegram_id == telegram_user_id)
                 .scalar_subquery()))
@@ -93,6 +93,7 @@ def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> bool:
         except exc.MultipleResultsFound:
             ret = True
 
+    print(ret)
     return ret
 
 

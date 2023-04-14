@@ -1,6 +1,7 @@
-import configparser
 import asyncio
 import logging
+import os
+from dotenv import load_dotenv
 
 from aiogram import F
 from aiogram.filters import JOIN_TRANSITION
@@ -10,9 +11,7 @@ from aiogram.filters import Command, ChatMemberUpdatedFilter
 from sqlalchemy import create_engine
 
 from utils.keyboard import Actions, CallbackVote
-
 from db.db_classes import Base
-
 
 from handlers.admin_handler import set_theme, get_theme, on_user_join
 from handlers.vote import finish_contest
@@ -20,14 +19,17 @@ from handlers.personal_vote_menu import cmd_start, callback_next, callback_set_n
 from handlers.user_action import register_photo
 
 
-
 async def main():
+    load_dotenv()
     logging.basicConfig(level=logging.INFO)
-    config = configparser.ConfigParser()
-    config.read('config.txt')
-    token = config['DEFAULT']['token']
+    token = os.environ.get('token')
+    if (token is None):
+        logging.critical("No token")
+        return
+
     bot = Bot(token=token)
     dp = Dispatcher()
+
     engine = create_engine("sqlite+pysqlite:///photo.db", echo=True)
     Base.metadata.create_all(engine)
 

@@ -19,3 +19,4 @@ redis==4.5.1
 SQLAlchemy==2.0.4
 typing_extensions==4.5.0
 yarl==1.8.2
+python-dotenv
