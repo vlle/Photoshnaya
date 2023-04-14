@@ -19,7 +19,7 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine):
     msg = "Голосуйте за фотографии!"
     user_id = str(message.from_user.id)
     file_id = select_next_contest_photo(engine, group_id, 0)
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count='0', group_id=group_id)
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count='1', group_id=group_id)
 
     await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_vote)
 
@@ -55,7 +55,7 @@ async def callback_prev(query: CallbackQuery,
     amount_photo = callback_data.amount_photos
     current_photo_id = callback_data.current_photo_id
     current_photo_count = int(callback_data.current_photo_count)
-    if (current_photo_count <= 0):
+    if (current_photo_count <= 1):
         return
     msg_id = query.message.message_id
     user_id = callback_data.user
@@ -83,7 +83,7 @@ async def callback_set_like(query: CallbackQuery,
 
     msg_id = query.message.message_id
     user_id = callback_data.user
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id='0', current_photo_count='0', group_id=group_id)
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
     msg_id = query.message.message_id
     user_id = callback_data.user
     await bot.edit_message_reply_markup(user_id, msg_id,
@@ -97,7 +97,9 @@ async def callback_set_no_like(query: CallbackQuery,
     amount_photo = callback_data.amount_photos
     msg_id = query.message.message_id
     user_id = callback_data.user
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id='0', current_photo_count='0', group_id=group_id)
+    current_photo_id = callback_data.current_photo_id
+    current_photo_count = callback_data.current_photo_count
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
     msg_id = query.message.message_id
     user_id = callback_data.user
     await bot.edit_message_reply_markup(user_id, msg_id,

@@ -20,12 +20,6 @@ class Actions():
 class KeyboardButtons():
     def __init__(self, user, group_id, current_photo_id, current_photo_count, amount_photos) -> None:
         self.actions = Actions()
-        self.callback_data = CallbackVote(user=user,
-                                          action="none",
-                                          current_photo_id=current_photo_id,
-                                          current_photo_count=current_photo_count,
-                                          amount_photos=amount_photos,
-                                          group_id=group_id)
         self.button_next = InlineKeyboardButton(
                 text=self.actions.next,
                 callback_data=CallbackVote(user=user,
