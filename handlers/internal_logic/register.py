@@ -16,7 +16,7 @@ def _register_photo(user_object: TelegramUser, chat_object: TelegramChat, engine
                            user_object.telegram_id,
                            chat_object.telegram_id, 
                            file_get_id=contest_material.file_id, user_p=user, group_p=group)
-    else:
+    else: #TODO: add document handle
         set_register_photo(engine,
                            user_object.telegram_id,
                            chat_object.telegram_id,

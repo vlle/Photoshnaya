@@ -129,14 +129,14 @@ class Register(BaseDb):
         super().__init__(engine)
 
 
-    def register_group(self, group: Group) -> str:
+    def register_group(self, group: Group) -> tuple:
         if (find_group(self.engine, group.telegram_id) is True):
-            return "Группа уже зарегистрирована. 😮"
+            return "Группа уже зарегистрирована. 😮", False
     
         with Session(self.engine) as session, session.begin():
             session.add(group)
     
-        return "Зарегистрировал группу. "
+        return "Зарегистрировал группу. ", True
     
     
     def register_user(self, user: User, tg_group_id: int, group=None)\
