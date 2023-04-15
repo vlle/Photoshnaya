@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy import create_engine
+from db.db_operations import ObjectFactory, Register
 
 from utils.keyboard import Actions, CallbackVote
 from db.db_classes import Base
@@ -30,8 +31,12 @@ async def main():
     bot = Bot(token=token)
     dp = Dispatcher()
 
+
     engine = create_engine("sqlite+pysqlite:///db/photo.db", echo=True)
     Base.metadata.create_all(engine)
+
+    register = Register(engine)
+    obj_factory = ObjectFactory()
 
     dp.message.register(register_photo, F.caption_entities)
     dp.edited_message.register(register_photo, F.caption_entities)
@@ -46,7 +51,7 @@ async def main():
     dp.callback_query.register(callback_prev, CallbackVote.filter(F.action == Actions.prev))
     dp.callback_query.register(callback_set_like, CallbackVote.filter(F.action == Actions.no_like))
     dp.callback_query.register(callback_set_no_like, CallbackVote.filter(F.action == Actions.like))
-    await asyncio.gather(dp.start_polling(bot, engine=engine))
+    await asyncio.gather(dp.start_polling(bot, engine=engine, register_unit=register, obj_factory=obj_factory))
 
 if __name__ == "__main__":
     asyncio.run(main())

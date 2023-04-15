@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram import Bot
 from sqlalchemy import Engine
-from db.db_operations import set_contest_theme, check_admin, build_theme, build_group, build_theme, get_contest_theme, register_group, register_admin, build_user
+from db.db_operations import ObjectFactory, Register, set_contest_theme, check_admin, build_theme, build_theme, get_contest_theme
 
 async def set_theme(message: types.Message, bot: Bot, engine: Engine):
     if not message.text or not message.from_user:
@@ -35,20 +35,20 @@ async def get_theme(message: types.Message, bot: Bot, engine: Engine):
     await bot.send_message(message.chat.id, msg)
 
 
-async def on_user_join(message: types.Message, bot: Bot, engine: Engine):
+async def on_user_join(message: types.Message, bot: Bot, obj_factory: ObjectFactory, register_unit: Register):
     msg = "Добавили в чат, здоров!"
-    group = build_group(message.chat.full_name, message.chat.id, "none")
-    reg_msg = register_group(engine, group)
+    group = obj_factory.build_group(message.chat.full_name, message.chat.id, "none")
+    reg_msg = register_unit.register_group(group)
     if (reg_msg == "Группа уже зарегистрирована. 😮"):
         await bot.send_message(message.chat.id, msg)
         await bot.send_message(message.chat.id, reg_msg)
         return
 
     if (message.from_user and message.from_user.username):
-        adm_user = build_user(message.from_user.username,
+        adm_user = obj_factory.build_user(message.from_user.username,
                               message.from_user.full_name,
                               message.from_user.id)
-        register_admin(engine, adm_user, str(message.chat.id))
+        register_unit.register_admin(adm_user, message.chat.id)
         msg = f"Добавил в качестве админа {message.from_user.username}"
     if (message.chat and message.chat.id):
         await bot.send_message(message.chat.id, msg)

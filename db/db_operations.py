@@ -2,8 +2,119 @@ from sqlalchemy import exc
 from db.db_classes import User, Photo, Group, groupUser, groupPhoto, groupAdmin
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy import Engine
 
 # Make Class!!
+
+class ObjectFactory():
+
+    def __init__(self) -> None:
+        pass
+
+    def build_group(self, name: str, telegram_id: int, contest_theme: str, contest_duration_sec=None) -> Group:
+        if (contest_duration_sec):
+            group = Group(name=name, telegram_id=telegram_id,
+                              contest_theme=contest_theme, contest_duration_sec=contest_duration_sec)
+        else:
+            group = Group(name=name, telegram_id=telegram_id,
+                              contest_theme=contest_theme, contest_duration_sec=604800)
+        return group
+    
+    
+    def build_user(self, name: str, full_name: str, user_id: int) -> User:
+        human = User(name=name, full_name=full_name, telegram_id=user_id)
+        return human
+
+
+
+class BaseDb():
+
+    def __init__(self, engine: Engine) -> None:
+        self.engine = engine
+
+class Register(BaseDb):
+
+    def __init__(self, engine: Engine) -> None:
+        super().__init__(engine)
+
+
+    def register_group(self, group: Group) -> str:
+        if (find_group(self.engine, group.telegram_id) is True):
+            return "Группа уже зарегистрирована. 😮"
+    
+        with Session(self.engine) as session, session.begin():
+            session.add(group)
+    
+        return "Зарегистрировал группу. "
+    
+    
+    def register_user(self, user: User, tg_group_id: int, group=None)\
+            -> str:
+        if (find_user_in_group(self.engine, user.telegram_id, tg_group_id)) is True:
+            return "User was already registered"
+    
+        stmt = select(Group).where(Group.telegram_id == tg_group_id)
+        with Session(self.engine) as session, session.begin():
+            try:
+                search_result = session.scalars(stmt).one()
+            except exc.NoResultFound:
+                if group is not None:
+                    register_group(self.engine, group)
+                else:
+                    raise ValueError
+    
+            search_result = session.scalars(stmt).one()
+            user.groups.append(search_result)
+            session.add(user)
+    
+        return "User was added"
+
+    def register_admin(self, adm_user: User, group_id: int, group=None):
+        stmt = select(Group).where(Group.telegram_id == group_id)
+        with Session(self.engine) as session, session.begin():
+            try:
+                search_result = session.scalars(stmt).one()
+            except exc.NoResultFound:
+                if (group):
+                    register_group(self.engine, group)
+    
+            search_result = session.scalars(stmt).one()
+            adm_user.admin_in.append(search_result)
+            adm_user.groups.append(search_result)
+            session.add(adm_user)
+    
+        return "Добавил администратора."
+
+    def set_register_photo(self, tg_id: int, grtg_id: int,
+                           file_get_id='-1', user_p=None, group_p=None):
+        stmt_sel = (
+                select(User)
+                .where(User.telegram_id == tg_id)
+                )
+        stmtG_sel = (
+                select(Group)
+                .where(Group.telegram_id == grtg_id)
+                )
+        with Session(self.engine) as session, session.begin():
+            try:
+                user = session.scalars(stmt_sel).one()
+                group = session.scalars(stmtG_sel).one()
+            except exc.NoResultFound:
+                if (user_p):
+                    self.register_user(user_p, grtg_id, group_p)
+                if (group_p):
+                    self.register_group(group_p)
+    
+            user = session.scalars(stmt_sel).one()
+            group = session.scalars(stmtG_sel).one()
+            photo = Photo(likes=0, file_id=file_get_id, user_id=user.id)
+            user.photos.append(photo)
+            group.photos.append(photo)
+            session.add(photo)
+
+
+class Select(BaseDb):
+    pass
 
 
 def register_group(engine, group: Group) -> str:
