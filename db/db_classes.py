@@ -27,6 +27,13 @@ groupUser = Table(
     Column("group_id", ForeignKey("group.id"), primary_key=True),
 )
 
+photoLike = Table(
+    "photoLike",
+    Base.metadata,
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("photo_id", ForeignKey("photo.id"), primary_key=True),
+)
+
 groupAdmin = Table(
     "groupAdmin",
     Base.metadata,
@@ -49,6 +56,9 @@ class User(Base):
     admin_in: Mapped[List["Group"]] = relationship(
         secondary=groupAdmin, back_populates="admins"
     )
+    liked: Mapped[List["Photo"]] = relationship(
+        secondary=photoLike, back_populates="likes"
+    )
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r}, full_name=\
@@ -60,10 +70,11 @@ class Photo(Base):
     __tablename__ = "photo"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    likes: Mapped[int]
     file_id: Mapped[str]
-    telegram_id: Mapped[Optional[int]]
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    likes: Mapped[List["User"]] = relationship(
+        secondary=photoLike, back_populates="photos"
+    )
     groups: Mapped[List["Group"]] = relationship(
         secondary=groupPhoto, back_populates="photos"
     )
@@ -94,3 +105,10 @@ class Group(Base):
     def __repr__(self) -> str:
         return f"Group(id={self.id!r}, name={self.name!r}, telegram_\
                 id={self.telegram_id!r}, contest_theme={self.contest_theme})"
+
+class TemporaryPhotoLike(Base):
+    __tablename__ = "tmpPhotoLike"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    likes_t: Mapped[int]
+    liked_t: Mapped[int]

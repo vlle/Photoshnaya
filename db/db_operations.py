@@ -1,7 +1,7 @@
 from sqlalchemy import exc
-from db.db_classes import User, Photo, Group, groupUser, groupPhoto, groupAdmin
+from db.db_classes import TemporaryPhotoLike, User, Photo, Group, groupUser, groupPhoto, groupAdmin
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy import Engine
 
 # Make Class!!
@@ -31,6 +31,97 @@ class BaseDb():
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
+        
+class Like(BaseDb):
+
+    def __init__(self, engine: Engine) -> None:
+        super().__init__(engine)
+
+    def like_photo(self, tg_id: int, id: int) -> int:
+        srch_stmt_photo = select(Photo).where(Photo.id == id)
+        srch_stmt_user = select(User).where(User.telegram_id == tg_id)
+        likes = 0
+        with Session(self.engine) as session, session.begin():
+            user = session.scalars(srch_stmt_user).one()
+            photo = session.scalars(srch_stmt_photo).one()
+            tmp_like = TemporaryPhotoLike(likes_t=photo.id, liked_t=user.id)
+            session.add(tmp_like)
+
+        return likes
+
+    def remove_like_photo(self, tg_id: int, id: int) -> None:
+        stmt = (
+                delete(TemporaryPhotoLike)
+                .where(TemporaryPhotoLike.liked_t==(select(User.id).where(User.telegram_id == tg_id).scalar_subquery())
+                & (TemporaryPhotoLike.likes_t==id)
+                ))
+        with Session(self.engine) as session, session.begin():
+            session.execute(stmt)
+
+
+    def is_photo_liked(self, tg_id: int, file_id: str) -> int:
+        stmt = (
+                select(TemporaryPhotoLike)
+                .join(User, TemporaryPhotoLike.liked_t == User.id)
+                .join(Photo, TemporaryPhotoLike.likes_t == Photo.id)
+                .where(User.telegram_id == tg_id)
+                .where(Photo.file_id == file_id)
+                )
+        likes = 0
+        with Session(self.engine) as session, session.begin():
+            like = session.scalars(stmt).fetchall()
+            for _ in like:
+                likes += 1
+    
+        return likes
+
+    def select_next_contest_photo(self, group_id: int, current_photo: int) -> list[str]:
+        ret = []
+        stmtG = (
+                select(Photo)
+                .join(
+                    groupPhoto,
+                    (Photo.id == groupPhoto.c.photo_id)
+                    )
+                .where(
+                    (groupPhoto.c.group_id == (
+                        select(Group.id)
+                        .where(Group.telegram_id == group_id).scalar_subquery())
+                     ) &
+                    (Photo.id > current_photo))
+                .order_by(Photo.id)
+                )
+        with Session(self.engine) as session, session.begin():
+            photos = session.scalars(stmtG).first()
+            if (photos):
+                ret.append(photos.file_id)
+                ret.append(photos.id)
+        return ret
+
+    def select_prev_contest_photo(self, group_id: int, current_photo: int) -> list[str]:
+        ret = []
+        stmtG = (
+                select(Photo)
+                .join(
+                    groupPhoto,
+                    (Photo.id == groupPhoto.c.photo_id)
+                    )
+                .where(
+                    (groupPhoto.c.group_id == (
+                    select(Group.id)
+                    .where(Group.telegram_id == group_id).scalar_subquery())
+                       ) &
+                       (Photo.id < current_photo))
+                .order_by(Photo.id.desc())
+                )
+        with Session(self.engine) as session, session.begin():
+            photos = session.scalars(stmtG).first()
+            photos = session.scalars(stmtG).first()
+            if (photos):
+                ret.append(photos.file_id)
+                ret.append(photos.id)
+        return ret
+
 
 class Register(BaseDb):
 
@@ -107,7 +198,7 @@ class Register(BaseDb):
     
             user = session.scalars(stmt_sel).one()
             group = session.scalars(stmtG_sel).one()
-            photo = Photo(likes=0, file_id=file_get_id, user_id=user.id)
+            photo = Photo(file_id=file_get_id, user_id=user.id)
             user.photos.append(photo)
             group.photos.append(photo)
             session.add(photo)
@@ -211,7 +302,7 @@ def find_user_in_group(engine, telegram_user_id: int, group_telegram_id: int) ->
     return ret
 
 
-def set_like_photo(engine, photo_id: str):
+def set_like_photo(engine, photo_id: int):
     stmt = (
             select(Photo)
             .where(Photo.id == photo_id)
@@ -219,12 +310,12 @@ def set_like_photo(engine, photo_id: str):
     likes = -1
     with Session(engine) as session, session.begin():
         photo = session.scalars(stmt).one()
-        photo.likes += 1
+        #photo.likes += 1
         likes = photo.likes
     return likes
 
 
-def get_like_photo(engine, tg_id: str) -> int:
+def get_like_photo(engine, tg_id: int) -> int:
     # in specific group? or what?
     stmt = (
             select(Photo)
@@ -265,13 +356,13 @@ def set_register_photo(engine, tg_id: int, grtg_id: int,
 
         user = session.scalars(stmt_sel).one()
         group = session.scalars(stmtG_sel).one()
-        photo = Photo(likes=0, file_id=file_get_id, user_id=user.id)
+        photo = Photo(file_id=file_get_id, user_id=user.id)
         user.photos.append(photo)
         group.photos.append(photo)
         session.add(photo)
 
 
-def get_register_photo(engine, tg_id: str) -> int:
+def get_register_photo(engine, tg_id: int) -> int:
     id = -1
     stmt = (
             select(Photo)

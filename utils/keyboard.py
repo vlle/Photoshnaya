@@ -11,20 +11,24 @@ class CallbackVote(CallbackData, prefix="vt"):
 
 class Actions():
     next = "➡️"
+    next_text = "n"
     prev = "⬅️"
+    prev_text = "pr"
     no_like = '🤍'
+    no_like_text = "nl"
     like = '❤️'
+    like_text = "l"
     amount = '/'
     count = '-'
 
 class KeyboardButtons():
-    def __init__(self, user, group_id, current_photo_id, current_photo_count, amount_photos) -> None:
+    def __init__(self, user: str, group_id: str, current_photo_id: str, current_photo_count: str, amount_photos: str) -> None:
         self.actions = Actions()
         self.button_next = InlineKeyboardButton(
                 text=self.actions.next,
                 callback_data=CallbackVote(user=user,
                                            action=self.
-                                           actions.next,
+                                           actions.next_text,
                                            current_photo_id=current_photo_id,
                                            current_photo_count=current_photo_count,
                                            amount_photos=amount_photos,
@@ -34,7 +38,7 @@ class KeyboardButtons():
                 text=self.actions.prev,
                 callback_data=CallbackVote(user=user,
                                            action=self.
-                                           actions.prev,
+                                           actions.prev_text,
                                            current_photo_id=current_photo_id,
                                            current_photo_count=current_photo_count,
                                            amount_photos=amount_photos,
@@ -44,7 +48,7 @@ class KeyboardButtons():
                 text=self.actions.no_like,
                 callback_data=CallbackVote(user=user,
                                            action=self.
-                                           actions.no_like,
+                                           actions.no_like_text,
                                            current_photo_id=current_photo_id,
                                            current_photo_count=current_photo_count,
                                            amount_photos=amount_photos,
@@ -54,11 +58,11 @@ class KeyboardButtons():
                 text=self.actions.like,
                 callback_data=CallbackVote(user=user,
                                            action=self.
-                                           actions.like,
+                                           actions.like_text,
                                            current_photo_id=current_photo_id,
                                            current_photo_count=current_photo_count,
                                            amount_photos=amount_photos,
-                                           group_id='').pack()
+                                           group_id=group_id).pack()
                 )
         self.amount = InlineKeyboardButton(
                 text=current_photo_count+self.actions.amount+amount_photos,

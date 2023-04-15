@@ -7,8 +7,8 @@ async def finish_contest(message: types.Message, bot: Bot, engine: Engine):
     if not message.text or not message.from_user:
         return
     user_theme = message.text.split()
-    user_id = str(message.from_user.id)
-    group_id = str(message.chat.id)
+    user_id = message.from_user.id
+    group_id = message.chat.id
     admin_right = check_admin(engine, user_id, group_id)
     if admin_right is False:
         msg = "Нельзя, ты не админ."
