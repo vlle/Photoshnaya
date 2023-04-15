@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List
 from typing import Optional
 from sqlalchemy.orm import Mapped
-from sqlalchemy import String, ForeignKey, Table, Column, Integer
+from sqlalchemy import String, ForeignKey, Table, Column
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -41,7 +41,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30))
     full_name: Mapped[Optional[str]]
-    telegram_id: Mapped[str]
+    telegram_id: Mapped[int]
     photos: Mapped[List["Photo"]] = relationship()
     groups: Mapped[List["Group"]] = relationship(
         secondary=groupUser, back_populates="users"
@@ -78,7 +78,7 @@ class Group(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    telegram_id: Mapped[str]
+    telegram_id: Mapped[int]
     contest_theme: Mapped[str]
     contest_duration_sec: Mapped[int]
     users: Mapped[List["User"]] = relationship(

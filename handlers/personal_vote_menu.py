@@ -1,9 +1,11 @@
 from aiogram import types
 from aiogram import Bot
+from aiogram.filters import callback_data
 from aiogram.types import CallbackQuery, InputMediaPhoto
+from magic_filter.operations import call
 from utils.keyboard import Keyboard, CallbackVote
 from sqlalchemy import Engine
-from db.db_operations import select_contest_photos_ids, select_next_contest_photo, select_prev_contest_photo
+from db.db_operations import select_contest_photos_ids, select_next_contest_photo, select_prev_contest_photo, select_file_id
 
 async def cmd_start(message: types.Message, bot: Bot, engine: Engine):
     if (not message.text or len(message.text.split(' ')) == 1):
@@ -16,6 +18,7 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine):
     for _ in photo_ids:
         amount_photo += 1
 
+    print(callback_data)
     msg = "Голосуйте за фотографии!"
     user_id = str(message.from_user.id)
     file_id = select_next_contest_photo(engine, group_id, 0)
@@ -57,6 +60,7 @@ async def callback_prev(query: CallbackQuery,
     current_photo_count = int(callback_data.current_photo_count)
     if (current_photo_count <= 1):
         return
+
     msg_id = query.message.message_id
     user_id = callback_data.user
     file_id = select_prev_contest_photo(engine, group_id, int(current_photo_id))
@@ -65,7 +69,6 @@ async def callback_prev(query: CallbackQuery,
     obj = InputMediaPhoto(type='photo', media=file_id[0])
     await bot.edit_message_media(obj, user_id, msg_id,
                                  reply_markup=build_keyboard.keyboard_vote)
-    #await query.answer("Возвращаюсь.")
 
 async def callback_set_like(query: CallbackQuery,
                             callback_data: CallbackVote, bot: Bot, engine: Engine):
@@ -84,8 +87,6 @@ async def callback_set_like(query: CallbackQuery,
     msg_id = query.message.message_id
     user_id = callback_data.user
     build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
-    msg_id = query.message.message_id
-    user_id = callback_data.user
     await bot.edit_message_reply_markup(user_id, msg_id,
                                         reply_markup=build_keyboard.keyboard_liked_vote)
 
@@ -95,12 +96,11 @@ async def callback_set_no_like(query: CallbackQuery,
         return
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
-    msg_id = query.message.message_id
     user_id = callback_data.user
     current_photo_id = callback_data.current_photo_id
     current_photo_count = callback_data.current_photo_count
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
     msg_id = query.message.message_id
-    user_id = callback_data.user
+
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
     await bot.edit_message_reply_markup(user_id, msg_id,
                                         reply_markup=build_keyboard.keyboard_vote)

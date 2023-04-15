@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters.callback_data import CallbackData
 
-class CallbackVote(CallbackData, prefix="vote"):
+class CallbackVote(CallbackData, prefix="vt"):
     user: str
     action: str
     current_photo_count: str

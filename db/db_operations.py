@@ -16,7 +16,7 @@ def register_group(engine, group: Group) -> str:
     return "Зарегистрировал группу. "
 
 
-def register_user(engine, user: User, tg_group_id: str, group=None)\
+def register_user(engine, user: User, tg_group_id: int, group=None)\
         -> str:
     if (find_user_in_group(engine, user.telegram_id, tg_group_id)) is True:
         return "User was already registered"
@@ -26,7 +26,10 @@ def register_user(engine, user: User, tg_group_id: str, group=None)\
         try:
             search_result = session.scalars(stmt).one()
         except exc.NoResultFound:
-            register_group(engine, group)
+            if group is not None:
+                register_group(engine, group)
+            else:
+                raise ValueError
 
         search_result = session.scalars(stmt).one()
         user.groups.append(search_result)
@@ -35,7 +38,7 @@ def register_user(engine, user: User, tg_group_id: str, group=None)\
     return "User was added"
 
 
-def find_user(engine, user_tg: str) -> bool:
+def find_user(engine, user_tg: int) -> bool:
     stmt = (
             select(User)
             .where(User.telegram_id == user_tg)
@@ -51,7 +54,7 @@ def find_user(engine, user_tg: str) -> bool:
     return search_result
 
 
-def find_group(engine, telegram_id: str) -> bool:
+def find_group(engine, telegram_id: int) -> bool:
     stmt = (
             select(Group)
             .where(Group.telegram_id == telegram_id)
@@ -67,7 +70,7 @@ def find_group(engine, telegram_id: str) -> bool:
     return search_result
 
 
-def find_user_in_group(engine, telegram_user_id, group_telegram_id) -> bool:
+def find_user_in_group(engine, telegram_user_id: int, group_telegram_id: int) -> bool:
     stmt = (
             select(User)
             .join(
@@ -129,7 +132,7 @@ def get_like_photo(engine, tg_id: str) -> int:
     return likes
 
 
-def set_register_photo(engine, tg_id: str, grtg_id: str,
+def set_register_photo(engine, tg_id: int, grtg_id: int,
                        file_get_id='-1', user_p=None, group_p=None):
     stmt_sel = (
             select(User)
@@ -178,7 +181,7 @@ def unregister_photo(engine, user_id: str, photo_id: str):
     pass
 
 
-def select_contest_photos(engine, group_id: str) -> list:
+def select_contest_photos(engine, group_id: int) -> list:
     ret = []
     stmtG = (
             select(Photo)
@@ -198,7 +201,7 @@ def select_contest_photos(engine, group_id: str) -> list:
     return ret
 
 
-def select_contest_photos_ids(engine, group_id: str) -> list:
+def select_contest_photos_ids(engine, group_id: int) -> list:
     ret = []
     stmtG = (
             select(Photo)
@@ -216,7 +219,7 @@ def select_contest_photos_ids(engine, group_id: str) -> list:
             ret.append(photo.file_id)
     return ret
 
-def select_prev_contest_photo(engine, group_id: str, current_photo: int) -> list[str]:
+def select_prev_contest_photo(engine, group_id: int, current_photo: int) -> list[str]:
     ret = []
     stmtG = (
             select(Photo)
@@ -230,15 +233,30 @@ def select_prev_contest_photo(engine, group_id: str, current_photo: int) -> list
                 .where(Group.telegram_id == group_id).scalar_subquery())
                    ) &
                    (Photo.id < current_photo))
+            .order_by(Photo.id.desc())
             )
     with Session(engine) as session, session.begin():
+        photos = session.scalars(stmtG).first()
         photos = session.scalars(stmtG).first()
         if (photos):
             ret.append(photos.file_id)
             ret.append(photos.id)
     return ret
 
-def select_next_contest_photo(engine, group_id: str, current_photo: int) -> list[str]:
+def select_file_id(engine, group_id: int, current_photo: int) -> str:
+    ret = ''
+    stmtG = (
+            select(Photo)
+            .where(
+                (Photo.id == current_photo))
+            )
+    with Session(engine) as session, session.begin():
+        photos = session.scalars(stmtG).first()
+        if (photos):
+            ret = photos.file_id
+    return ret
+
+def select_next_contest_photo(engine, group_id: int, current_photo: int) -> list[str]:
     ret = []
     stmtG = (
             select(Photo)
@@ -248,10 +266,11 @@ def select_next_contest_photo(engine, group_id: str, current_photo: int) -> list
                 )
             .where(
                 (groupPhoto.c.group_id == (
-                select(Group.id)
-                .where(Group.telegram_id == group_id).scalar_subquery())
-                   ) &
-                   (Photo.id > current_photo))
+                    select(Group.id)
+                    .where(Group.telegram_id == group_id).scalar_subquery())
+                 ) &
+                (Photo.id > current_photo))
+            .order_by(Photo.id)
             )
     with Session(engine) as session, session.begin():
         photos = session.scalars(stmtG).first()
@@ -269,7 +288,7 @@ def get_contest_winner(engine, user_id: str, photo_id: str):
     pass
 
 
-def set_contest_theme(engine, user_id: str, group_id: str, theme: str, contest_duration_sec = 604800) -> str:
+def set_contest_theme(engine, user_id: int, group_id: int, theme: str, contest_duration_sec = 604800) -> str:
     stmt = (
             select(Group)
             .join(groupAdmin,
@@ -300,11 +319,11 @@ def set_contest_theme(engine, user_id: str, group_id: str, theme: str, contest_d
     return ret_msg
 
 
-def get_contest_theme(engine, group_id: str):
+def get_contest_theme(engine, group_id: int):
     stmt = (
-        select(Group)
-        .where(Group.telegram_id == group_id)
-    )
+            select(Group)
+            .where(Group.telegram_id == group_id)
+            )
     theme = "Без темы?"
     with Session(engine) as session, session.begin():
         try:
@@ -315,7 +334,7 @@ def get_contest_theme(engine, group_id: str):
     return theme
 
 
-def build_group(name: str, telegram_id: str, contest_theme: str, contest_duration_sec=None) -> Group:
+def build_group(name: str, telegram_id: int, contest_theme: str, contest_duration_sec=None) -> Group:
     if (contest_duration_sec):
         groupFrog = Group(name=name, telegram_id=telegram_id,
                           contest_theme=contest_theme, contest_duration_sec=contest_duration_sec)
@@ -325,7 +344,7 @@ def build_group(name: str, telegram_id: str, contest_theme: str, contest_duratio
     return groupFrog
 
 
-def build_user(name: str, full_name: str, user_id: str) -> User:
+def build_user(name: str, full_name: str, user_id: int) -> User:
     human = User(name=name, full_name=full_name, telegram_id=user_id)
     return human
 
@@ -341,7 +360,7 @@ def build_theme(user_theme: list[str]) -> str:
 
     return theme
 
-def register_admin(engine, adm_user: User, group_id: str, group=None):
+def register_admin(engine, adm_user: User, group_id: int, group=None):
     stmt = select(Group).where(Group.telegram_id == group_id)
     with Session(engine) as session, session.begin():
         try:
@@ -358,7 +377,7 @@ def register_admin(engine, adm_user: User, group_id: str, group=None):
     return "Добавил администратора."
 
 
-def get_admins(engine, group_id) -> list:
+def get_admins(engine, group_id: int) -> list:
     stmt = (
             select(User)
             .join(groupAdmin,
@@ -376,7 +395,7 @@ def get_admins(engine, group_id) -> list:
     return admin_list
 
 
-def check_admin(engine, user_id: str, group_id: str) -> bool:
+def check_admin(engine, user_id: int, group_id: int) -> bool:
     admin_right = False
     stmt = (
             select(User)
@@ -392,7 +411,7 @@ def check_admin(engine, user_id: str, group_id: str) -> bool:
             if user_id == admin.telegram_id:
                 admin_right = True
         except exc.NoResultFound:
-            return False
+            pass
         except exc.MultipleResultsFound:
             admin_right = True
 
@@ -400,14 +419,14 @@ def check_admin(engine, user_id: str, group_id: str) -> bool:
 
 
 def register_user_and_group(engine, group: Group,
-                            user: User, group_telegram_id: str) -> str:
+                            user: User, group_telegram_id: int) -> str:
     message = "None yet"
     register_group(engine, group)
     register_user(engine, user, group_telegram_id)
     return message
 
 
-def init_test_data(engine, name: str, usertg_id: str, tggroup_id: str):
+def init_test_data(engine, name: str, usertg_id: int, tggroup_id: int):
     group = build_group(name, tggroup_id, "отсутствует")
     user = build_user(name, name+" Foobar", usertg_id)
     register_user_and_group(engine, group, user, tggroup_id)

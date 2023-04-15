@@ -30,7 +30,7 @@ async def main():
     bot = Bot(token=token)
     dp = Dispatcher()
 
-    engine = create_engine("sqlite+pysqlite:///photo.db", echo=True)
+    engine = create_engine("sqlite+pysqlite:///db/photo.db", echo=True)
     Base.metadata.create_all(engine)
 
     dp.message.register(register_photo, F.caption_entities)
