@@ -30,9 +30,9 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine, like_engin
     build_keyboard = Keyboard(user=str(user_id), amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count='1', group_id=group_id)
     is_liked_photo = like_engine.is_photo_liked(user_id, file_id[0])
     if (is_liked_photo <= 0):
-        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_vote)
+        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_start)
     else:
-        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_liked_vote)
+        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_start_liked)
 
 
 async def callback_next(query: CallbackQuery,
@@ -44,23 +44,36 @@ async def callback_next(query: CallbackQuery,
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
     current_photo_id = callback_data.current_photo_id
-    current_photo_count = int(callback_data.current_photo_count)
-    if (current_photo_count >= int(amount_photo)):
+    current_photo_count = int(callback_data.current_photo_count) + 1
+    if (current_photo_count > int(amount_photo)):
         return
     msg_id = query.message.message_id
     user_id = callback_data.user
     file_id = like_engine.select_next_contest_photo(int(group_id), int(current_photo_id))
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count=str(current_photo_count+1), group_id=group_id)
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count=str(current_photo_count), group_id=group_id)
     print(file_id)
     obj = InputMediaPhoto(type='photo', media=file_id[0])
     is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[0])
     if (is_liked_photo <= 0):
-        await bot.edit_message_media(obj, user_id, msg_id,
-                                 reply_markup=build_keyboard.keyboard_vote)
+        if (current_photo_count == 1):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_start)
+        elif (current_photo_count >= int(amount_photo)):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_end)
+        else:
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_vote)
     else:
-        await bot.edit_message_media(obj, user_id, msg_id,
-                                 reply_markup=build_keyboard.keyboard_liked_vote)
-
+        if (current_photo_count == 1):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_start_liked)
+        elif (current_photo_count >= int(amount_photo)):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_end_liked)
+        else:
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_vote)
 
 async def callback_prev(query: CallbackQuery,
                         callback_data: CallbackVote, bot: Bot, like_engine: Like):
@@ -71,8 +84,8 @@ async def callback_prev(query: CallbackQuery,
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
     current_photo_id = callback_data.current_photo_id
-    current_photo_count = int(callback_data.current_photo_count)
-    if (current_photo_count <= 1):
+    current_photo_count = int(callback_data.current_photo_count) - 1
+    if (current_photo_count < 1):
         return
 
     msg_id = query.message.message_id
@@ -82,14 +95,29 @@ async def callback_prev(query: CallbackQuery,
 
     is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[0])
 
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count=str(current_photo_count-1), group_id=group_id)
+    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count=str(current_photo_count), group_id=group_id)
     obj = InputMediaPhoto(type='photo', media=file_id[0])
     if (is_liked_photo <= 0):
-        await bot.edit_message_media(obj, user_id, msg_id,
-                                 reply_markup=build_keyboard.keyboard_vote)
+        if (current_photo_count == 1):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_start)
+        elif (current_photo_count >= int(amount_photo)):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_end)
+        else:
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_vote)
     else:
-        await bot.edit_message_media(obj, user_id, msg_id,
-                                 reply_markup=build_keyboard.keyboard_liked_vote)
+        if (current_photo_count == 1):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_start_liked)
+        elif (current_photo_count >= int(amount_photo)):
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_end_liked)
+        else:
+            await bot.edit_message_media(obj, user_id, msg_id,
+                                     reply_markup=build_keyboard.keyboard_vote)
+
 
 
 async def callback_set_like(query: CallbackQuery,
@@ -99,15 +127,23 @@ async def callback_set_like(query: CallbackQuery,
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
     current_photo_id = callback_data.current_photo_id
-    current_photo_count = callback_data.current_photo_count
+    current_photo_count = callback_data.current_photo_count 
     msg_id = query.message.message_id
     user_id = callback_data.user
 
     like_engine.like_photo(int(user_id), int(callback_data.current_photo_id))
 
     build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
-    await bot.edit_message_reply_markup(user_id, msg_id,
-                                        reply_markup=build_keyboard.keyboard_liked_vote)
+    if (int(current_photo_count) >= int(amount_photo)):
+        await bot.edit_message_reply_markup(user_id, msg_id,
+                                            reply_markup=build_keyboard.keyboard_end_liked)
+    elif (int(current_photo_count) <= 1):
+        await bot.edit_message_reply_markup(user_id, msg_id,
+                                            reply_markup=build_keyboard.keyboard_start_liked)
+    else:
+        await bot.edit_message_reply_markup(user_id, msg_id,
+                                            reply_markup=build_keyboard.keyboard_vote_liked)
+
 
 async def callback_set_no_like(query: CallbackQuery,
                                callback_data: CallbackVote, bot: Bot, like_engine: Like):
@@ -123,8 +159,16 @@ async def callback_set_no_like(query: CallbackQuery,
     like_engine.remove_like_photo(int(user_id), int(callback_data.current_photo_id))
 
     build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
-    await bot.edit_message_reply_markup(user_id, msg_id,
-                                        reply_markup=build_keyboard.keyboard_vote)
+    if (int(current_photo_count) >= int(amount_photo)):
+        await bot.edit_message_reply_markup(user_id, msg_id,
+                                            reply_markup=build_keyboard.keyboard_end)
+    elif (int(current_photo_count) <= 1):
+        await bot.edit_message_reply_markup(user_id, msg_id,
+                                            reply_markup=build_keyboard.keyboard_start)
+    else:
+        await bot.edit_message_reply_markup(user_id, msg_id,
+                                            reply_markup=build_keyboard.keyboard_vote)
+
 
 async def send_vote():
     pass

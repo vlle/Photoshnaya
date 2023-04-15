@@ -20,6 +20,8 @@ class Actions():
     like_text = "l"
     amount = '/'
     count = '-'
+    finish = 'Отправить голос 🏁'
+    finish_text = 'f'
 
 class KeyboardButtons():
     def __init__(self, user: str, group_id: str, current_photo_id: str, current_photo_count: str, amount_photos: str) -> None:
@@ -74,11 +76,37 @@ class KeyboardButtons():
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
+        self.finish = InlineKeyboardButton(
+                text=self.actions.finish,
+                callback_data=CallbackVote(user=user,
+                                           action=self.
+                                           actions.finish_text,
+                                           current_photo_id=current_photo_id,
+                                           current_photo_count=current_photo_count,
+                                           amount_photos=amount_photos,
+                                           group_id=group_id).pack()
+                )
 
 
 class Keyboard():
     def __init__(self, user: str, current_photo_id: str, current_photo_count: str, amount_photos: str, group_id: str) -> None:
         self.buttons = KeyboardButtons(user, group_id, current_photo_id, current_photo_count, amount_photos)
+        self.keyboard_start = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                     self.buttons.amount,
+                     self.buttons.button_next],
+                    [self.buttons.no_like]
+                    ]
+                )
+        self.keyboard_start_liked = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                     self.buttons.amount,
+                     self.buttons.button_next],
+                    [self.buttons.like]
+                    ]
+                )
         self.keyboard_vote = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [self.buttons.button_prev,
@@ -87,11 +115,29 @@ class Keyboard():
                     [self.buttons.no_like]
                     ]
                 )
-        self.keyboard_liked_vote = InlineKeyboardMarkup(
+        self.keyboard_vote_liked = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [self.buttons.button_prev,
                      self.buttons.amount,
                      self.buttons.button_next],
                     [self.buttons.like]
+                    ]
+                )
+        self.keyboard_end = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                     self.buttons.button_prev,
+                     self.buttons.amount],
+                     [self.buttons.no_like],
+                     [self.buttons.finish]
+                    ]
+                )
+        self.keyboard_end_liked = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                     self.buttons.button_prev,
+                     self.buttons.amount],
+                     [self.buttons.like],
+                     [self.buttons.finish]
                     ]
                 )
