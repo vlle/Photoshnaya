@@ -3,18 +3,17 @@ from aiogram import Bot
 from aiogram.filters import callback_data
 from aiogram.types import CallbackQuery, InputMediaPhoto
 from utils.keyboard import Keyboard, CallbackVote
-from sqlalchemy import Engine
-from db.db_operations import Like, select_contest_photos_ids
+from db.db_operations import Like
 
 
-async def cmd_start(message: types.Message, bot: Bot, engine: Engine, like_engine: Like):
+async def cmd_start(message: types.Message, bot: Bot, like_engine: Like):
     if not message.text or len(message.text.split(' ')) == 1:
         return
     group_id = message.text.split(' ')[1]
     if message.chat.type != 'private':
         return
     try:
-        photo_ids = select_contest_photos_ids(engine, int(group_id))
+        photo_ids = like_engine.select_contest_photos_ids(int(group_id))
     except:
         await bot.send_message(text="Ошибка в cmd_start, не сгенерировалось голосование", chat_id=message.chat.id)
         return

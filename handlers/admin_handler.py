@@ -1,34 +1,35 @@
 from aiogram import types
 from aiogram import Bot
-from sqlalchemy import Engine
 from utils.TelegramUserClass import TelegramDeserialize
 from handlers.internal_logic.admin import i_set_theme
 from handlers.internal_logic.on_join import i_on_user_join
-from db.db_operations import Register, check_admin, get_contest_theme
+from db.db_operations import Register, AdminDB
 
 
-async def set_theme(message: types.Message, bot: Bot, engine: Engine):
+async def set_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
     if not message.text or not message.from_user:
         return
     user, chat = TelegramDeserialize.unpack(message)
-    admin_right = check_admin(engine, user.telegram_id, chat.telegram_id)
+    print(user)
+    print(chat)
+    admin_right = admin_unit.check_admin(user.telegram_id, chat.telegram_id)
     if admin_right is False:
         return
 
     user_theme = message.text.split()
-    msg = i_set_theme(user_theme, engine, user, chat)
+    msg = i_set_theme(user_theme, admin_unit, chat)
     await bot.send_message(message.chat.id, msg)
 
 
-async def get_theme(message: types.Message, bot: Bot, engine: Engine):
+async def get_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
     if not message.text or not message.from_user:
         return
     user, chat = TelegramDeserialize.unpack(message)
-    admin_right = check_admin(engine, user.telegram_id, chat.telegram_id)
+    admin_right = admin_unit.check_admin(user.telegram_id, chat.telegram_id)
     if admin_right is False:
         return
 
-    theme = get_contest_theme(engine, chat.telegram_id)
+    theme = admin_unit.get_contest_theme(chat.telegram_id)
     msg = f"Текущая тема: {theme}"
     await bot.send_message(message.chat.id, msg)
 

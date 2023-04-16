@@ -16,8 +16,6 @@ async def register_photo(message: types.Message, register_unit: Register):
         ret_msg = _register_photo(user, chat, register_unit, photo)
         await message.answer(ret_msg)
 
-
-
 def is_valid_input(caption: str | None, register: Register, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
     if not caption:
         return False
