@@ -79,7 +79,7 @@ class TestDb(unittest.TestCase):
 
     def test_find_no_user_in_group(self):
         self.assertFalse(find_user_in_group(
-            self.engine, self.tg_id+1, self.group_id))
+            self.engine, -1, self.group_id))
 
     def test_add_photo_for_contest(self):
         expected_link = get_register_photo(self.engine, self.tg_id)

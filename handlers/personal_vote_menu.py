@@ -18,6 +18,8 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine, like_engin
     except:
         await bot.send_message(text="Ошибка в cmd_start, не сгенерировалось голосование", chat_id=message.chat.id)
         return
+    if len(photo_ids) == 0:
+        return
 
     amount_photo = 0
     for _ in photo_ids:
@@ -28,7 +30,7 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine, like_engin
     user_id = message.from_user.id
     file_id = like_engine.select_next_contest_photo(int(group_id), 0)
     build_keyboard = Keyboard(user=str(user_id), amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count='1', group_id=group_id)
-    is_liked_photo = like_engine.is_photo_liked(user_id, file_id[0])
+    is_liked_photo = like_engine.is_photo_liked(user_id, file_id[1])
     if (is_liked_photo <= 0):
         await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0], reply_markup=build_keyboard.keyboard_start)
     else:
@@ -53,7 +55,7 @@ async def callback_next(query: CallbackQuery,
     build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count=str(current_photo_count), group_id=group_id)
     print(file_id)
     obj = InputMediaPhoto(type='photo', media=file_id[0])
-    is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[0])
+    is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[1])
     if (is_liked_photo <= 0):
         if (current_photo_count == 1):
             await bot.edit_message_media(obj, user_id, msg_id,
@@ -73,7 +75,7 @@ async def callback_next(query: CallbackQuery,
                                      reply_markup=build_keyboard.keyboard_end_liked)
         else:
             await bot.edit_message_media(obj, user_id, msg_id,
-                                     reply_markup=build_keyboard.keyboard_vote)
+                                     reply_markup=build_keyboard.keyboard_vote_liked)
 
 async def callback_prev(query: CallbackQuery,
                         callback_data: CallbackVote, bot: Bot, like_engine: Like):
@@ -93,7 +95,7 @@ async def callback_prev(query: CallbackQuery,
     file_id = like_engine.select_prev_contest_photo(int(group_id), int(current_photo_id))
     print(file_id)
 
-    is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[0])
+    is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[1])
 
     build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1], current_photo_count=str(current_photo_count), group_id=group_id)
     obj = InputMediaPhoto(type='photo', media=file_id[0])
@@ -116,7 +118,7 @@ async def callback_prev(query: CallbackQuery,
                                      reply_markup=build_keyboard.keyboard_end_liked)
         else:
             await bot.edit_message_media(obj, user_id, msg_id,
-                                     reply_markup=build_keyboard.keyboard_vote)
+                                     reply_markup=build_keyboard.keyboard_vote_liked)
 
 
 

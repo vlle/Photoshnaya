@@ -1,29 +1,27 @@
 from aiogram import types
-from sqlalchemy import Engine
-from db.db_operations import get_contest_theme
-from utils.TelegramUserClass import Photo, TelegramChat, TelegramUser
+from db.db_operations import ObjectFactory, Register
+from utils.TelegramUserClass import Photo, TelegramChat, TelegramDeserialize, TelegramUser
 from handlers.internal_logic.register import _register_photo
 
-async def register_photo(message: types.Message, engine: Engine):
+async def register_photo(message: types.Message, register_unit: Register):
     if message.from_user is None:
         return
-    user = TelegramUser(message.from_user.username, message.from_user.full_name, message.from_user.id, message.chat.id, message.message_id)
-    chat = TelegramChat(message.chat.username, message.chat.full_name, message.chat.id, message.message_id)
-    valid_check = is_valid_input(message.caption, engine, chat, user)
+    user, chat = TelegramDeserialize.unpack(message)
+    valid_check = is_valid_input(message.caption, register_unit, chat, user)
     if valid_check is False:
         return
 
     if message.photo:
         photo = Photo(message.photo[-1].file_id)
-        ret_msg = _register_photo(user, chat, engine, photo)
+        ret_msg = _register_photo(user, chat, register_unit, photo)
         await message.answer(ret_msg)
 
 
 
-def is_valid_input(caption: str | None, engine: Engine, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
+def is_valid_input(caption: str | None, register: Register, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
     if not caption:
         return False
-    theme = get_contest_theme(engine, chat_object.telegram_id)
+    theme = register.get_contest_theme(chat_object.telegram_id)
     message_search = caption.split()
     message_contains_contest = False
     for word in message_search:
