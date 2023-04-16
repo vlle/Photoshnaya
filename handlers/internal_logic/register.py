@@ -12,12 +12,12 @@ def _register_photo(user_object: TelegramUser, chat_object: TelegramChat, regist
                                        chat_object.telegram_id)
     register.register_user(user, chat_object.telegram_id)
     if isinstance(contest_material, Photo):
-        register.set_register_photo(
+        register.register_photo_for_contest(
                 user_object.telegram_id,
                 chat_object.telegram_id, 
                 file_get_id=contest_material.file_id, user_p=user, group_p=group)
     else:
-        register.set_register_photo(
+        register.register_photo_for_contest(
                 user_object.telegram_id,
                 chat_object.telegram_id,
                 file_get_id='-1',

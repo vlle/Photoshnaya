@@ -3,7 +3,7 @@ from aiogram import Bot
 from aiogram.filters import callback_data
 from aiogram.types import CallbackQuery, InputMediaPhoto
 from utils.keyboard import Keyboard, CallbackVote
-from db.db_operations import LikeDB
+from db.db_operations import LikeDB, VoteDB
 
 
 async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
@@ -20,7 +20,9 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     if len(photo_ids) == 0:
         return
 
-    if like_engine.is_user_not_allowed_to_vote(int(group_id), message.from_user.id) is True:
+    vote_db = VoteDB(like_engine.engine)
+
+    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.send_message(chat_id=message.chat.id, text=msg)
         return
@@ -48,7 +50,9 @@ async def callback_next(query: CallbackQuery,
                         callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
-    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+    vote_db = VoteDB(like_engine.engine)
+
+    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.send_message(chat_id=int(callback_data.user), text=msg)
         return
@@ -95,7 +99,9 @@ async def callback_prev(query: CallbackQuery,
     if not query.message or not query.message.from_user:
         return
     print(callback_data)
-    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+    vote_db = VoteDB(like_engine.engine)
+
+    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.answer_callback_query(query.id, text=msg, show_alert=True)
         #await bot.send_message(chat_id=int(callback_data.user), text=msg)
@@ -145,7 +151,9 @@ async def callback_set_like(query: CallbackQuery,
                             callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
-    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+    vote_db = VoteDB(like_engine.engine)
+
+    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.send_message(chat_id=int(callback_data.user), text=msg)
         return
@@ -174,7 +182,9 @@ async def callback_set_no_like(query: CallbackQuery,
                                callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
-    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+    vote_db = VoteDB(like_engine.engine)
+
+    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.send_message(chat_id=int(callback_data.user), text=msg)
         return
@@ -204,8 +214,9 @@ async def callback_send_vote(query: CallbackQuery,
 
     user_id = callback_data.user
     msg_id = query.message.message_id
+    vote_db = VoteDB(like_engine.engine)
 
-    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.send_message(chat_id=int(callback_data.user), text=msg)
         return
@@ -216,7 +227,7 @@ async def callback_send_vote(query: CallbackQuery,
     like_engine.insert_all_likes(int(callback_data.user), int(callback_data.group_id))
     like_engine.delete_likes_from_tmp_vote(int(callback_data.user), int(callback_data.group_id))
     msg = "Спасибо, голос принят!"
-    like_engine.mark_user_voted(int(callback_data.group_id), int(user_id))
+    vote_db.mark_user_voted(int(callback_data.group_id), int(user_id))
     await bot.send_message(user_id, msg)
 
     # get dict list
