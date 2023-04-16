@@ -1,7 +1,10 @@
-from typing import List, Any
+from typing import Any
 
 from sqlalchemy import exc
-from db.db_classes import TemporaryPhotoLike, User, Photo, Group, group_user, group_photo, group_admin, Contest
+from sqlalchemy.dialects.sqlite import insert
+
+from db.db_classes import tmp_photo_like, User, Photo, Group, group_user, group_photo, group_admin, Contest, \
+    photo_like
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from sqlalchemy import Engine
@@ -16,13 +19,11 @@ class ObjectFactory:
         pass
 
     @staticmethod
-    def build_group(name: str, telegram_id: int, contest_theme: str, contest_duration_sec=None) -> Group:
-        if (contest_duration_sec is not None):
-            group = Group(name=name, telegram_id=telegram_id,
-                          contest_theme=contest_theme, contest_duration_sec=contest_duration_sec)
+    def build_group(name: str, telegram_id: int) -> Group:
+        if contest_duration_sec is not None:
+            group = Group(name=name, telegram_id=telegram_id)
         else:
-            group = Group(name=name, telegram_id=telegram_id,
-                          contest_theme=contest_theme, contest_duration_sec=604800)
+            group = Group(name=name, telegram_id=telegram_id)
         return group
 
     @staticmethod
@@ -36,7 +37,7 @@ class ObjectFactory:
         return human
 
     @staticmethod
-    def build_theme(self, user_theme: list[str]) -> str:
+    def build_theme(user_theme: list[str]) -> str:
         if (user_theme[1][0] != '#'):
             theme = '#' + user_theme[1]
         else:
@@ -67,25 +68,25 @@ class Like(BaseDb):
         with Session(self.engine) as session, session.begin():
             user = session.scalars(srch_stmt_user).one()
             photo = session.scalars(srch_stmt_photo).one()
-            tmp_like = TemporaryPhotoLike(likes_t=photo.id, liked_t=user.id)
-            session.add(tmp_like)
+            stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
+            session.execute(stmt)
 
         return likes
 
-    def remove_like_photo(self, tg_id: int, id: int) -> None:
+    def remove_like_photo(self, tg_id: int, photo_id: int) -> None:
         stmt = (
-            delete(TemporaryPhotoLike)
-            .where(TemporaryPhotoLike.liked_t == (select(User.id).where(User.telegram_id == tg_id).scalar_subquery())
-                   & (TemporaryPhotoLike.likes_t == id)
+            delete(tmp_photo_like)
+            .where(tmp_photo_like.c.user_id == (select(User.id).where(User.telegram_id == tg_id).scalar_subquery())
+                   & (tmp_photo_like.c.photo_id == photo_id)
                    ))
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
 
     def is_photo_liked(self, tg_id: int, id: str) -> int:
         stmt = (
-            select(TemporaryPhotoLike)
-            .join(User, TemporaryPhotoLike.liked_t == User.id)
-            .join(Photo, TemporaryPhotoLike.likes_t == Photo.id)
+            select(tmp_photo_like)
+            .join(User, tmp_photo_like.c.user_id == User.id)
+            .join(Photo, tmp_photo_like.c.photo_id == Photo.id)
             .where(User.telegram_id == tg_id)
             .where(Photo.id == id)
         )
@@ -99,7 +100,7 @@ class Like(BaseDb):
 
     def select_next_contest_photo(self, group_id: int, current_photo: int) -> list[str]:
         ret: list[Any] = []
-        stmtG = (
+        stmt_g = (
             select(Photo)
             .join(
                 group_photo,
@@ -114,7 +115,7 @@ class Like(BaseDb):
             .order_by(Photo.id)
         )
         with Session(self.engine) as session, session.begin():
-            photos = session.scalars(stmtG).first()
+            photos = session.scalars(stmt_g).first()
             if photos:
                 ret.append(photos.file_id)
                 ret.append(photos.id)
@@ -142,6 +143,11 @@ class Like(BaseDb):
                 ret.append(photos.file_id)
                 ret.append(photos.id)
         return ret
+
+    def insert_all_likes(self, user_id: int, lst: list[tmp_photo_like]):
+        stmt = insert(photo_like)
+        with Session(self.engine) as session, session.begin():
+            session.execute(insert(photo_like), lst)
 
 
 class Register(BaseDb):
@@ -225,14 +231,15 @@ class Register(BaseDb):
 
     def get_contest_theme(self, group_id: int):
         stmt = (
-            select(Group)
-            .where(Group.telegram_id == group_id)
+            select(Contest)
+            .join(Group, Group.id == Contest.group_id)
+            .where(Group.telegram_id == group_id).order_by(Contest.id.desc())
         )
         theme = "Без темы?"
         with Session(self.engine) as session, session.begin():
             try:
-                group = session.scalars(stmt).one()
-                theme = group.contest_theme
+                theme = session.scalars(stmt).first()
+                theme = theme.contest_name
             except exc.NoResultFound:
                 theme = "Ошибка, не нашел группу."
         return theme
@@ -527,38 +534,30 @@ def get_contest_winner(engine, user_id: str, photo_id: str):
     pass
 
 
-def set_contest_theme(engine, user_id: int, group_id: int, theme: str, contest_duration_sec=604800) -> str:
-    stmt = (
-        select(Group)
-        .join(group_admin,
-              (Group.id == group_admin.c.group_id)
-              )
-        .join(User,
-              (User.id == group_admin.c.user_id)
-              )
-        .where(Group.telegram_id == group_id)
+def set_contest_theme(engine: Engine, group_id: int, theme: str, contest_duration_sec=604800) -> str:
+    stmt_g = (
+        select(Group.id).where(Group.telegram_id == group_id)
     )
-    ret_msg = None
     obj_factory = ObjectFactory()
     theme_object = obj_factory.build_contest(theme, contest_duration_sec)
     with Session(engine) as session, session.begin():
-        group = session.scalars(stmt).one()
-        theme_object.id = group.id
+        group_id = session.scalars(stmt_g).one()
+        theme_object.group_id = group_id
         session.add(theme_object)
 
-    return 'Тема зарегистрирована.'
-
+    return f'Тема зарегистрирована. {theme}'
 
 def get_contest_theme(engine, group_id: int):
     stmt = (
-        select(Group)
-        .where(Group.telegram_id == group_id)
+        select(Contest)
+        .join(Group, Group.id == Contest.group_id)
+        .where(Group.telegram_id == group_id).order_by(Contest.id.desc())
     )
     theme = "Без темы?"
     with Session(engine) as session, session.begin():
         try:
-            group = session.scalars(stmt).one()
-            theme = group.contest_theme
+            theme = session.scalars(stmt).first()
+            theme = theme.contest_name
         except exc.NoResultFound:
             theme = "Ошибка, не нашел группу."
     return theme

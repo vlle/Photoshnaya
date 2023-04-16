@@ -17,7 +17,7 @@ from db.db_classes import Base
 
 from handlers.admin_handler import set_theme, get_theme, on_user_join
 from handlers.vote import finish_contest
-from handlers.personal_vote_menu import cmd_start, callback_next, callback_set_no_like, callback_set_like, callback_prev
+from handlers.personal_vote_menu import cmd_start, callback_next, callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
 
 
@@ -53,6 +53,7 @@ async def main():
     dp.callback_query.register(callback_prev, CallbackVote.filter(F.action == Actions.prev_text))
     dp.callback_query.register(callback_set_like, CallbackVote.filter(F.action == Actions.no_like_text))
     dp.callback_query.register(callback_set_no_like, CallbackVote.filter(F.action == Actions.like_text))
+    dp.callback_query.register(callback_send_vote, CallbackVote.filter(F.action == Actions.finish_text))
     await asyncio.gather(dp.start_polling(bot, engine=engine, register_unit=register, obj_factory=obj_factory, like_engine=like_engine))
 
 if __name__ == "__main__":

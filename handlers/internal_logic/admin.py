@@ -8,5 +8,5 @@ def i_set_theme(user_theme: list[str], engine, user: TelegramUser, chat: Telegra
         msg = 'Забыл название темы, админ\nПример: /set_theme #пляжи'
     else:
         time = 604800
-        msg = set_contest_theme(engine, user.telegram_id, chat.telegram_id, theme, time) + " = новая тема"
+        msg = set_contest_theme(engine, chat.telegram_id, theme, time) + " = новая тема"
     return msg

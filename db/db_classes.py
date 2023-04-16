@@ -49,6 +49,13 @@ photo_like = Table(
     Column("photo_id", ForeignKey("photo.id"), primary_key=True),
 )
 
+tmp_photo_like = Table(
+    "tmp_photo_like",
+    Base.metadata,
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("photo_id", ForeignKey("photo.id"), primary_key=True),
+)
+
 group_admin = Table(
     "group_admin",
     Base.metadata,
@@ -142,18 +149,8 @@ class Contest(Base):
     group_id: Mapped[int] = mapped_column(ForeignKey("group.id"))
     group: Mapped["Group"] = relationship(back_populates="contest")
 
-
     def __repr__(self) -> str:
         return f"Contest(id={self.id!r}), name=({self.contest_name!r})"
-
-
-class TemporaryPhotoLike(Base):
-    __tablename__ = "tmpPhotoLike"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    likes_t: Mapped[int]
-    liked_t: Mapped[int]
-
 
 # class voteContest(Base):
 #     __tablename__ = ""
