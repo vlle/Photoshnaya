@@ -21,6 +21,11 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine, like_engin
     if len(photo_ids) == 0:
         return
 
+    if like_engine.is_user_not_allowed_to_vote(int(group_id), message.from_user.id) is True:
+        msg = 'Вы уже голосовали в этом челлендже, увы'
+        await bot.send_message(chat_id=message.chat.id, text=msg)
+        return
+
     amount_photo = 0
     for _ in photo_ids:
         amount_photo += 1
@@ -43,6 +48,10 @@ async def cmd_start(message: types.Message, bot: Bot, engine: Engine, like_engin
 async def callback_next(query: CallbackQuery,
                         callback_data: CallbackVote, bot: Bot, like_engine: Like):
     if not query.message or not query.message.from_user:
+        return
+    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+        msg = 'Вы уже голосовали в этом челлендже, увы'
+        await bot.send_message(chat_id=int(callback_data.user), text=msg)
         return
     print(callback_data)
 
@@ -87,6 +96,11 @@ async def callback_prev(query: CallbackQuery,
     if not query.message or not query.message.from_user:
         return
     print(callback_data)
+    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+        msg = 'Вы уже голосовали в этом челлендже, увы'
+        await bot.answer_callback_query(query.id, text=msg, show_alert=True)
+        #await bot.send_message(chat_id=int(callback_data.user), text=msg)
+        return
 
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
@@ -132,6 +146,10 @@ async def callback_set_like(query: CallbackQuery,
                             callback_data: CallbackVote, bot: Bot, like_engine: Like):
     if not query.message or not query.message.from_user:
         return
+    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+        msg = 'Вы уже голосовали в этом челлендже, увы'
+        await bot.send_message(chat_id=int(callback_data.user), text=msg)
+        return
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
     current_photo_id = callback_data.current_photo_id
@@ -157,6 +175,10 @@ async def callback_set_no_like(query: CallbackQuery,
                                callback_data: CallbackVote, bot: Bot, like_engine: Like):
     if not query.message or not query.message.from_user:
         return
+    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+        msg = 'Вы уже голосовали в этом челлендже, увы'
+        await bot.send_message(chat_id=int(callback_data.user), text=msg)
+        return
     group_id = callback_data.group_id
     amount_photo = callback_data.amount_photos
     user_id = callback_data.user
@@ -181,17 +203,22 @@ async def callback_set_no_like(query: CallbackQuery,
 async def callback_send_vote(query: CallbackQuery,
                              callback_data: CallbackVote, bot: Bot, like_engine: Like):
 
+    user_id = callback_data.user
+    msg_id = query.message.message_id
+
+    if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+        msg = 'Вы уже голосовали в этом челлендже, увы'
+        await bot.send_message(chat_id=int(callback_data.user), text=msg)
+        return
     lst = like_engine.get_all_likes_for_user(int(callback_data.user), int(callback_data.group_id))
-    msg = 's'
     for i in lst:
         print(i)
-        msg += str(i.user_id) +' '+ str(i.photo_id)
 
-    msg_id = query.message.message_id
     like_engine.insert_all_likes(int(callback_data.user), int(callback_data.group_id))
     like_engine.delete_likes_from_tmp_vote(int(callback_data.user), int(callback_data.group_id))
-    await bot.send_message(int(callback_data.user),msg)
-
+    msg = "Спасибо, голос принят!"
+    like_engine.mark_user_voted(int(callback_data.group_id), int(user_id))
+    await bot.send_message(user_id, msg)
 
     # get dict list
     # delete from tmp where user_id = user_id

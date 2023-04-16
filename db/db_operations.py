@@ -4,7 +4,7 @@ from sqlalchemy import exc
 from sqlalchemy.dialects.sqlite import insert
 
 from db.db_classes import tmp_photo_like, User, Photo, Group, group_user, group_photo, group_admin, Contest, \
-    photo_like
+    photo_like, contest_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from sqlalchemy import Engine
@@ -59,8 +59,8 @@ class Like(BaseDb):
         super().__init__(engine)
 
     def like_photo(self, tg_id: int, p_id: int) -> int:
-        srch_stmt_photo = select(Photo).where(Photo.id == p_id)
         srch_stmt_user = select(User).where(User.telegram_id == tg_id)
+        srch_stmt_photo = select(Photo).where(Photo.id == p_id)
         likes = 0
         with Session(self.engine) as session, session.begin():
             user = session.scalars(srch_stmt_user).one()
@@ -159,10 +159,12 @@ class Like(BaseDb):
         ret: list = []
         stmt = (
             delete(tmp_photo_like)
-            .join(Photo)
-            .join(group_photo)
-            .join(Group)
-            .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
+            .where(tmp_photo_like.c.photo_id.in_(
+                   select(Photo.id)
+                   .join(group_photo)
+                   .join(Group)
+                   .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
+            ))
         )
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
@@ -179,6 +181,46 @@ class Like(BaseDb):
         stmt = insert(photo_like).from_select(["photo_id", "user_id"], select_stmt)
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
+
+    def get_contest_id(self, telegram_group_id: int) -> int:
+        stmt = (
+            select(Contest)
+            .join(Group, Group.id == Contest.group_id)
+            .where(Group.telegram_id == telegram_group_id).order_by(Contest.id.desc())
+        )
+        ret_id = -1
+        with Session(self.engine) as session, session.begin():
+            contest = session.scalars(stmt).first()
+            ret_id = contest.id
+        return ret_id
+
+    def get_user_id(self, telegram_user_id: int) -> int:
+        ret_id = -1
+        with Session(self.engine) as session, session.begin():
+            ret_id = session.scalars(select(User.id).where(User.telegram_id == telegram_user_id)).one()
+        return ret_id
+
+    def mark_user_voted(self, telegram_group_id: int, telegram_user_id: int):
+        contest_id = self.get_contest_id(telegram_group_id)
+        user_id = self.get_user_id(telegram_user_id)
+        with Session(self.engine) as session, session.begin():
+            stmt = insert(contest_user).values(contest_id=contest_id, user_id=user_id)
+            session.execute(stmt)
+
+    def is_user_not_allowed_to_vote(self, telegram_group_id: int, telegram_user_id: int) -> bool:
+        contest_id = self.get_contest_id(telegram_group_id)
+        user_id = self.get_user_id(telegram_user_id)
+        stmt = (
+            select(contest_user)
+            .where((contest_user.c.user_id == user_id) & (contest_user.c.contest_id == contest_id))
+        )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt)
+            allow = 0
+            for i in res:
+                allow += 1
+            return allow > 0
+
 
 
 class Register(BaseDb):

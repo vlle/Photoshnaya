@@ -63,6 +63,13 @@ group_admin = Table(
     Column("group_id", ForeignKey("group.id"), primary_key=True),
 )
 
+contest_user = Table(
+    "contest_user",
+    Base.metadata,
+    Column("contest_id", ForeignKey("contest.id"), primary_key=True),
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+)
+
 
 class User(Base):
     __tablename__ = "user"
@@ -83,6 +90,9 @@ class User(Base):
     )
     liked: Mapped[List["Photo"]] = relationship(
         secondary=photo_like, back_populates="likes"
+    )
+    voted_in: Mapped[List["Contest"]] = relationship(
+        secondary=contest_user, back_populates="have_vote_from"
     )
 
     def __repr__(self) -> str:
@@ -145,6 +155,9 @@ class Contest(Base):
 
     created_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=functions.now()
+    )
+    have_vote_from: Mapped[List["User"]] = relationship(
+        secondary=contest_user, back_populates="voted_in"
     )
     group_id: Mapped[int] = mapped_column(ForeignKey("group.id"))
     group: Mapped["Group"] = relationship(back_populates="contest")
