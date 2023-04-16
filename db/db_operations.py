@@ -44,7 +44,7 @@ class ObjectFactory:
         return theme
 
 
-class BaseDb:
+class BaseDB:
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
@@ -65,7 +65,7 @@ class BaseDb:
             return ret_id
 
 
-class Like(BaseDb):
+class LikeDB(BaseDB):
 
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
@@ -234,7 +234,7 @@ class Like(BaseDb):
         return ret
 
 
-class Register(BaseDb):
+class RegisterDB(BaseDB):
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
 
@@ -289,8 +289,7 @@ class Register(BaseDb):
 
         return ret
 
-    def register_user(self, user: User, tg_group_id: int, group: Group) \
-            -> str:
+    def register_user(self, user: User, tg_group_id: int) -> str:
         if (self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
             return "User was already registered"
 
@@ -333,7 +332,7 @@ class Register(BaseDb):
                 group = session.scalars(stmtg_sel).one()
             except exc.NoResultFound:
                 if user_p:
-                    self.register_user(user_p, grtg_id, group_p)
+                    self.register_user(user_p, grtg_id)
                 if group_p:
                     self.register_group(group_p)
                 user = session.scalars(stmt_sel).one()
@@ -359,7 +358,7 @@ class Register(BaseDb):
         return theme
 
 
-class AdminDB(Register):
+class AdminDB(RegisterDB):
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
 
@@ -399,5 +398,5 @@ class AdminDB(Register):
         return f'Тема зарегистрирована. {theme}'
 
 
-class Select(BaseDb):
+class Select(BaseDB):
     pass

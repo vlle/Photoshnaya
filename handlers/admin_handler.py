@@ -3,7 +3,7 @@ from aiogram import Bot
 from utils.TelegramUserClass import TelegramDeserialize
 from handlers.internal_logic.admin import i_set_theme
 from handlers.internal_logic.on_join import i_on_user_join
-from db.db_operations import Register, AdminDB
+from db.db_operations import RegisterDB, AdminDB
 
 
 async def set_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
@@ -34,7 +34,7 @@ async def get_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
     await bot.send_message(message.chat.id, msg)
 
 
-async def on_user_join(message: types.Message, bot: Bot, register_unit: Register):
+async def on_user_join(message: types.Message, bot: Bot, register_unit: RegisterDB):
     user, chat = TelegramDeserialize.unpack(message, message_id_not_exists=True)
 
     msg, reg_msg = i_on_user_join(register_unit=register_unit, user=user, chat=chat)

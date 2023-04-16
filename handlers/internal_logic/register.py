@@ -1,8 +1,8 @@
 from utils.TelegramUserClass import TelegramChat, TelegramUser, Photo, Document
-from db.db_operations import ObjectFactory, Register 
+from db.db_operations import ObjectFactory, RegisterDB
 
 
-def _register_photo(user_object: TelegramUser, chat_object: TelegramChat, register: Register,
+def _register_photo(user_object: TelegramUser, chat_object: TelegramChat, register: RegisterDB,
                     contest_material: Photo | Document) -> str:
     object_factory = ObjectFactory()
     user = object_factory.build_user(user_object.username,

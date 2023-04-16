@@ -1,9 +1,9 @@
 from aiogram import types
-from db.db_operations import ObjectFactory, Register
+from db.db_operations import ObjectFactory, RegisterDB
 from utils.TelegramUserClass import Photo, TelegramChat, TelegramDeserialize, TelegramUser
 from handlers.internal_logic.register import _register_photo
 
-async def register_photo(message: types.Message, register_unit: Register):
+async def register_photo(message: types.Message, register_unit: RegisterDB):
     if message.from_user is None:
         return
     user, chat = TelegramDeserialize.unpack(message)
@@ -16,7 +16,7 @@ async def register_photo(message: types.Message, register_unit: Register):
         ret_msg = _register_photo(user, chat, register_unit, photo)
         await message.answer(ret_msg)
 
-def is_valid_input(caption: str | None, register: Register, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
+def is_valid_input(caption: str | None, register: RegisterDB, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
     if not caption:
         return False
     theme = register.get_contest_theme(chat_object.telegram_id)

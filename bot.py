@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 
 from utils.keyboard import Actions, CallbackVote
 
-from db.db_operations import Like, ObjectFactory, Register, AdminDB
+from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
 from handlers.admin_handler import set_theme, get_theme, on_user_join
@@ -36,8 +36,8 @@ async def main():
     engine = create_engine("sqlite+pysqlite:///db/photo.db", echo=True)
     Base.metadata.create_all(engine)
 
-    register = Register(engine)
-    like_engine = Like(engine)
+    register = RegisterDB(engine)
+    like_engine = LikeDB(engine)
     obj_factory = ObjectFactory()
     admin_unit = AdminDB(engine)
 

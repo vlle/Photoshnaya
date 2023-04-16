@@ -1,8 +1,8 @@
-from db.db_operations import ObjectFactory, Register
+from db.db_operations import ObjectFactory, RegisterDB
 from utils.TelegramUserClass import TelegramChat, TelegramUser
 
 
-def i_on_user_join(register_unit: Register, chat: TelegramChat, user: TelegramUser) -> tuple:
+def i_on_user_join(register_unit: RegisterDB, chat: TelegramChat, user: TelegramUser) -> tuple:
 
     group = ObjectFactory.build_group(chat.full_name, chat.telegram_id)
     reg_msg, is_registered = register_unit.register_group(group)

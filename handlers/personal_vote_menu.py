@@ -3,10 +3,10 @@ from aiogram import Bot
 from aiogram.filters import callback_data
 from aiogram.types import CallbackQuery, InputMediaPhoto
 from utils.keyboard import Keyboard, CallbackVote
-from db.db_operations import Like
+from db.db_operations import LikeDB
 
 
-async def cmd_start(message: types.Message, bot: Bot, like_engine: Like):
+async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     if not message.text or len(message.text.split(' ')) == 1:
         return
     group_id = message.text.split(' ')[1]
@@ -45,7 +45,7 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: Like):
 
 
 async def callback_next(query: CallbackQuery,
-                        callback_data: CallbackVote, bot: Bot, like_engine: Like):
+                        callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
     if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
@@ -91,7 +91,7 @@ async def callback_next(query: CallbackQuery,
 
 
 async def callback_prev(query: CallbackQuery,
-                        callback_data: CallbackVote, bot: Bot, like_engine: Like):
+                        callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
     print(callback_data)
@@ -142,7 +142,7 @@ async def callback_prev(query: CallbackQuery,
 
 
 async def callback_set_like(query: CallbackQuery,
-                            callback_data: CallbackVote, bot: Bot, like_engine: Like):
+                            callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
     if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
@@ -171,7 +171,7 @@ async def callback_set_like(query: CallbackQuery,
 
 
 async def callback_set_no_like(query: CallbackQuery,
-                               callback_data: CallbackVote, bot: Bot, like_engine: Like):
+                               callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
     if not query.message or not query.message.from_user:
         return
     if like_engine.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
@@ -200,7 +200,7 @@ async def callback_set_no_like(query: CallbackQuery,
 
 
 async def callback_send_vote(query: CallbackQuery,
-                             callback_data: CallbackVote, bot: Bot, like_engine: Like):
+                             callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
 
     user_id = callback_data.user
     msg_id = query.message.message_id
