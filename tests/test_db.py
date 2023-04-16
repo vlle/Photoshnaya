@@ -1,7 +1,7 @@
 import random
 
 from sqlalchemy import create_engine, Engine
-from db.db_operations import Register, ObjectFactory
+from db.db_operations import RegisterDB, ObjectFactory
 from db.db_classes import Base
 import pytest
 
@@ -37,14 +37,14 @@ def group():
 @pytest.fixture
 def user():
     return TUser(name="User №"
-                      + str(random.randint(1, 100)),
-                 i_id=100 + random.randint(1, 200))
+                      + str(random.randint(1, 10000)),
+                 i_id=100 + random.randint(1, 2000))
 
 
 @pytest.fixture
 def registered_group(group, db):
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
-    register_unit = Register(db)
+    register_unit = RegisterDB(db)
     register_unit.register_group(m_group)
     return register_unit
 
@@ -55,7 +55,7 @@ def registered_user(registered_group, group, user, db):
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
     register_unit = registered_group
-    register_unit.register_user(m_user, m_group.telegram_id, m_group)
+    register_unit.register_user(m_user, m_group.telegram_id)
     return register_unit
 
 
@@ -67,7 +67,7 @@ def test_is_group_registered(registered_group, group):
 
 def test_is_group_not_registered(group, db):
     telegram_id = group.group_id
-    register_unit = Register(db)
+    register_unit = RegisterDB(db)
     assert register_unit.find_group(telegram_id) is False
 
 
@@ -75,7 +75,7 @@ def test_is_user_registered(registered_user, user, group, db):
     m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
-    register_unit = Register(db)
+    register_unit = RegisterDB(db)
     assert register_unit.find_user_in_group(m_user.telegram_id, m_group.telegram_id) is True
 
 
@@ -83,5 +83,5 @@ def test_is_user_not_registered(registered_group, user, group, db):
     m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
-    register_unit = Register(db)
+    register_unit = RegisterDB(db)
     assert register_unit.find_user_in_group(m_user.telegram_id, m_group.telegram_id) is False
