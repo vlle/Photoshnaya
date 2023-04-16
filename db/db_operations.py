@@ -289,21 +289,13 @@ class Register(BaseDb):
 
         return ret
 
-    def register_user(self, user: User, tg_group_id: int, group=None) \
+    def register_user(self, user: User, tg_group_id: int, group: Group) \
             -> str:
         if (self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
             return "User was already registered"
 
         stmt = select(Group).where(Group.telegram_id == tg_group_id)
         with Session(self.engine) as session, session.begin():
-            try:
-                session.scalars(stmt).one()
-            except exc.NoResultFound:
-                if group is not None:
-                    self.register_group(group)
-                else:
-                    raise ValueError
-
             search_result = session.scalars(stmt).one()
             user.groups.append(search_result)
             session.add(user)
