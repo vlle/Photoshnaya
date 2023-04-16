@@ -81,6 +81,7 @@ async def callback_next(query: CallbackQuery,
             await bot.edit_message_media(obj, user_id, msg_id,
                                          reply_markup=build_keyboard.keyboard_vote_liked)
 
+
 async def callback_prev(query: CallbackQuery,
                         callback_data: CallbackVote, bot: Bot, like_engine: Like):
     if not query.message or not query.message.from_user:
@@ -141,10 +142,10 @@ async def callback_set_like(query: CallbackQuery,
     like_engine.like_photo(int(user_id), int(callback_data.current_photo_id))
 
     build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
-    if (int(current_photo_count) >= int(amount_photo)):
+    if int(current_photo_count) >= int(amount_photo):
         await bot.edit_message_reply_markup(user_id, msg_id,
                                             reply_markup=build_keyboard.keyboard_end_liked)
-    elif (int(current_photo_count) <= 1):
+    elif int(current_photo_count) <= 1:
         await bot.edit_message_reply_markup(user_id, msg_id,
                                             reply_markup=build_keyboard.keyboard_start_liked)
     else:
@@ -178,10 +179,20 @@ async def callback_set_no_like(query: CallbackQuery,
 
 
 async def callback_send_vote(query: CallbackQuery,
-                            callback_data: CallbackVote, bot: Bot, like_engine: Like):
+                             callback_data: CallbackVote, bot: Bot, like_engine: Like):
 
-    lst = []
-    lst.append(dict(a=2))
+    lst = like_engine.get_all_likes_for_user(int(callback_data.user), int(callback_data.group_id))
+    msg = 's'
+    for i in lst:
+        print(i)
+        msg += str(i.user_id) +' '+ str(i.photo_id)
+
+    msg_id = query.message.message_id
+    like_engine.insert_all_likes(int(callback_data.user), int(callback_data.group_id))
+    like_engine.delete_likes_from_tmp_vote(int(callback_data.user), int(callback_data.group_id))
+    await bot.send_message(int(callback_data.user),msg)
+
+
     # get dict list
     # delete from tmp where user_id = user_id
     pass

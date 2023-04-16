@@ -20,10 +20,7 @@ class ObjectFactory:
 
     @staticmethod
     def build_group(name: str, telegram_id: int) -> Group:
-        if contest_duration_sec is not None:
-            group = Group(name=name, telegram_id=telegram_id)
-        else:
-            group = Group(name=name, telegram_id=telegram_id)
+        group = Group(name=name, telegram_id=telegram_id)
         return group
 
     @staticmethod
@@ -144,10 +141,44 @@ class Like(BaseDb):
                 ret.append(photos.id)
         return ret
 
-    def insert_all_likes(self, user_id: int, lst: list[tmp_photo_like]):
-        stmt = insert(photo_like)
+    def get_all_likes_for_user(self, u_telegram_id: int, g_telegram_id: int):
+        ret: list = []
+        stmt = (
+            select(tmp_photo_like)
+            .join(Photo)
+            .join(group_photo)
+            .join(Group)
+            .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
+        )
         with Session(self.engine) as session, session.begin():
-            session.execute(insert(photo_like), lst)
+            for row in session.execute(stmt):
+                ret.append(row)
+        return ret
+
+    def delete_likes_from_tmp_vote(self, u_telegram_id: int, g_telegram_id: int):
+        ret: list = []
+        stmt = (
+            delete(tmp_photo_like)
+            .join(Photo)
+            .join(group_photo)
+            .join(Group)
+            .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
+        )
+        with Session(self.engine) as session, session.begin():
+            session.execute(stmt)
+        return ret
+
+    def insert_all_likes(self, u_telegram_id: int, g_telegram_id: int):
+        select_stmt = (
+            select(tmp_photo_like)
+            .join(Photo)
+            .join(group_photo)
+            .join(Group)
+            .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
+        )
+        stmt = insert(photo_like).from_select(["photo_id", "user_id"], select_stmt)
+        with Session(self.engine) as session, session.begin():
+            session.execute(stmt)
 
 
 class Register(BaseDb):
@@ -657,7 +688,7 @@ def register_user_and_group(engine, group: Group,
 
 def init_test_data(engine, name: str, usertg_id: int, tggroup_id: int):
     object_factory = ObjectFactory()
-    group = object_factory.build_group(name, tggroup_id, "отсутствует")
+    group = object_factory.build_group(name, tggroup_id)
     user = object_factory.build_user(name, name + " Foobar", usertg_id)
     register_user_and_group(engine, group, user, tggroup_id)
 
