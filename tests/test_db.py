@@ -16,7 +16,7 @@ class TUser:
 
     def __init__(self, name, i_id):
         self.name = name
-        self.fullname = name + ' ' + name
+        self.full_name = name + ' ' + name
         self.id = i_id
 
 
@@ -34,6 +34,7 @@ def group():
                   group_id=100)
 
 
+@pytest.fixture
 def user():
     return TUser(name="User №"
                       + str(random.randint(1, 100)),
@@ -55,7 +56,7 @@ def registered_user(registered_group, group, user, db):
 
     register_unit = registered_group
     register_unit.register_user(m_user, m_group.telegram_id, m_group)
-    return m_user, m_group
+    return register_unit
 
 
 def test_is_group_registered(registered_group, group):
@@ -70,7 +71,17 @@ def test_is_group_not_registered(group, db):
     assert register_unit.find_group(telegram_id) is False
 
 
-def test_is_user_registered(group, db):
-    telegram_id = group.group_id
+def test_is_user_registered(registered_user, user, group, db):
+    m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
     register_unit = Register(db)
-    assert register_unit.find_group(telegram_id) is False
+    assert register_unit.find_user_in_group(m_user.telegram_id, m_group.telegram_id) is True
+
+
+def test_is_user_not_registered(registered_group, user, group, db):
+    m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    register_unit = Register(db)
+    assert register_unit.find_user_in_group(m_user.telegram_id, m_group.telegram_id) is False
