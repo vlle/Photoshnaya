@@ -389,16 +389,30 @@ class AdminDB(RegisterDB):
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
 
+    def select_all_administrated_groups(self, telegram_user_id: int) -> list:
+        ret: list = []
+        stmt = (
+                select(User)
+                .join(group_admin)
+                .where(User.telegram_id == telegram_user_id)         
+                )
+        with Session(self.engine) as session, session.begin():
+            ids = session.scalars(stmt)
+            for id in ids:
+                ret.append(id.telegram_id)
+
+        return ret
+
     def check_admin(self, user_id: int, group_id: int) -> bool:
         admin_right = False
         stmt = (
-            select(User)
-            .join(group_admin,
-                  (User.id == group_admin.c.user_id)
-                  )
-            .where(group_admin.c.group_id == (
-                select(Group.id).where(Group.telegram_id == group_id)
-            ).scalar_subquery()))
+                select(User)
+                .join(group_admin,
+                      (User.id == group_admin.c.user_id)
+                      )
+                .where(group_admin.c.group_id == (
+                    select(Group.id).where(Group.telegram_id == group_id)
+                    ).scalar_subquery()))
         with Session(self.engine) as session, session.begin():
             try:
                 admin = session.scalars(stmt).one()
@@ -413,8 +427,8 @@ class AdminDB(RegisterDB):
 
     def set_contest_theme(self, group_id: int, theme: str, contest_duration_sec=604800) -> str:
         stmt_g = (
-            select(Group.id).where(Group.telegram_id == group_id)
-        )
+                select(Group.id).where(Group.telegram_id == group_id)
+                )
         obj_factory = ObjectFactory()
         theme_object = obj_factory.build_contest(theme, contest_duration_sec)
         with Session(self.engine) as session, session.begin():
