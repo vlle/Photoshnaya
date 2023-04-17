@@ -362,9 +362,8 @@ class RegisterDB(SelectDB):
 
             possible_register = session.scalars(stmt_photo_sel).first()
             if possible_register:
-                session.execute(delete(group_photo).
-                                where(group_photo.c.photo_id
-                                      == possible_register.id))
+                return
+
             photo = Photo(file_id=file_get_id, user_id=user.id)
             user.photos.append(photo)
             group.photos.append(photo)
@@ -392,14 +391,15 @@ class AdminDB(RegisterDB):
     def select_all_administrated_groups(self, telegram_user_id: int) -> list:
         ret: list = []
         stmt = (
-                select(User)
+                select(Group)
                 .join(group_admin)
+                .join(User)
                 .where(User.telegram_id == telegram_user_id)         
                 )
         with Session(self.engine) as session, session.begin():
             ids = session.scalars(stmt)
             for id in ids:
-                ret.append(id.telegram_id)
+                ret.append([id.name, id.telegram_id])
 
         return ret
 

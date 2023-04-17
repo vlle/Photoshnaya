@@ -5,6 +5,7 @@ from aiogram.filters.callback_data import CallbackData
 class CallbackManage(CallbackData, prefix="adm"):
     user: str
     action: str
+    msg_id: str
     group_id: str
 
 
@@ -15,16 +16,18 @@ class AdminActions:
     view_votes_id = '2'
     view_submissions_text = "Посмотреть зарегистрированные фотографии"
     view_submissions_id = '3'
+    back = 'b'
 
 
 class AdminKeyboardButtons:
-    def __init__(self, user: str, group_id: str) -> None:
+    def __init__(self, user: str, msg_id: str, group_id: str) -> None:
         self.actions = AdminActions()
         self.finish_contest = InlineKeyboardButton(
                 text=self.actions.finish_contest_text,
                 callback_data=CallbackManage(user=user,
                                            action=self.
                                            actions.finish_contest_id,
+                                           msg_id=msg_id,
                                            group_id=group_id).pack()
                 )
         self.view_votes = InlineKeyboardButton(
@@ -32,6 +35,7 @@ class AdminKeyboardButtons:
                 callback_data=CallbackManage(user=user,
                                            action=self.
                                            actions.view_votes_id,
+                                           msg_id=msg_id,
                                            group_id=group_id).pack()
                 )
         self.view_submissions = InlineKeyboardButton(
@@ -39,13 +43,14 @@ class AdminKeyboardButtons:
                 callback_data=CallbackManage(user=user,
                                            action=self.
                                            actions.view_submissions_id,
+                                           msg_id=msg_id,
                                            group_id=group_id).pack()
                 )
 
 
 class AdminKeyboard:
-    def __init__(self, user: str, group_id: str) -> None:
-        self.buttons = AdminKeyboardButtons(user, group_id)
+    def __init__(self, user_id: str, msg_id: str, group_id: str) -> None:
+        self.buttons = AdminKeyboardButtons(user_id, msg_id, group_id)
         self.keyboard_start = InlineKeyboardMarkup(
                 inline_keyboard=
                 [

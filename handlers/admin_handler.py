@@ -1,11 +1,15 @@
 from asyncio import sleep as async_sleep
 from aiogram import types
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from magic_filter.operations import call
+from db.db_classes import Group
 from utils.TelegramUserClass import TelegramDeserialize
 from handlers.internal_logic.admin import i_set_theme
 from handlers.internal_logic.on_join import i_on_user_join
 from db.db_operations import RegisterDB, AdminDB
-from utils.admin_keyboard import AdminKeyboard
+from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
 
 async def cmd_admin_start(message: types.Message, bot: Bot, admin_unit: AdminDB):
@@ -19,9 +23,60 @@ async def cmd_admin_start(message: types.Message, bot: Bot, admin_unit: AdminDB)
         return
 
     msg = 'Выберите ваше действие'
-    keyboard = AdminKeyboard(str(user.telegram_id), admin_right[0])
+    keyboard = AdminKeyboard(str(user.telegram_id), str(message.message_id), '-1')
     await bot.send_message(message.chat.id, msg, reply_markup=keyboard.keyboard_start)
 
+
+async def callback_back(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    msg = 'Выберите ваше действие'
+    keyboard = AdminKeyboard(callback_data.user, callback_data.msg_id, '-1')
+    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=int(callback_data.msg_id), reply_markup=keyboard.keyboard_start)
+
+
+async def cmd_choose_group(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    admin_right = admin_unit.select_all_administrated_groups(int(callback_data.user))
+    if len(admin_right) == 0 or not query.message:
+        msg = 'Ты не являешься администратором для меня.'
+        await bot.send_message(int(callback_data.user), msg)
+        return
+
+    builder = InlineKeyboardBuilder()
+    data = callback_data
+    callback_data.msg_id = str(query.message.message_id)
+
+    for admin in admin_right:
+        data.group_id = admin[1]
+        builder.button(text=f"{admin[0]}", callback_data=data)
+    
+    copy_data = data
+    copy_data.action = 'b'
+    builder.button(text=f"Назад", callback_data=copy_data)
+    builder.adjust(1, 1)
+    print(callback_data)
+    
+    msg = 'Выберите группу'
+    try:
+        await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=builder.as_markup())
+    except TelegramBadRequest:
+        if data.group_id == '-1':
+            await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id)
+        else:
+            if data.action == AdminActions.finish_contest_id:
+                await bot.send_message(text='finish_contest_id', chat_id=callback_data.user)
+            elif data.action == AdminActions.view_votes_id:
+                await bot.send_message(text='view_votes_id', chat_id=callback_data.user)
+            elif data.action == AdminActions.view_submissions_id:
+                await bot.send_message(text='view_submissions_id', chat_id=callback_data.user)
+
+async def view_votes(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    pass
+
+async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    pass
+
+
+async def finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    pass
 
 async def cmd_help(message: types.Message, bot: Bot, admin_unit: AdminDB):
     if not message.text or not message.from_user:
