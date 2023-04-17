@@ -1,6 +1,6 @@
 from aiogram import types
 from db.db_operations import ObjectFactory, RegisterDB
-from utils.TelegramUserClass import Photo, TelegramChat, TelegramDeserialize, TelegramUser
+from utils.TelegramUserClass import Photo, TelegramChat, TelegramDeserialize, TelegramUser, Document
 from handlers.internal_logic.register import _register_photo
 
 async def register_photo(message: types.Message, register_unit: RegisterDB):
@@ -15,6 +15,11 @@ async def register_photo(message: types.Message, register_unit: RegisterDB):
         photo = Photo(message.photo[-1].file_id)
         ret_msg = _register_photo(user, chat, register_unit, photo)
         await message.answer(ret_msg)
+    elif message.document:
+        document = Document(message.document.file_id)
+        ret_msg = _register_photo(user, chat, register_unit, document)
+        await message.answer(ret_msg)
+        #await message.answer("no photo")
 
 def is_valid_input(caption: str | None, register: RegisterDB, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
     if not caption:

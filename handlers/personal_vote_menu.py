@@ -1,3 +1,6 @@
+import logging
+
+from aiogram.exceptions import TelegramBadRequest
 from aiogram import types
 from aiogram import Bot
 from aiogram.filters import callback_data
@@ -22,7 +25,7 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
 
     vote_db = VoteDB(like_engine.engine)
 
-    if vote_db.is_user_not_allowed_to_vote(int(callback_data.group_id), int(callback_data.user)) is True:
+    if vote_db.is_user_not_allowed_to_vote(int(group_id), int(message.from_user.id)) is True:
         msg = 'Вы уже голосовали в этом челлендже, увы'
         await bot.send_message(chat_id=message.chat.id, text=msg)
         return
@@ -38,12 +41,21 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     build_keyboard = Keyboard(user=str(user_id), amount_photos=str(amount_photo),
                               current_photo_id=file_id[1], current_photo_count='1', group_id=group_id)
     is_liked_photo = like_engine.is_photo_liked(user_id, file_id[1])
+#TODO: refactor document part and liked keyboard possibly
     if is_liked_photo <= 0:
-        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0],
-                             reply_markup=build_keyboard.keyboard_start)
+        try:
+            await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0],
+                                 reply_markup=build_keyboard.keyboard_start)
+        except TelegramBadRequest:
+            await bot.send_document(chat_id=message.chat.id, caption=msg, document=file_id[0],
+                                 reply_markup=build_keyboard.keyboard_start)
     else:
-        await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0],
-                             reply_markup=build_keyboard.keyboard_start_liked)
+        try:
+            await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0],
+                                 reply_markup=build_keyboard.keyboard_start_liked)
+        except TelegramBadRequest:
+            await bot.send_document(chat_id=message.chat.id, caption=msg, document=file_id[0],
+                                    reply_markup=build_keyboard.keyboard_start_liked)
 
 
 async def callback_next(query: CallbackQuery,

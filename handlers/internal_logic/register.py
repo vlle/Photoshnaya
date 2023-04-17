@@ -11,7 +11,7 @@ def _register_photo(user_object: TelegramUser, chat_object: TelegramChat, regist
     group = object_factory.build_group(chat_object.full_name,
                                        chat_object.telegram_id)
     register.register_user(user, chat_object.telegram_id)
-    if isinstance(contest_material, Photo):
+    if isinstance(contest_material, Photo) or isinstance(contest_material, Document):
         register.register_photo_for_contest(
                 user_object.telegram_id,
                 chat_object.telegram_id, 
