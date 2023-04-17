@@ -332,16 +332,22 @@ class RegisterDB(SelectDB):
 
         return "Добавил администратора."
 
-    def register_photo_for_contest(self, tg_id: int, grtg_id: int,
+    def register_photo_for_contest(self, user_tg_id: int, grtg_id: int,
                                    file_get_id='-1', user_p=None, group_p=None):
         stmt_sel = (
             select(User)
-            .where(User.telegram_id == tg_id)
+            .where(User.telegram_id == user_tg_id)
         )
         stmtg_sel = (
             select(Group)
             .where(Group.telegram_id == grtg_id)
         )
+        stmt_photo_sel = (
+                select(Photo)
+                .join(group_photo)
+                .join(User)
+                .where(User.telegram_id == user_tg_id)
+                )
         with Session(self.engine) as session, session.begin():
             try:
                 user = session.scalars(stmt_sel).one()
@@ -354,6 +360,11 @@ class RegisterDB(SelectDB):
                 user = session.scalars(stmt_sel).one()
                 group = session.scalars(stmtg_sel).one()
 
+            possible_register = session.scalars(stmt_photo_sel).first()
+            if possible_register:
+                session.execute(delete(group_photo).
+                                where(group_photo.c.photo_id
+                                      == possible_register.id))
             photo = Photo(file_id=file_get_id, user_id=user.id)
             user.photos.append(photo)
             group.photos.append(photo)
