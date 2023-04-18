@@ -1,7 +1,7 @@
 import random
 
 from sqlalchemy import create_engine, Engine
-from db.db_operations import RegisterDB, ObjectFactory
+from db.db_operations import AdminDB, RegisterDB, ObjectFactory
 from db.db_classes import Base, User
 import pytest
 
@@ -153,3 +153,15 @@ def test_is_photo_registered_without_duplicating_submissions(create_user, group,
         register_unit.register_photo_for_contest(user.telegram_id, m_group.telegram_id)
     all_photo_ids = register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
+
+def test_is_vote_not_started(create_user, group, db):
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    assert AdminUnit.get_current_vote_status(m_group.telegram_id) == False
+
+
+def test_is_vote_started(create_user, group, db):
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    # start vote
+    assert AdminUnit.get_current_vote_status(m_group.telegram_id) == True

@@ -11,9 +11,9 @@ class CallbackManage(CallbackData, prefix="adm"):
 
 class AdminActions:
     chosen_group = 'cg'
-    finish_contest_text = "Завершить челлендж и начать голосование 🗳"
+    finish_contest_text = "Начать голосование 🗳"
     finish_contest_id = '1'
-    finish_vote_text = "Завершить голосование и узнать его результаты 🗳"
+    finish_vote_text = "Завершить голосование 🗳"
     finish_vote_id = '1'
     view_votes_text = "Посмотреть текущие голоса"
     view_votes_id = '3'
@@ -73,10 +73,18 @@ class AdminKeyboard:
 
     def __init__(self, user_id: str, msg_id: str, group_id: str) -> None:
         self.buttons = AdminKeyboardButtons(user_id, msg_id, group_id)
-        self.keyboard_start = InlineKeyboardMarkup(
+        self.keyboard_no_vote = InlineKeyboardMarkup(
                 inline_keyboard=
                 [
                     [self.buttons.finish_contest],
+                    [self.buttons.view_votes],
+                    [self.buttons.view_submissions],
+                    [self.buttons.back]
+                    ]
+                )
+        self.keyboard_vote_in_progress = InlineKeyboardMarkup(
+                inline_keyboard=
+                [
                     [self.buttons.finish_vote],
                     [self.buttons.view_votes],
                     [self.buttons.view_submissions],

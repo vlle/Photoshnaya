@@ -62,7 +62,7 @@ async def main():
 
     # dp.errors register
     dp.message.register(cmd_choose_group, Command(commands=["admin"]))
-    dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.back))
+    dp.callback_query.register(callback_back, CallbackManage.filter(F.action == AdminActions.back))
     dp.callback_query.register(cmd_action_choose, CallbackManage.filter(F.action == AdminActions.chosen_group))
     # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.finish_contest_id))
     # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_votes_id))

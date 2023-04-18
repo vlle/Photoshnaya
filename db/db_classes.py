@@ -3,7 +3,7 @@ from typing import List
 from typing import Optional
 import datetime
 from sqlalchemy.orm import Mapped
-from sqlalchemy import String, ForeignKey, Table, Column, DateTime
+from sqlalchemy import Boolean, String, ForeignKey, Table, Column, DateTime
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -127,6 +127,7 @@ class Group(Base):
     telegram_id: Mapped[int]
 
     contest: Mapped["Contest"] = relationship(back_populates="group")
+    vote_in_progress: Mapped[int] = mapped_column(Boolean, default=False)
 
     created_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=functions.now()

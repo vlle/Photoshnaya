@@ -15,9 +15,29 @@ from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
 
 async def callback_back(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
-    msg = 'Выберите ваше действие'
-    keyboard = AdminKeyboard(callback_data.user, callback_data.msg_id, '-1')
-    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=int(callback_data.msg_id), reply_markup=keyboard.keyboard_start)
+    admin_right = admin_unit.select_all_administrated_groups(int(callback_data.user))
+
+    if not query.message:
+        return
+    if len(admin_right) == 0:
+        msg = 'Ты не являешься администратором.\nЧтобы стать администратором в группе -- добавь меня с правами админа в чат.'
+        await bot.send_message(int(callback_data.user), msg)
+        return
+
+    builder = InlineKeyboardBuilder()
+    data = callback_data
+    data.action = AdminActions.chosen_group
+    data.group_id = '-1'
+
+
+    for admin in admin_right:
+        data.group_id = admin[1]
+        builder.button(text=f"{admin[0]}", callback_data=data.pack())
+
+    builder.adjust(1, 1)
+
+    msg = 'Выберите группу'
+    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=builder.as_markup())
 
 
 async def cmd_choose_group(message: types.Message, bot: Bot, admin_unit: AdminDB):
@@ -55,7 +75,15 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot, callback_data:
     msg = 'Выберите ваше действие'
     print(callback_data)
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_start)
+    if 'vote' == 'vote':
+        await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_no_vote)
+    else:
+        await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_vote_in_progress)
+
+
+
+async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    pass
 
     #except TelegramBadRequest:
     #    if data.group_id == '-1':
