@@ -129,6 +129,33 @@ def test_is_5_users_not_registered(create_user, group, db):
     for user in users:
         assert register_unit.find_user_in_group(user.telegram_id, m_group.telegram_id + 110) is False
 
+
+def test_is_admin_registered(create_user, group, db):
+    users: list[User] = []
+    for _ in range(0, 5):
+        users.append(create_user())
+    register_unit = RegisterDB(db)
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    m_user = ObjectFactory.build_user(users[0].name, users[0].name + ' Ivanov', users[0].telegram_id)
+    register_unit.register_admin(m_user, m_group.telegram_id)
+
+    m_user = ObjectFactory.build_user(users[0].name, users[0].name + ' Ivanov', users[0].telegram_id)
+    
+    assert AdminUnit.check_admin(m_user.telegram_id, m_group.telegram_id) is True
+
+
+def test_is_admin_not_registered(create_user, group, db):
+    users: list[User] = []
+    for _ in range(0, 5):
+        users.append(create_user())
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    m_user = ObjectFactory.build_user(users[0].name, users[0].name + ' Ivanov', users[0].telegram_id)
+    
+    assert AdminUnit.check_admin(m_user.telegram_id, m_group.telegram_id) is False
+
+
 def test_is_photo_registered(create_user, group, db):
     users: list[User] = []
     for user in range(0, 5):
@@ -140,6 +167,7 @@ def test_is_photo_registered(create_user, group, db):
         register_unit.register_photo_for_contest(user.telegram_id, m_group.telegram_id)
     all_photo_ids = register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
+
 
 def test_is_photo_registered_without_duplicating_submissions(create_user, group, db):
     users: list[User] = []
@@ -154,6 +182,7 @@ def test_is_photo_registered_without_duplicating_submissions(create_user, group,
     all_photo_ids = register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
 
+
 def test_is_vote_not_started(create_user, group, db):
     AdminUnit = AdminDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -163,5 +192,16 @@ def test_is_vote_not_started(create_user, group, db):
 def test_is_vote_started(create_user, group, db):
     AdminUnit = AdminDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
-    # start vote
+    AdminUnit.change_current_vote_status(m_group.telegram_id)
+
     assert AdminUnit.get_current_vote_status(m_group.telegram_id) == True
+
+def test_is_vote_changed_again(create_user, group, db):
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    cur_res = AdminUnit.get_current_vote_status(m_group.telegram_id)
+    AdminUnit.change_current_vote_status(m_group.telegram_id)
+    AdminUnit.change_current_vote_status(m_group.telegram_id)
+    new_res = AdminUnit.get_current_vote_status(m_group.telegram_id)
+
+    assert cur_res == new_res

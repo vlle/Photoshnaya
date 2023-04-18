@@ -144,7 +144,7 @@ class Group(Base):
 
     def __repr__(self) -> str:
         return f"Group(id={self.id!r}, name={self.name!r}, telegram_\
-                id={self.telegram_id!r})"
+                id={self.telegram_id!r}), vote_status={self.vote_in_progress}"
 
 
 class Contest(Base):

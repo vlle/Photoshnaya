@@ -388,12 +388,29 @@ class AdminDB(RegisterDB):
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
 
+    def change_current_vote_status(self, group_id: int) -> bool:
+        ret: bool = False
+        stmt = (
+                select(Group)
+                .where(Group.telegram_id == group_id)
+                )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt).first()
+            print(res)
+            if res:
+                if res.vote_in_progress == False:
+                    res.vote_in_progress = True
+                    ret = True
+                else:
+                    res.vote_in_progress = False
+                    ret = False
+
+        return ret
+
     def get_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False
         stmt = (
                 select(Group)
-                .join(group_admin)
-                .join(User)
                 .where(Group.telegram_id == group_id)
                 )
         with Session(self.engine) as session, session.begin():
