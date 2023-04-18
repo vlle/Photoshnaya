@@ -16,7 +16,7 @@ from utils.keyboard import Actions, CallbackVote
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
-from handlers.admin_handler import callback_back, cmd_admin_start, cmd_choose_group, cmd_help, get_all_photos, set_theme, get_theme, on_user_join
+from handlers.admin_handler import callback_back, cmd_action_choose, cmd_choose_group, cmd_help, get_all_photos, set_theme, get_theme, on_user_join
 from handlers.vote import finish_contest
 from handlers.personal_vote_menu import cmd_start, callback_next, \
     callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
@@ -60,11 +60,13 @@ async def main():
     dp.callback_query.register(callback_send_vote, CallbackVote.filter(F.action == Actions.finish_text))
 
 
-    dp.message.register(cmd_admin_start, Command(commands=["admin"]))
-    dp.callback_query.register(callback_back, CallbackManage.filter(F.action == AdminActions.back))
-    dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.finish_contest_id))
-    dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_votes_id))
-    dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_submissions_id))
+    # dp.errors register
+    dp.message.register(cmd_choose_group, Command(commands=["admin"]))
+    dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.back))
+    dp.callback_query.register(cmd_action_choose, CallbackManage.filter(F.action == AdminActions.chosen_group))
+    # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.finish_contest_id))
+    # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_votes_id))
+    # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_submissions_id))
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,

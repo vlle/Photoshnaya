@@ -12,19 +12,6 @@ from db.db_operations import RegisterDB, AdminDB
 from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
 
-async def cmd_admin_start(message: types.Message, bot: Bot, admin_unit: AdminDB):
-    if not message.text:
-        return
-    user, _ = TelegramDeserialize.unpack(message)
-    admin_right = admin_unit.select_all_administrated_groups(user.telegram_id)
-    if len(admin_right) == 0:
-        msg = 'Ты не являешься администратором для меня.'
-        await bot.send_message(message.chat.id, msg)
-        return
-
-    msg = 'Выберите ваше действие'
-    keyboard = AdminKeyboard(str(user.telegram_id), str(message.message_id), '-1')
-    await bot.send_message(message.chat.id, msg, reply_markup=keyboard.keyboard_start)
 
 
 async def callback_back(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
@@ -33,40 +20,65 @@ async def callback_back(query: types.CallbackQuery, bot: Bot, callback_data: Cal
     await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=int(callback_data.msg_id), reply_markup=keyboard.keyboard_start)
 
 
-async def cmd_choose_group(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
-    admin_right = admin_unit.select_all_administrated_groups(int(callback_data.user))
-    if len(admin_right) == 0 or not query.message:
-        msg = 'Ты не являешься администратором для меня.'
-        await bot.send_message(int(callback_data.user), msg)
+async def cmd_choose_group(message: types.Message, bot: Bot, admin_unit: AdminDB):
+    if not message.text:
+        return
+    user, _ = TelegramDeserialize.unpack(message)
+    admin_right = admin_unit.select_all_administrated_groups(user.telegram_id)
+
+    if len(admin_right) == 0:
+        msg = 'Ты не являешься администратором.\nЧтобы стать администратором в группе -- добавь меня с правами админа в чат.'
+        await bot.send_message(user.telegram_id, msg)
         return
 
     builder = InlineKeyboardBuilder()
-    data = callback_data
-    callback_data.msg_id = str(query.message.message_id)
+    data = CallbackManage(user=str(user.telegram_id),
+                         action=AdminActions.chosen_group,
+                         msg_id=str(user.message_id),
+                         group_id='-1')
+
 
     for admin in admin_right:
         data.group_id = admin[1]
-        builder.button(text=f"{admin[0]}", callback_data=data)
-    
-    copy_data = data
-    copy_data.action = 'b'
-    builder.button(text=f"Назад", callback_data=copy_data)
+        builder.button(text=f"{admin[0]}", callback_data=data.pack())
+
     builder.adjust(1, 1)
-    print(callback_data)
-    
+
     msg = 'Выберите группу'
-    try:
-        await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=builder.as_markup())
-    except TelegramBadRequest:
-        if data.group_id == '-1':
-            await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id)
-        else:
-            if data.action == AdminActions.finish_contest_id:
-                await bot.send_message(text='finish_contest_id', chat_id=callback_data.user)
-            elif data.action == AdminActions.view_votes_id:
-                await bot.send_message(text='view_votes_id', chat_id=callback_data.user)
-            elif data.action == AdminActions.view_submissions_id:
-                await bot.send_message(text='view_submissions_id', chat_id=callback_data.user)
+    await bot.send_message(user.telegram_id, msg, reply_markup=builder.as_markup())
+
+
+async def cmd_action_choose(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+
+    if not query.message:
+        return
+    msg = 'Выберите ваше действие'
+    print(callback_data)
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_start)
+
+    #except TelegramBadRequest:
+    #    if data.group_id == '-1':
+    #        await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id)
+    #        print(1)
+    #    else:
+    #        keyboard = AdminKeyboard(callback_data.user, callback_data.msg_id, callback_data.group_id)
+    #        if data.action == AdminActions.finish_contest_id:
+    #            # start vote availability
+    #                # TODO: add contest generation link
+    #            # show top 3 res 
+    #            # show all res
+    #            msg = f'Ссылка для голосования: https://t.me/Photoshnaya_bot?start={data.group_id}'
+    #            await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
+    #        elif data.action == AdminActions.view_votes_id:
+    #            # show all res
+    #            await bot.send_message(text='view_votes_id', chat_id=callback_data.user)
+    #        elif data.action == AdminActions.view_submissions_id:
+    #            # show all photo as media group
+    #            await bot.send_message(text='view_submissions_id', chat_id=callback_data.user)
+    #        elif data.action == AdminActions.back:
+    #            await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
+
 
 async def view_votes(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
     pass
@@ -77,6 +89,8 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: 
 
 async def finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
     pass
+
+
 
 async def cmd_help(message: types.Message, bot: Bot, admin_unit: AdminDB):
     if not message.text or not message.from_user:
