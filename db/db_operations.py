@@ -83,6 +83,15 @@ class SelectDB(BaseDB):
             res = res.telegram_type
         return res
 
+    def select_file_type_by_file_id(self, id: int) -> str:
+        stmt = (
+                select(Photo)
+                .where(Photo.file_id == id)
+                )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt).one()
+            res = res.telegram_type
+        return res
 
     def find_group(self, telegram_id: int) -> bool:
         stmt = (
@@ -183,6 +192,24 @@ class SelectDB(BaseDB):
             photos = session.scalars(stmt_g)
             for photo in photos:
                 ret.append(photo.file_id)
+        return ret
+
+    def select_contest_photos_ids_and_types(self, group_id: int) -> list:
+        ret = []
+        stmt_g = (
+            select(Photo)
+            .join(
+                group_photo,
+                (Photo.id == group_photo.c.photo_id)
+            )
+            .where(group_photo.c.group_id == (
+                select(Group.id)
+                .where(Group.telegram_id == group_id).scalar_subquery()))
+        )
+        with Session(self.engine) as session, session.begin():
+            photos = session.scalars(stmt_g)
+            for photo in photos:
+                ret.append([photo.file_id, photo.telegram_type])
         return ret
 
     def get_current_vote_status(self, group_id: int) -> bool:
@@ -394,6 +421,7 @@ class RegisterDB(SelectDB):
                 return
 
             photo = Photo(file_id=file_get_id, user_id=user.id, telegram_type=type)
+            
             user.photos.append(photo)
             group.photos.append(photo)
             session.add(photo)

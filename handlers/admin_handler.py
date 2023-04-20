@@ -1,9 +1,11 @@
 from asyncio import sleep as async_sleep
 from aiogram import types
 from aiogram import Bot
+from aiogram.types import InputMediaDocument, InputMediaPhoto, document
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from magic_filter.operations import call
+from sqlalchemy.util.langhelpers import counter
 from db.db_classes import Group
 from utils.TelegramUserClass import TelegramDeserialize
 from handlers.internal_logic.admin import i_set_theme
@@ -102,34 +104,51 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot, callback_data: C
     await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
 
 
-    #except TelegramBadRequest:
-    #    if data.group_id == '-1':
-    #        await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id)
-    #        print(1)
-    #    else:
-    #        keyboard = AdminKeyboard(callback_data.user, callback_data.msg_id, callback_data.group_id)
-    #        if data.action == AdminActions.finish_contest_id:
-    #            # start vote availability
-    #                # TODO: add contest generation link
-    #            # show top 3 res 
-    #            # show all res
-    #            msg = f'Ссылка для голосования: https://t.me/Photoshnaya_bot?start={data.group_id}'
-    #            await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
-    #        elif data.action == AdminActions.view_votes_id:
-    #            # show all res
-    #            await bot.send_message(text='view_votes_id', chat_id=callback_data.user)
-    #        elif data.action == AdminActions.view_submissions_id:
-    #            # show all photo as media group
-    #            await bot.send_message(text='view_submissions_id', chat_id=callback_data.user)
-    #        elif data.action == AdminActions.back:
-    #            await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
-
 
 async def view_votes(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
     pass
 
 async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
-    pass
+    cb = callback_data
+
+    ids = admin_unit.select_contest_photos_ids_and_types(int(cb.group_id))
+    if len(ids) == 0:
+        return
+    if len(ids) == 1:
+        if ids[0][1] == 'photo':
+            obj = InputMediaPhoto(type='photo', media=ids[0][0])
+            await bot.send_photo(chat_id=query.from_user.id, photo=ids[0][0])
+        else:
+            await bot.send_document(chat_id=query.from_user.id, document=ids[0][0])
+
+    submissions_photos = []
+    submissions_docs = []
+    all_counter = 0
+    for id in ids:
+        if id[1] == 'photo':
+            if len(submissions_docs) > 1:
+                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
+            elif len(submissions_docs) == 1:
+                await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0])
+            submissions_docs.clear()
+            obj = InputMediaPhoto(type='photo', media=id[0])
+            submissions_photos.append(obj)
+        else:
+            if len(submissions_photos) > 1:
+                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
+            elif len(submissions_photos) == 1:
+                await bot.send_photo(chat_id=query.from_user.id, photo=submissions_photos[0])
+            submissions_photos.clear()
+            obj = InputMediaDocument(type='document', media=id[0])
+            submissions_docs.append(obj)
+        all_counter += 1
+        if len(submissions_photos) == 10 or len(submissions_docs) == 10:
+            if len(submissions_docs) == 10:
+                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
+                submissions_docs.clear()
+            else:
+                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
+                submissions_photos.clear()
 
 
 async def finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
@@ -178,6 +197,7 @@ async def get_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
     msg = f"Текущая тема: {theme}"
     await bot.send_message(message.chat.id, msg)
 
+
 async def get_all_photos(message: types.Message, bot: Bot, admin_unit: AdminDB):
     if not message.text or not message.from_user:
         return
@@ -191,7 +211,10 @@ async def get_all_photos(message: types.Message, bot: Bot, admin_unit: AdminDB):
 
     ids = admin_unit.select_contest_photos_ids(int(group_id))
     for id in ids:
-        await bot.send_photo(chat_id=message.chat.id, photo=id)
+        if admin_unit.select_file_type_by_file_id(id) == 'photo':
+            await bot.send_photo(chat_id=message.chat.id, photo=id)
+        else:
+            await bot.send_document(chat_id=message.chat.id, document=id)
         await async_sleep(0.5)
 
 async def on_user_join(message: types.Message, bot: Bot, register_unit: RegisterDB):
