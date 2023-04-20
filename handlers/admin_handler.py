@@ -1,7 +1,7 @@
 from asyncio import sleep as async_sleep
 from aiogram import types
 from aiogram import Bot
-from aiogram.types import InputMediaDocument, InputMediaPhoto, document
+from aiogram.types import CallbackQuery, InputMediaDocument, InputMediaPhoto, document
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from magic_filter.operations import call
@@ -125,21 +125,14 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: 
     submissions_docs = []
     for id in ids:
         if id[1] == 'photo':
-            if len(submissions_docs) > 1:
-                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
-            elif len(submissions_docs) == 1:
-                await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0].media)
-            submissions_docs.clear()
+            await send_other_type(submissions_docs, bot, query)
             obj = InputMediaPhoto(type='photo', media=id[0])
             submissions_photos.append(obj)
         else:
-            if len(submissions_photos) > 1:
-                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
-            elif len(submissions_photos) == 1:
-                await bot.send_photo(chat_id=query.from_user.id, photo=submissions_photos[0])
-            submissions_photos.clear()
+            await send_other_type(submissions_photos, bot, query)
             obj = InputMediaDocument(type='document', media=id[0])
             submissions_docs.append(obj)
+
         if len(submissions_photos) == 10 or len(submissions_docs) == 10:
             if len(submissions_docs) == 10:
                 await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
@@ -156,12 +149,23 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: 
         if len(submissions_docs) > 1:
             await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
         elif len(submissions_docs) == 1:
-            print(submissions_docs[0])
             await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0].media)
 
     del submissions_photos
     del submissions_docs
 
+
+async def send_other_type(list_of_object: list[InputMediaDocument | InputMediaPhoto], bot: Bot, query: CallbackQuery):
+    if len(list_of_object) == 0:
+        return
+    if len(list_of_object) > 1:
+        await bot.send_media_group(chat_id=query.from_user.id, media=list_of_object)
+    elif len(list_of_object) == 1 and isinstance(list_of_object[0], InputMediaDocument):
+        await bot.send_document(chat_id=query.from_user.id, document=list_of_object[0].media)
+    elif len(list_of_object) == 1 and isinstance(list_of_object[0], InputMediaPhoto):
+        await bot.send_photo(chat_id=query.from_user.id, photo=list_of_object[0].media)
+    list_of_object.clear()
+    await async_sleep(0.5)
 
 async def finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
     pass

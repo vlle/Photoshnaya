@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from sqlalchemy import Engine
 
+from sqlalchemy.sql import func
+
 
 class ObjectFactory:
 
@@ -246,6 +248,18 @@ class LikeDB(SelectDB):
 
         return likes
 
+    def like_photo_with_file_id(self, tg_id: int, p_id: int) -> int:
+        search_stmt_user = select(User).where(User.telegram_id == tg_id)
+        search_stmt_photo = select(Photo).where(Photo.file_id == p_id)
+        likes = 0
+        with Session(self.engine) as session, session.begin():
+            user = session.scalars(search_stmt_user).one()
+            photo = session.scalars(search_stmt_photo).one()
+            stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
+            session.execute(stmt)
+
+        return likes
+
     def remove_like_photo(self, tg_id: int, photo_id: int) -> None:
         stmt = (
             delete(tmp_photo_like)
@@ -303,12 +317,13 @@ class LikeDB(SelectDB):
     def insert_all_likes(self, u_telegram_id: int, g_telegram_id: int):
         select_stmt = (
             select(tmp_photo_like)
-            .join(Photo)
-            .join(group_photo)
-            .join(Group)
+            .join(User, User.id == tmp_photo_like.c.user_id)
+            .join(group_photo, tmp_photo_like.c.photo_id == group_photo.c.photo_id)
+            .join(Photo, Photo.id == tmp_photo_like.c.photo_id)
+            .join(Group, Group.id == group_photo.c.group_id)
             .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
         )
-        stmt = insert(photo_like).from_select(["photo_id", "user_id"], select_stmt)
+        stmt = insert(photo_like).from_select(["user_id", "photo_id"], select_stmt)
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
 
@@ -338,6 +353,21 @@ class VoteDB(LikeDB):
             for _ in res:
                 allow += 1
             return allow > 0
+
+    def select_winner_from_contest(self, telegram_group_id: int):
+        stmt = (
+                select(photo_like.c.photo_id, 
+                      func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                .join(Group, group_photo.c.group_id == Group.id)
+                .where(Group.telegram_id == telegram_group_id)
+                .group_by(photo_like.c.photo_id).order_by(func.count(photo_like.c.photo_id).desc())
+        )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt).first()
+            if not res:
+                return -1
+            return res
 
 
 class RegisterDB(SelectDB):
@@ -417,8 +447,8 @@ class RegisterDB(SelectDB):
                 group = session.scalars(stmtg_sel).one()
 
             possible_register = session.scalars(stmt_photo_sel).first()
-            # if possible_register:
-            #     return
+            if possible_register:
+                return
 
             photo = Photo(file_id=file_get_id, user_id=user.id, telegram_type=type)
             
