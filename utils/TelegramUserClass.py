@@ -22,8 +22,12 @@ class TelegramUser(TelegramEntity):
 
 
 class TelegramChat(TelegramEntity):
-    def __init__(self, username: str | None, full_name: str, telegram_id: int, message_id: int) -> None:
+    def __init__(self, username: str | None, full_name: str, telegram_id: int, message_id: int, chat_type: str) -> None:
         super().__init__(username, full_name, telegram_id, message_id)
+        if chat_type:
+            self.chat_type = chat_type
+        else:
+            self.chat_type = 'group'
 
 
 class TelegramDeserialize():
@@ -33,12 +37,12 @@ class TelegramDeserialize():
             user = TelegramUser(message.from_user.username, message.from_user.full_name,
                                 message.from_user.id, message.chat.id, -1)
             chat = TelegramChat(message.chat.username, message.chat.full_name,
-                                message.chat.id, -1)
+                                message.chat.id, -1, message.chat.type)
         else:
             user = TelegramUser(message.from_user.username, message.from_user.full_name,
                                 message.from_user.id, message.chat.id, message.message_id)
             chat = TelegramChat(message.chat.username, message.chat.full_name,
-                                message.chat.id, message.message_id)
+                                message.chat.id, message.message_id, message.chat.type)
         return user, chat
 
 

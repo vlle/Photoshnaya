@@ -1,64 +1,48 @@
+import tomllib
 from aiogram.exceptions import TelegramBadRequest
 from aiogram import types
 from aiogram import Bot
-from aiogram.filters import callback_data
 from aiogram.types import CallbackQuery, InputMediaPhoto
+from handlers.internal_logic.vote_start import i_start
+from utils.TelegramUserClass import TelegramDeserialize
 from utils.keyboard import Keyboard, CallbackVote
 from db.db_operations import LikeDB, VoteDB
 
 
 async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
+    with open("handlers/handlers_text/text.toml", "rb") as f:
+        data = tomllib.load(f)
     if not message.text or not message.from_user:
         return
-    message.answer(message.text)
-    start_data = message.text.replace('_', ' ')
-    start_data = start_data.split( )
-    if len(start_data) != 3:
-        return
-    if message.chat.type != 'private':
-        return
-    group_id = int(start_data[1])
-    #not sure if needed contest_id = start_data[2]
-    print(start_data)
-    try:
-        photo_ids = like_engine.select_contest_photos_ids(group_id)
-        if len(photo_ids) == 0:
-            print("no photos") 
-            return
-    except:
-        await bot.send_message(text="Ошибка в cmd_start, не сгенерировалось голосование", chat_id=message.chat.id)
-        return
+    user, chat = TelegramDeserialize.unpack(message)
+    return_text, err, photo_ids = await i_start(chat, user, message.text, like_engine)
 
-    vote_db = VoteDB(like_engine.engine)
-    if vote_db.get_current_vote_status(group_id) == False:
-        await bot.send_message(text="Голосование не запущено.", chat_id=message.chat.id)
+    if err or not photo_ids:
+        await message.answer(return_text)
         return
 
     amount_photo = 0
     for _ in photo_ids:
         amount_photo += 1
-
-    print(callback_data)
-    msg = "Голосуйте за фотографии!"
     user_id = message.from_user.id
-    file_id = like_engine.select_next_contest_photo(int(group_id), 0)
+    file_id = like_engine.select_next_contest_photo(chat.telegram_id, 0)
     build_keyboard = Keyboard(user=str(user_id), amount_photos=str(amount_photo),
-                              current_photo_id=file_id[1], current_photo_count='1', group_id=str(group_id))
+                              current_photo_id=file_id[1], current_photo_count='1', group_id=str(chat.telegram_id))
     is_liked_photo = like_engine.is_photo_liked(user_id, file_id[1])
 #TODO: refactor document part and liked keyboard possibly
     if is_liked_photo <= 0:
         try:
-            await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0],
+            await bot.send_photo(chat_id=message.chat.id, caption=return_text, photo=file_id[0],
                                  reply_markup=build_keyboard.keyboard_start)
         except TelegramBadRequest:
-            await bot.send_document(chat_id=message.chat.id, caption=msg, document=file_id[0],
+            await bot.send_document(chat_id=message.chat.id, caption=return_text, document=file_id[0],
                                  reply_markup=build_keyboard.keyboard_start)
     else:
         try:
-            await bot.send_photo(chat_id=message.chat.id, caption=msg, photo=file_id[0],
+            await bot.send_photo(chat_id=message.chat.id, caption=return_text, photo=file_id[0],
                                  reply_markup=build_keyboard.keyboard_start_liked)
         except TelegramBadRequest:
-            await bot.send_document(chat_id=message.chat.id, caption=msg, document=file_id[0],
+            await bot.send_document(chat_id=message.chat.id, caption=return_text, document=file_id[0],
                                     reply_markup=build_keyboard.keyboard_start_liked)
 
 
