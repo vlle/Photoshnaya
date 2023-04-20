@@ -1,8 +1,6 @@
-import tomllib
-from aiogram.exceptions import TelegramBadRequest
 from aiogram import types
 from aiogram import Bot
-from aiogram.types import CallbackQuery, InputMediaPhoto
+from aiogram.types import CallbackQuery, InputMediaDocument, InputMediaPhoto
 from handlers.internal_logic.vote_start import internal_start
 from utils.TelegramUserClass import TelegramChat, TelegramDeserialize, TelegramUser
 from utils.keyboard import Keyboard, CallbackVote
@@ -23,54 +21,60 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     start_data = message.text.replace('_', ' ').split( )
     group_id = int(start_data[1])
     file_id = like_engine.select_next_contest_photo(group_id, 0)
+    photo_file_id = file_id[0]
+    photo_id = file_id[1]
 
     amount_photo = 0
     for _ in photo_ids:
         amount_photo += 1
 
-    print(file_id)
 
     build_keyboard = Keyboard(user=str(user.telegram_id), amount_photos=str(amount_photo),
-                              current_photo_id=file_id[1], current_photo_count='1', group_id=str(group_id))
+                              current_photo_id=photo_id, current_photo_count='1', group_id=str(group_id))
 
-    is_liked_photo = like_engine.is_photo_liked(user.telegram_id, file_id[1])
+    is_liked_photo = like_engine.is_photo_liked(user.telegram_id, photo_id)
     if is_liked_photo > 0:
         keyboard = build_keyboard.keyboard_start_liked
     else:
         keyboard = build_keyboard.keyboard_start
 
-    file_type = like_engine.select_file_type(int(file_id[1]))
+    file_type = like_engine.select_file_type(int(photo_id))
     if file_type == 'photo':
-        await bot.send_photo(chat_id=chat.telegram_id, caption=return_text, photo=file_id[0],
+        await bot.send_photo(chat_id=chat.telegram_id, caption=return_text, photo=photo_file_id,
                              reply_markup=keyboard)
     elif file_type == 'document':
-        await bot.send_document(chat_id=chat.telegram_id, caption=return_text, document=file_id[0],
+        await bot.send_document(chat_id=chat.telegram_id, caption=return_text, document=photo_file_id,
                                  reply_markup=keyboard)
 
 
 async def callback_next(query: CallbackQuery,
-                        callback_data: CallbackVote, bot: Bot, like_engine: LikeDB):
+                        callback_data: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
     cb = callback_data
     if not query.message or not query.message.from_user:
         return
-    vote_db = VoteDB(like_engine.engine)
+    if int(cb.current_photo_count) + 1 > int(cb.amount_photos):
+        return
 
+    vote_db = VoteDB(like_engine.engine)
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
-        msg = 'Вы уже голосовали в этом челлендже, увы'
-        await bot.send_message(chat_id=int(cb.user), text=msg)
+        await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
 
 
     file_id = like_engine.select_next_contest_photo(int(cb.group_id), int(cb.current_photo_id))
-    if int(cb.current_photo_count) + 1 > int(cb.amount_photos):
-        return
-
+    photo_file_id = file_id[0]
+    photo_id = file_id[1]
+    
     cb.current_photo_count = str(int(cb.current_photo_count) + 1)
-    cb.current_photo_id = file_id[1]
+    cb.current_photo_id = photo_id
 
     build_keyboard = Keyboard.fromcallback(cb)
-    obj = InputMediaPhoto(type='photo', media=file_id[0])
-    is_liked_photo = like_engine.is_photo_liked(int(cb.user), file_id[1])
+    file_type = like_engine.select_file_type(int(file_id[1]))
+    if file_type == 'photo':
+        obj = InputMediaPhoto(type='photo', media=photo_file_id)
+    else:
+        obj = InputMediaDocument(type='document', media=photo_file_id)
+    is_liked_photo = like_engine.is_photo_liked(int(cb.user), photo_id)
 
     keyboard = await choose_keyboard(is_liked_photo, int(cb.current_photo_count), int(cb.amount_photos), build_keyboard)
     await bot.edit_message_media(obj, cb.user, message_id=query.message.message_id,
@@ -79,67 +83,48 @@ async def callback_next(query: CallbackQuery,
 
 
 async def callback_prev(query: CallbackQuery,
-                        cb: CallbackVote, bot: Bot, like_engine: LikeDB):
+                        callback_data: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
+    cb = callback_data
     if not query.message or not query.message.from_user:
         return
-    print(cb)
+    if int(cb.current_photo_count) - 1 < 1:
+        return
+
     vote_db = VoteDB(like_engine.engine)
-
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
-        msg = 'Вы уже голосовали в этом челлендже, увы'
-        await bot.answer_callback_query(query.id, text=msg, show_alert=True)
-        #await bot.send_message(chat_id=int(cb.user), text=msg)
+        await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
 
-    group_id = cb.group_id
-    amount_photo = cb.amount_photos
-    current_photo_id = cb.current_photo_id
-    current_photo_count = int(cb.current_photo_count) - 1
-    if current_photo_count < 1:
-        return
 
-    msg_id = query.message.message_id
-    user_id = cb.user
-    file_id = like_engine.select_prev_contest_photo(int(group_id), int(current_photo_id))
-    print(file_id)
+    file_id = like_engine.select_prev_contest_photo(int(cb.group_id), int(cb.current_photo_id))
+    photo_file_id = file_id[0]
+    photo_id = file_id[1]
+    
+    cb.current_photo_count = str(int(cb.current_photo_count) - 1)
+    cb.current_photo_id = photo_id
 
-    is_liked_photo = like_engine.is_photo_liked(int(user_id), file_id[1])
-
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=file_id[1],
-                              current_photo_count=str(current_photo_count), group_id=group_id)
-    obj = InputMediaPhoto(type='photo', media=file_id[0])
-    if (is_liked_photo <= 0):
-        if (current_photo_count == 1):
-            await bot.edit_message_media(obj, user_id, msg_id,
-                                         reply_markup=build_keyboard.keyboard_start)
-        elif (current_photo_count >= int(amount_photo)):
-            await bot.edit_message_media(obj, user_id, msg_id,
-                                         reply_markup=build_keyboard.keyboard_end)
-        else:
-            await bot.edit_message_media(obj, user_id, msg_id,
-                                         reply_markup=build_keyboard.keyboard_vote)
+    build_keyboard = Keyboard.fromcallback(cb)
+    file_type = like_engine.select_file_type(int(file_id[1]))
+    if file_type == 'photo':
+        obj = InputMediaPhoto(type='photo', media=photo_file_id)
     else:
-        if (current_photo_count == 1):
-            await bot.edit_message_media(obj, user_id, msg_id,
-                                         reply_markup=build_keyboard.keyboard_start_liked)
-        elif (current_photo_count >= int(amount_photo)):
-            await bot.edit_message_media(obj, user_id, msg_id,
-                                         reply_markup=build_keyboard.keyboard_end_liked)
-        else:
-            await bot.edit_message_media(obj, user_id, msg_id,
-                                         reply_markup=build_keyboard.keyboard_vote_liked)
+        obj = InputMediaDocument(type='document', media=photo_file_id)
+    is_liked_photo = like_engine.is_photo_liked(int(cb.user), photo_id)
+
+    keyboard = await choose_keyboard(is_liked_photo, int(cb.current_photo_count), int(cb.amount_photos), build_keyboard)
+    await bot.edit_message_media(obj, cb.user, message_id=query.message.message_id,
+                                 reply_markup=keyboard)
 
 
 
 async def callback_set_like(query: CallbackQuery,
-                            cb: CallbackVote, bot: Bot, like_engine: LikeDB):
+                            cb: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
     if not query.message or not query.message.from_user:
         return
     vote_db = VoteDB(like_engine.engine)
 
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
-        msg = 'Вы уже голосовали в этом челлендже, увы'
-        await bot.send_message(chat_id=int(cb.user), text=msg)
+        await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
     group_id = cb.group_id
     amount_photo = cb.amount_photos
@@ -163,14 +148,13 @@ async def callback_set_like(query: CallbackQuery,
 
 
 async def callback_set_no_like(query: CallbackQuery,
-                               cb: CallbackVote, bot: Bot, like_engine: LikeDB):
+                               cb: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
     if not query.message or not query.message.from_user:
         return
     vote_db = VoteDB(like_engine.engine)
 
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
-        msg = 'Вы уже голосовали в этом челлендже, увы'
-        await bot.send_message(chat_id=int(cb.user), text=msg)
+        await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
     group_id = cb.group_id
     amount_photo = cb.amount_photos
@@ -194,14 +178,13 @@ async def callback_set_no_like(query: CallbackQuery,
 
 
 async def callback_send_vote(query: CallbackQuery,
-                             cb: CallbackVote, bot: Bot, like_engine: LikeDB):
+                             cb: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
 
     user_id = cb.user
     vote_db = VoteDB(like_engine.engine)
 
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
-        msg = 'Вы уже голосовали в этом челлендже, увы'
-        await bot.send_message(chat_id=int(cb.user), text=msg)
+        await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
     lst = like_engine.get_all_likes_for_user(int(cb.user), int(cb.group_id))
     for i in lst:
@@ -209,28 +192,9 @@ async def callback_send_vote(query: CallbackQuery,
 
     like_engine.insert_all_likes(int(cb.user), int(cb.group_id))
     like_engine.delete_likes_from_tmp_vote(int(cb.user), int(cb.group_id))
-    msg = "Спасибо, голос принят!"
     vote_db.mark_user_voted(int(cb.group_id), int(user_id))
-    await bot.send_message(user_id, msg)
+    await bot.send_message(user_id, msg["vote"]["thanks_for_vote"])
 
-    # get dict list
-    # delete from tmp where user_id = user_id
-    pass
-
-async def generate_keyboard_and_like_output(chat: TelegramChat, user: TelegramUser, amount_photo: int, file_id: tuple, return_text: str, like_engine: LikeDB, bot: Bot):
-    build_keyboard = Keyboard(user=str(user.telegram_id), amount_photos=str(amount_photo),
-                              current_photo_id=file_id[1], current_photo_count='1', group_id=str(chat.telegram_id))
-    is_liked_photo = like_engine.is_photo_liked(user.telegram_id, file_id[1])
-    file_type = like_engine.select_file_type(file_id[1])
-    keyboard = build_keyboard.keyboard_start
-    if is_liked_photo > 0:
-        keyboard = build_keyboard.keyboard_start_liked
-    if file_type == 'photo':
-        await bot.send_photo(chat_id=chat.telegram_id, caption=return_text, photo=file_id[0],
-                             reply_markup=keyboard)
-    elif file_type == 'document':
-        await bot.send_document(chat_id=chat.telegram_id, caption=return_text, document=file_id[0],
-                                 reply_markup=keyboard)
 
 async def choose_keyboard(is_liked_photo: int, current_photo_count: int, amount_photo: int, build_keyboard: Keyboard):
     if is_liked_photo <= 0:

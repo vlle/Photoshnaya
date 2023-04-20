@@ -4,14 +4,15 @@ from db.db_operations import ObjectFactory, RegisterDB
 
 def internal_register_photo(user_object: TelegramUser, chat_object: TelegramChat, register: RegisterDB,
                     contest_material: Photo | Document) -> str:
-    object_factory = ObjectFactory()
     if isinstance(contest_material, Document):
         type_object = 'document'
+    else:
+        type_object = 'photo'
 
-    user = object_factory.build_user(user_object.username,
+    user = ObjectFactory.build_user(user_object.username,
                                      user_object.full_name,
                                      user_object.telegram_id)
-    group = object_factory.build_group(chat_object.full_name,
+    group = ObjectFactory.build_group(chat_object.full_name,
                                        chat_object.telegram_id)
     register.register_user(user, chat_object.telegram_id)
     register.register_photo_for_contest(

@@ -8,7 +8,7 @@ async def internal_start(chat: TelegramChat, user: TelegramUser, text: str, like
         msg = tomllib.load(f)
     start_data = text.replace('_', ' ').split( )
     if len(start_data) != 3:
-        return msg["vote"]["not_enough_data"], True, None
+        return msg["vote"]["wrong_link"], True, None
     if chat.chat_type != 'private':
         return msg["vote"]["not_private_chat"], True, None
     group_id = int(start_data[1])
@@ -30,30 +30,3 @@ async def internal_start(chat: TelegramChat, user: TelegramUser, text: str, like
 
     return msg["vote"]["greeting_message_vote"], False, photo_ids
 
-async def internal_next(chat: TelegramChat, user: TelegramUser, text: str, like_engine: LikeDB) -> tuple:
-
-    with open("handlers/handlers_text/text.toml", "rb") as f:
-        msg = tomllib.load(f)
-    start_data = text.replace('_', ' ').split( )
-    if len(start_data) != 3:
-        return msg["vote"]["not_enough_data"], True, None
-    if chat.chat_type != 'private':
-        return msg["vote"]["not_private_chat"], True, None
-    group_id = int(start_data[1])
-    try:
-        photo_ids = like_engine.select_contest_photos_ids(group_id)
-        if len(photo_ids) == 0:
-            return msg["vote"]["no_photos"], True, None
-    except:
-        return msg["vote"]["unexpected_error"], True, None
-
-    vote_db = VoteDB(like_engine.engine)
-
-    if vote_db.get_current_vote_status(group_id) == False:
-        return msg["vote"]["no_vote_yet"], True, None
-
-    if vote_db.is_user_not_allowed_to_vote(group_id, user.telegram_id) is True:
-        return msg["vote"]["already_voted"], True, None
-
-
-    return msg["vote"]["greeting_message_vote"], False, photo_ids

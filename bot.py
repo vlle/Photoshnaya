@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import tomllib
 from dotenv import load_dotenv
 
 from aiogram import F
@@ -33,6 +34,8 @@ async def main():
     logging.basicConfig(level=logging.INFO)
     bot = Bot(token=token)
     dp = Dispatcher()
+    with open("handlers/handlers_text/text.toml", "rb") as f:
+        msg = tomllib.load(f)
 
     engine = create_engine("sqlite+pysqlite:///db/photo.db", echo=True)
     Base.metadata.create_all(engine)
@@ -66,9 +69,6 @@ async def main():
     dp.callback_query.register(cmd_action_choose, CallbackManage.filter(F.action == AdminActions.chosen_group))
     dp.callback_query.register(cmd_finish_contest, CallbackManage.filter(F.action == AdminActions.finish_contest_id))
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter(F.action == AdminActions.finish_vote_id))
-    # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.finish_contest_id))
-    # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_votes_id))
-    # dp.callback_query.register(cmd_choose_group, CallbackManage.filter(F.action == AdminActions.view_submissions_id))
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,
