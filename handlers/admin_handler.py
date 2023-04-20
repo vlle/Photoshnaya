@@ -123,13 +123,12 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: 
 
     submissions_photos = []
     submissions_docs = []
-    all_counter = 0
     for id in ids:
         if id[1] == 'photo':
             if len(submissions_docs) > 1:
                 await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
             elif len(submissions_docs) == 1:
-                await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0])
+                await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0].media)
             submissions_docs.clear()
             obj = InputMediaPhoto(type='photo', media=id[0])
             submissions_photos.append(obj)
@@ -141,7 +140,6 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: 
             submissions_photos.clear()
             obj = InputMediaDocument(type='document', media=id[0])
             submissions_docs.append(obj)
-        all_counter += 1
         if len(submissions_photos) == 10 or len(submissions_docs) == 10:
             if len(submissions_docs) == 10:
                 await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
@@ -150,10 +148,23 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: 
                 await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
                 submissions_photos.clear()
 
+    if len(submissions_photos) > 0 or len(submissions_docs) > 0:
+        if len(submissions_photos) > 1:
+            await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
+        elif len(submissions_photos) == 1:
+            await bot.send_photo(chat_id=query.from_user.id, photo=submissions_photos[0])
+        if len(submissions_docs) > 1:
+            await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
+        elif len(submissions_docs) == 1:
+            print(submissions_docs[0])
+            await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0].media)
+
+    del submissions_photos
+    del submissions_docs
+
 
 async def finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
     pass
-
 
 
 async def cmd_help(message: types.Message, bot: Bot, admin_unit: AdminDB):

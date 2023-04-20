@@ -417,8 +417,8 @@ class RegisterDB(SelectDB):
                 group = session.scalars(stmtg_sel).one()
 
             possible_register = session.scalars(stmt_photo_sel).first()
-            if possible_register:
-                return
+            # if possible_register:
+            #     return
 
             photo = Photo(file_id=file_get_id, user_id=user.id, telegram_type=type)
             
