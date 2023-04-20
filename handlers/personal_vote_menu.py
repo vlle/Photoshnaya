@@ -1,8 +1,9 @@
 from aiogram import types
 from aiogram import Bot
 from aiogram.types import CallbackQuery, InputMediaDocument, InputMediaPhoto
+from handlers.admin_handler import callback_back
 from handlers.internal_logic.vote_start import internal_start
-from utils.TelegramUserClass import TelegramChat, TelegramDeserialize, TelegramUser
+from utils.TelegramUserClass import TelegramDeserialize
 from utils.keyboard import Keyboard, CallbackVote
 from db.db_operations import LikeDB, VoteDB
 
@@ -118,7 +119,8 @@ async def callback_prev(query: CallbackQuery,
 
 
 async def callback_set_like(query: CallbackQuery,
-                            cb: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
+                            callback_data: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
+    cb = callback_data
     if not query.message or not query.message.from_user:
         return
     vote_db = VoteDB(like_engine.engine)
@@ -126,29 +128,25 @@ async def callback_set_like(query: CallbackQuery,
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
         await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
-    group_id = cb.group_id
-    amount_photo = cb.amount_photos
-    current_photo_id = cb.current_photo_id
-    current_photo_count = cb.current_photo_count
     msg_id = query.message.message_id
-    user_id = cb.user
 
-    like_engine.like_photo(int(user_id), int(cb.current_photo_id))
+    like_engine.like_photo(int(cb.user), int(cb.current_photo_id))
 
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
-    if int(current_photo_count) >= int(amount_photo):
-        await bot.edit_message_reply_markup(user_id, msg_id,
+    build_keyboard = Keyboard.fromcallback(cb)
+    if int(cb.current_photo_count) >= int(cb.amount_photos):
+        await bot.edit_message_reply_markup(cb.user, msg_id,
                                             reply_markup=build_keyboard.keyboard_end_liked)
-    elif int(current_photo_count) <= 1:
-        await bot.edit_message_reply_markup(user_id, msg_id,
+    elif int(cb.current_photo_count) <= 1:
+        await bot.edit_message_reply_markup(cb.user, msg_id,
                                             reply_markup=build_keyboard.keyboard_start_liked)
     else:
-        await bot.edit_message_reply_markup(user_id, msg_id,
+        await bot.edit_message_reply_markup(cb.user, msg_id,
                                             reply_markup=build_keyboard.keyboard_vote_liked)
 
 
 async def callback_set_no_like(query: CallbackQuery,
-                               cb: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
+                               callback_data: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
+    cb = callback_data
     if not query.message or not query.message.from_user:
         return
     vote_db = VoteDB(like_engine.engine)
@@ -156,30 +154,28 @@ async def callback_set_no_like(query: CallbackQuery,
     if vote_db.is_user_not_allowed_to_vote(int(cb.group_id), int(cb.user)) is True:
         await bot.send_message(chat_id=int(cb.user), text=msg["vote"]["already_voted"])
         return
-    group_id = cb.group_id
-    amount_photo = cb.amount_photos
-    user_id = cb.user
-    current_photo_id = cb.current_photo_id
-    current_photo_count = cb.current_photo_count
     msg_id = query.message.message_id
 
-    like_engine.remove_like_photo(int(user_id), int(cb.current_photo_id))
+    like_engine.remove_like_photo(int(cb.user), int(cb.current_photo_id))
 
-    build_keyboard = Keyboard(user=user_id, amount_photos=str(amount_photo), current_photo_id=current_photo_id, current_photo_count=current_photo_count, group_id=group_id)
-    if (int(current_photo_count) >= int(amount_photo)):
-        await bot.edit_message_reply_markup(user_id, msg_id,
+    build_keyboard = Keyboard.fromcallback(cb)
+    if int(cb.current_photo_count) >= int(cb.amount_photos):
+        await bot.edit_message_reply_markup(cb.user, msg_id,
                                             reply_markup=build_keyboard.keyboard_end)
-    elif int(current_photo_count) <= 1:
-        await bot.edit_message_reply_markup(user_id, msg_id,
+    elif int(cb.current_photo_count) <= 1:
+        await bot.edit_message_reply_markup(cb.user, msg_id,
                                             reply_markup=build_keyboard.keyboard_start)
     else:
-        await bot.edit_message_reply_markup(user_id, msg_id,
+        await bot.edit_message_reply_markup(cb.user, msg_id,
                                             reply_markup=build_keyboard.keyboard_vote)
 
 
-async def callback_send_vote(query: CallbackQuery,
-                             cb: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
 
+
+async def callback_send_vote(query: CallbackQuery,
+                             callback_data: CallbackVote, bot: Bot, like_engine: LikeDB, msg: dict):
+
+    cb = callback_data
     user_id = cb.user
     vote_db = VoteDB(like_engine.engine)
 

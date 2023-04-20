@@ -57,6 +57,8 @@ class BaseDB:
         )
         with Session(self.engine) as session, session.begin():
             contest = session.scalars(stmt).first()
+            if not contest:
+                return -1
             return contest.id
 
     def get_user_id(self, telegram_user_id: int) -> int:
@@ -343,11 +345,12 @@ class RegisterDB(SelectDB):
         with Session(self.engine) as session, session.begin():
             try:
                 search_result = session.scalars(stmt).one()
-                user_search = session.scalars(stmt_user).first()
+                user_search = session.scalars(stmt_user).one_or_none()
             except exc.NoResultFound:
                 if group:
                     self.register_group(group)
                 search_result = session.scalars(stmt).one()
+                user_search = session.scalars(stmt_user).one_or_none()
             if not user_search:
                 adm_user.admin_in.append(search_result)
                 adm_user.groups.append(search_result)
