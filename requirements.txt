@@ -15,7 +15,6 @@ magic-filter==1.0.9
 MarkupSafe==2.1.2
 multidict==6.0.4
 pydantic==1.10.5
-redis==4.5.1
 SQLAlchemy==2.0.4
 typing_extensions==4.5.0
 yarl==1.8.2

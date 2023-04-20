@@ -75,7 +75,8 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot, callback_data:
     msg = 'Выберите ваше действие'
     print(callback_data)
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    if 'vote' == 'vote':
+    vote_in_progress = admin_unit.get_current_vote_status(int(callback_data.group_id))
+    if not vote_in_progress:
         await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_no_vote)
     else:
         await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_vote_in_progress)
@@ -83,7 +84,23 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot, callback_data:
 
 
 async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
-    pass
+    if not query.message:
+        return
+    admin_unit.change_current_vote_status(int(callback_data.group_id))
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    bot_link: str = "t.me/Photoshnaya_bot?start=" + callback_data.group_id + "_3"
+    msg = f"Голосование запущено. Вот ссылка, отправьте ее в чат: {bot_link}"
+    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
+
+
+async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+    if not query.message:
+        return
+    admin_unit.change_current_vote_status(int(callback_data.group_id))
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    msg = 'Голосование завершено. Результаты:\n, отправьте их в чат'
+    await bot.edit_message_text(text=msg, chat_id=callback_data.user, message_id=query.message.message_id, reply_markup=keyboard.keyboard_back)
+
 
     #except TelegramBadRequest:
     #    if data.group_id == '-1':

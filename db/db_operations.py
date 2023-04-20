@@ -70,19 +70,27 @@ class SelectDB(BaseDB):
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
 
+
+    def select_file_type(self, file_id: int) -> str:
+        stmt = (
+                select(Photo)
+                .where(Photo.file_id == file_id)
+                )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt).one()
+            res = res.telegram_type
+        return res
+
+
     def find_group(self, telegram_id: int) -> bool:
         stmt = (
             select(Group)
             .where(Group.telegram_id == telegram_id)
         )
         with Session(self.engine) as session, session.begin():
-            try:
-                search = session.scalars(stmt).one()
-                search_result = search is not None
-            except exc.NoResultFound:
-                search_result = False
+            search = session.scalars(stmt).first()
+            return search is not None
 
-        return search_result
 
     def find_user_in_group(self, telegram_user_id: int, group_telegram_id: int) -> bool:
         stmt = (
@@ -172,6 +180,22 @@ class SelectDB(BaseDB):
             photos = session.scalars(stmt_g)
             for photo in photos:
                 ret.append(photo.file_id)
+        return ret
+
+    def get_current_vote_status(self, group_id: int) -> bool:
+        ret: bool = False
+        stmt = (
+                select(Group)
+                .where(Group.telegram_id == group_id)
+                )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt).first()
+            if res:
+                if res.vote_in_progress == 0:
+                    ret = False
+                else:
+                    ret = True
+
         return ret
 
 
@@ -269,6 +293,7 @@ class VoteDB(LikeDB):
         with Session(self.engine) as session, session.begin():
             stmt = insert(contest_user).values(contest_id=contest_id, user_id=user_id)
             session.execute(stmt)
+
 
     def is_user_not_allowed_to_vote(self, telegram_group_id: int, telegram_user_id: int) -> bool:
         contest_id = self.get_contest_id(telegram_group_id)
@@ -378,15 +403,21 @@ class RegisterDB(SelectDB):
         with Session(self.engine) as session, session.begin():
             try:
                 theme = session.scalars(stmt).first()
-                theme = theme.contest_name
+                if theme:
+                    theme = theme.contest_name
+                else:
+                    theme = None
             except exc.NoResultFound:
                 theme = "Ошибка, не нашел группу."
         return theme
 
 
 class AdminDB(RegisterDB):
+
+
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
+
 
     def change_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False
@@ -399,29 +430,13 @@ class AdminDB(RegisterDB):
             print(res)
             if res:
                 if res.vote_in_progress == False:
-                    res.vote_in_progress = True
-                    ret = True
+                    ret = res.vote_in_progress = True
                 else:
-                    res.vote_in_progress = False
-                    ret = False
+                    ret = res.vote_in_progress = False
 
         return ret
 
-    def get_current_vote_status(self, group_id: int) -> bool:
-        ret: bool = False
-        stmt = (
-                select(Group)
-                .where(Group.telegram_id == group_id)
-                )
-        with Session(self.engine) as session, session.begin():
-            res = session.scalars(stmt).first()
-            if res:
-                if res.vote_in_progress == 0:
-                    ret = False
-                else:
-                    ret = True
 
-        return ret
 
 
     def select_all_administrated_groups(self, telegram_user_id: int) -> list:
@@ -438,6 +453,7 @@ class AdminDB(RegisterDB):
                 ret.append([id.name, id.telegram_id])
 
         return ret
+
 
     def check_admin(self, user_id: int, group_id: int) -> bool:
         admin_right = False
@@ -460,6 +476,7 @@ class AdminDB(RegisterDB):
                 admin_right = True
 
         return admin_right
+
 
     def set_contest_theme(self, group_id: int, theme: str, contest_duration_sec=604800) -> str:
         stmt_g = (

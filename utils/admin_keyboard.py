@@ -14,7 +14,7 @@ class AdminActions:
     finish_contest_text = "Начать голосование 🗳"
     finish_contest_id = '1'
     finish_vote_text = "Завершить голосование 🗳"
-    finish_vote_id = '1'
+    finish_vote_id = '2'
     view_votes_text = "Посмотреть текущие голоса"
     view_votes_id = '3'
     view_submissions_text = "Посмотреть зарегистрированные фотографии"

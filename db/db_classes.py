@@ -106,6 +106,7 @@ class Photo(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     file_id: Mapped[str]
+    telegram_type: Mapped[str] = mapped_column(String(15), default="photo")
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     likes: Mapped[List["User"]] = relationship(
         secondary=photo_like, back_populates="photos"
@@ -165,19 +166,3 @@ class Contest(Base):
 
     def __repr__(self) -> str:
         return f"Contest(id={self.id!r}), name=({self.contest_name!r})"
-
-# class voteContest(Base):
-#     __tablename__ = ""
-# 
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     vote_id: Mapped[int]
-#     contest_id: Mapped[int]
-# 
-# 
-# 
-# class groupContest(Base):
-#     __tablename__ = "groupContest"
-# 
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     group_id: Mapped[int]
-#     contest_name: Mapped[int]
