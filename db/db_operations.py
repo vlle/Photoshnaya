@@ -71,10 +71,10 @@ class SelectDB(BaseDB):
         super().__init__(engine)
 
 
-    def select_file_type(self, file_id: int) -> str:
+    def select_file_type(self, id: int) -> str:
         stmt = (
                 select(Photo)
-                .where(Photo.file_id == file_id)
+                .where(Photo.id == id)
                 )
         with Session(self.engine) as session, session.begin():
             res = session.scalars(stmt).one()
@@ -118,6 +118,7 @@ class SelectDB(BaseDB):
                 ret = True
 
         return ret
+
     def select_next_contest_photo(self, group_id: int, current_photo: int) -> list[str]:
         ret: list[Any] = []
         stmt_g = (
@@ -358,7 +359,7 @@ class RegisterDB(SelectDB):
         return "Добавил администратора."
 
     def register_photo_for_contest(self, user_tg_id: int, grtg_id: int,
-                                   file_get_id='-1', user_p=None, group_p=None):
+                                   file_get_id='-1', user_p=None, group_p=None, type='photo'):
         stmt_sel = (
             select(User)
             .where(User.telegram_id == user_tg_id)
@@ -389,7 +390,7 @@ class RegisterDB(SelectDB):
             if possible_register:
                 return
 
-            photo = Photo(file_id=file_get_id, user_id=user.id)
+            photo = Photo(file_id=file_get_id, user_id=user.id, telegram_type=type)
             user.photos.append(photo)
             group.photos.append(photo)
             session.add(photo)
