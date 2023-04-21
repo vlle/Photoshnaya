@@ -106,64 +106,68 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot, callback_data: C
 
 
 async def view_votes(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
+
     pass
 
 async def view_submissions(query: types.CallbackQuery, bot: Bot, callback_data: CallbackManage, admin_unit: AdminDB):
     cb = callback_data
 
     ids = admin_unit.select_contest_photos_ids_and_types(int(cb.group_id))
+    await internal_view_submissions(query.from_user.id, ids, bot)
+
+async def internal_view_submissions(chat_id: int, ids: list, bot: Bot):
     if len(ids) == 0:
         return
     if len(ids) == 1:
         if ids[0][1] == 'photo':
             obj = InputMediaPhoto(type='photo', media=ids[0][0])
-            await bot.send_photo(chat_id=query.from_user.id, photo=ids[0][0])
+            await bot.send_photo(chat_id=chat_id, photo=ids[0][0])
         else:
-            await bot.send_document(chat_id=query.from_user.id, document=ids[0][0])
+            await bot.send_document(chat_id=chat_id, document=ids[0][0])
 
     submissions_photos = []
     submissions_docs = []
     for id in ids:
         if id[1] == 'photo':
-            await send_other_type(submissions_docs, bot, query)
+            await send_other_type(submissions_docs, bot, chat_id)
             obj = InputMediaPhoto(type='photo', media=id[0])
             submissions_photos.append(obj)
         else:
-            await send_other_type(submissions_photos, bot, query)
+            await send_other_type(submissions_photos, bot, chat_id)
             obj = InputMediaDocument(type='document', media=id[0])
             submissions_docs.append(obj)
 
         if len(submissions_photos) == 10 or len(submissions_docs) == 10:
             if len(submissions_docs) == 10:
-                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
+                await bot.send_media_group(chat_id=chat_id, media=submissions_docs)
                 submissions_docs.clear()
             else:
-                await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
+                await bot.send_media_group(chat_id=chat_id, media=submissions_photos)
                 submissions_photos.clear()
 
     if len(submissions_photos) > 0 or len(submissions_docs) > 0:
         if len(submissions_photos) > 1:
-            await bot.send_media_group(chat_id=query.from_user.id, media=submissions_photos)
+            await bot.send_media_group(chat_id=chat_id, media=submissions_photos)
         elif len(submissions_photos) == 1:
-            await bot.send_photo(chat_id=query.from_user.id, photo=submissions_photos[0])
+            await bot.send_photo(chat_id=chat_id, photo=submissions_photos[0])
         if len(submissions_docs) > 1:
-            await bot.send_media_group(chat_id=query.from_user.id, media=submissions_docs)
+            await bot.send_media_group(chat_id=chat_id, media=submissions_docs)
         elif len(submissions_docs) == 1:
-            await bot.send_document(chat_id=query.from_user.id, document=submissions_docs[0].media)
+            await bot.send_document(chat_id=chat_id, document=submissions_docs[0].media)
 
     del submissions_photos
     del submissions_docs
 
 
-async def send_other_type(list_of_object: list[InputMediaDocument | InputMediaPhoto], bot: Bot, query: CallbackQuery):
+async def send_other_type(list_of_object: list[InputMediaDocument | InputMediaPhoto], bot: Bot, msg: int):
     if len(list_of_object) == 0:
         return
     if len(list_of_object) > 1:
-        await bot.send_media_group(chat_id=query.from_user.id, media=list_of_object)
+        await bot.send_media_group(chat_id=msg, media=list_of_object)
     elif len(list_of_object) == 1 and isinstance(list_of_object[0], InputMediaDocument):
-        await bot.send_document(chat_id=query.from_user.id, document=list_of_object[0].media)
+        await bot.send_document(chat_id=msg, document=list_of_object[0].media)
     elif len(list_of_object) == 1 and isinstance(list_of_object[0], InputMediaPhoto):
-        await bot.send_photo(chat_id=query.from_user.id, photo=list_of_object[0].media)
+        await bot.send_photo(chat_id=msg, photo=list_of_object[0].media)
     list_of_object.clear()
     await async_sleep(0.5)
 
