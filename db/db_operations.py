@@ -196,6 +196,24 @@ class SelectDB(BaseDB):
                 ret.append(photo.file_id)
         return ret
 
+    def select_contest_photos_primary_ids(self, group_id: int) -> list:
+        ret = []
+        stmt_g = (
+            select(Photo)
+            .join(
+                group_photo,
+                (Photo.id == group_photo.c.photo_id)
+            )
+            .where(group_photo.c.group_id == (
+                select(Group.id)
+                .where(Group.telegram_id == group_id).scalar_subquery()))
+        )
+        with Session(self.engine) as session, session.begin():
+            photos = session.scalars(stmt_g)
+            for photo in photos:
+                ret.append(photo.id)
+        return ret
+
     def select_contest_photos_ids_and_types(self, group_id: int) -> list:
         ret = []
         stmt_g = (
@@ -369,6 +387,35 @@ class VoteDB(LikeDB):
                 return -1
             return res
 
+    def select_all_likes(self, telegram_group_id: int, id: str):
+        stmt = (
+                select( 
+                      func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                .join(Group, group_photo.c.group_id == Group.id)
+                .join(Photo, group_photo.c.photo_id == Photo.id)
+                .where(Group.telegram_id == telegram_group_id)
+                .where(Photo.id == id)
+                .group_by(photo_like.c.photo_id).order_by(func.count(photo_like.c.photo_id).desc())
+        )
+        with Session(self.engine) as session, session.begin():
+            rs = session.scalars(stmt).first()
+        return rs
+
+    def select_all_likes_file_id(self, telegram_group_id: int, file_id: str):
+        stmt = (
+                select( 
+                      func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                .join(Group, group_photo.c.group_id == Group.id)
+                .join(Photo, group_photo.c.photo_id == Photo.id)
+                .where(Group.telegram_id == telegram_group_id)
+                .where(Photo.file_id == file_id)
+                .group_by(photo_like.c.photo_id).order_by(func.count(photo_like.c.photo_id).desc())
+        )
+        with Session(self.engine) as session, session.begin():
+            rs = session.scalars(stmt).first()
+        return rs
 
 class RegisterDB(SelectDB):
     def __init__(self, engine: Engine) -> None:
