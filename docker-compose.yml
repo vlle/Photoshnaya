@@ -2,15 +2,3 @@ version: "3.10"
 services:
   web:
     build: .
-    depends_on:
-      - redis
-    network_mode: host
-  redis:
-    image: "redis:alpine"
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-volumes:
-  redis_data:
-
