@@ -2,3 +2,5 @@ version: "3.10"
 services:
   web:
     build: .
+    volumes:
+      - ./db/:/db
