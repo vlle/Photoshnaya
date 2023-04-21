@@ -134,18 +134,20 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot,
     cb = callback_data
 
     ids = admin_unit.select_contest_photos_ids_and_types(int(cb.group_id))
+    if len(ids) == 0:
+        return
     await internal_view_submissions(query.from_user.id, ids, bot)
 
 
+# todo: rewrite complexity flake8
 async def internal_view_submissions(chat_id: int, ids: list, bot: Bot):
-    if len(ids) == 0:
-        return
     if len(ids) == 1:
         if ids[0][1] == 'photo':
             obj = InputMediaPhoto(type='photo', media=ids[0][0])
             await bot.send_photo(chat_id=chat_id, photo=ids[0][0])
         else:
             await bot.send_document(chat_id=chat_id, document=ids[0][0])
+        return
 
     submissions_photos = []
     submissions_docs = []

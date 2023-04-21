@@ -1,5 +1,6 @@
 from aiogram import types
 
+
 class TelegramEntity():
     def __init__(self, username: str | None, full_name: str, telegram_id: int, message_id: int) -> None:
         if username is None:
@@ -50,8 +51,10 @@ class ApplicablePhoto():
     def __init__(self, file_id: str) -> None:
         self.file_id = file_id
 
+
 class Photo(ApplicablePhoto):
     pass
+
 
 class Document(ApplicablePhoto):
     pass

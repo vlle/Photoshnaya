@@ -149,4 +149,7 @@ class Keyboard:
 
     @classmethod
     def fromcallback(cls, cb: CallbackVote):
-         return cls(user=cb.user, group_id=cb.group_id,current_photo_count=cb.current_photo_count, current_photo_id=cb.current_photo_id, amount_photos=cb.amount_photos)
+        return cls(user=cb.user, group_id=cb.group_id,
+                   current_photo_count=cb.current_photo_count,
+                   current_photo_id=cb.current_photo_id,
+                   amount_photos=cb.amount_photos)

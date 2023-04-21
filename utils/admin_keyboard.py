@@ -29,75 +29,65 @@ class AdminKeyboardButtons:
         self.finish_contest = InlineKeyboardButton(
                 text=self.actions.finish_contest_text,
                 callback_data=CallbackManage(user=user,
-                                           action=self.
-                                           actions.finish_contest_id,
-                                           msg_id=msg_id,
-                                           group_id=group_id).pack()
+                                             action=self.
+                                             actions.finish_contest_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
                 )
         self.finish_vote = InlineKeyboardButton(
                 text=self.actions.finish_vote_text,
                 callback_data=CallbackManage(user=user,
-                                           action=self.
-                                           actions.finish_vote_id,
-                                           msg_id=msg_id,
-                                           group_id=group_id).pack()
+                                             action=self.
+                                             actions.finish_vote_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
                 )
         self.view_votes = InlineKeyboardButton(
                 text=self.actions.view_votes_text,
                 callback_data=CallbackManage(user=user,
-                                           action=self.
-                                           actions.view_votes_id,
-                                           msg_id=msg_id,
-                                           group_id=group_id).pack()
+                                             action=self.
+                                             actions.view_votes_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
                 )
         self.view_submissions = InlineKeyboardButton(
                 text=self.actions.view_submissions_text,
                 callback_data=CallbackManage(user=user,
-                                           action=self.
-                                           actions.view_submissions_id,
-                                           msg_id=msg_id,
-                                           group_id=group_id).pack()
+                                             action=self.
+                                             actions.view_submissions_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
                 )
         self.back = InlineKeyboardButton(
                 text=self.actions.back_text,
                 callback_data=CallbackManage(user=user,
-                                           action=self.
-                                           actions.back,
-                                           msg_id=msg_id,
-                                           group_id=group_id).pack()
+                                             action=self.
+                                             actions.back,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
                 )
 
 
 class AdminKeyboard:
 
-
     def __init__(self, user_id: str, msg_id: str, group_id: str) -> None:
         self.buttons = AdminKeyboardButtons(user_id, msg_id, group_id)
         self.keyboard_no_vote = InlineKeyboardMarkup(
-                inline_keyboard=
-                [
-                    [self.buttons.finish_contest],
-                    [self.buttons.view_votes],
-                    [self.buttons.view_submissions],
-                    [self.buttons.back]
-                    ]
+                inline_keyboard=[[self.buttons.finish_contest],
+                                 [self.buttons.view_votes],
+                                 [self.buttons.view_submissions],
+                                 [self.buttons.back]]
                 )
         self.keyboard_vote_in_progress = InlineKeyboardMarkup(
-                inline_keyboard=
-                [
-                    [self.buttons.finish_vote],
-                    [self.buttons.view_votes],
-                    [self.buttons.view_submissions],
-                    [self.buttons.back]
-                    ]
+                inline_keyboard=[[self.buttons.finish_vote],
+                                 [self.buttons.view_votes],
+                                 [self.buttons.view_submissions],
+                                 [self.buttons.back]]
                 )
         self.keyboard_back = InlineKeyboardMarkup(
-                inline_keyboard=
-                [
-                    [self.buttons.back],
-                    ]
+                inline_keyboard=[[self.buttons.back],]
                 )
 
     @classmethod
     def fromcallback(cls, cb: CallbackManage):
-         return cls(cb.user, cb.msg_id, cb.group_id)
+        return cls(cb.user, cb.msg_id, cb.group_id)
