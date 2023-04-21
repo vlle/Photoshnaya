@@ -4,7 +4,8 @@ from db.db_operations import AdminDB
 from utils.TelegramUserClass import TelegramDeserialize
 
 
-async def finish_contest(message: types.Message, bot: Bot, admin_unit: AdminDB):
+async def finish_contest(message: types.Message,
+                         bot: Bot, admin_unit: AdminDB):
     user, chat = TelegramDeserialize.unpack(message)
     if not message.text or not message.from_user:
         return

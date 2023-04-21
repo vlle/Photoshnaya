@@ -1,7 +1,9 @@
 from aiogram import types
 from db.db_operations import RegisterDB
-from utils.TelegramUserClass import Photo, TelegramChat, TelegramDeserialize, TelegramUser, Document
+from utils.TelegramUserClass import Photo, TelegramChat,\
+            TelegramDeserialize, TelegramUser, Document
 from handlers.internal_logic.register import internal_register_photo
+
 
 async def register_photo(message: types.Message, register_unit: RegisterDB):
     if message.from_user is None:
@@ -21,7 +23,10 @@ async def register_photo(message: types.Message, register_unit: RegisterDB):
     await message.answer(ret_msg)
 
 
-def is_valid_input(caption: str | None, register: RegisterDB, chat_object: TelegramChat, user_object: TelegramUser) -> bool:
+def is_valid_input(caption: str | None,
+                   register: RegisterDB,
+                   chat_object: TelegramChat,
+                   user_object: TelegramUser) -> bool:
     if not caption:
         return False
     theme = register.get_contest_theme(chat_object.telegram_id)
@@ -34,7 +39,10 @@ def is_valid_input(caption: str | None, register: RegisterDB, chat_object: Teleg
         if (word == theme):
             message_contains_contest = True
             break
-    if (message_contains_contest is not True or not ((user_object and user_object.telegram_id) and chat_object and chat_object.telegram_id)):
+    if message_contains_contest is not True:
+        return False
+    if not ((user_object and user_object.telegram_id) and
+            chat_object and chat_object.telegram_id):
         return False
     else:
         return True
