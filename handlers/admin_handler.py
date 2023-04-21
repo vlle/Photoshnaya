@@ -139,49 +139,42 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot,
     await internal_view_submissions(query.from_user.id, ids, bot)
 
 
-# todo: rewrite complexity flake8
 async def internal_view_submissions(chat_id: int, ids: list, bot: Bot):
     if len(ids) == 1:
         if ids[0][1] == 'photo':
-            obj = InputMediaPhoto(type='photo', media=ids[0][0])
             await bot.send_photo(chat_id=chat_id, photo=ids[0][0])
         else:
             await bot.send_document(chat_id=chat_id, document=ids[0][0])
         return
 
+    MAX_SUBMISSIONS = 10
     submissions_photos = []
     submissions_docs = []
     for id in ids:
-        if id[1] == 'photo':
+        media_type, media = id[1], id[0]
+        if media_type == 'photo':
             await send_other_type(submissions_docs, bot, chat_id)
-            obj = InputMediaPhoto(type='photo', media=id[0])
-            submissions_photos.append(obj)
+            submissions_photos.append(InputMediaPhoto(type='photo',
+                                                      media=media))
         else:
-            await send_other_type(submissions_photos, bot, chat_id)
-            obj = InputMediaDocument(type='document', media=id[0])
-            submissions_docs.append(obj)
+            submissions_docs.append(InputMediaDocument(type='document',
+                                                       media=media))
 
-        if len(submissions_photos) == 10 or len(submissions_docs) == 10:
-            if len(submissions_docs) == 10:
-                await bot.send_media_group(chat_id=chat_id,
-                                           media=submissions_docs)
-                submissions_docs.clear()
-            else:
-                await bot.send_media_group(chat_id=chat_id,
-                                           media=submissions_photos)
-                submissions_photos.clear()
-
-    if len(submissions_photos) > 0 or len(submissions_docs) > 0:
-        if len(submissions_photos) > 1:
+        if len(submissions_photos) == MAX_SUBMISSIONS:
+            await send_other_type(submissions_docs, bot, chat_id)
             await bot.send_media_group(chat_id=chat_id,
                                        media=submissions_photos)
-        elif len(submissions_photos) == 1:
-            await bot.send_photo(chat_id=chat_id, photo=submissions_photos[0])
-        if len(submissions_docs) > 1:
-            await bot.send_media_group(chat_id=chat_id, media=submissions_docs)
-        elif len(submissions_docs) == 1:
-            await bot.send_document(chat_id=chat_id,
-                                    document=submissions_docs[0].media)
+            submissions_photos.clear()
+        if len(submissions_docs) == MAX_SUBMISSIONS:
+            await send_other_type(submissions_photos, bot, chat_id)
+            await bot.send_media_group(chat_id=chat_id,
+                                       media=submissions_docs)
+            submissions_docs.clear()
+
+    if submissions_photos:
+        await send_other_type(submissions_photos,  bot, chat_id)
+    if submissions_docs:
+        await send_other_type(submissions_docs, bot, chat_id)
 
     del submissions_photos
     del submissions_docs

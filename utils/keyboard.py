@@ -28,7 +28,7 @@ class Actions:
 
 class KeyboardButtons:
     def __init__(self, user: str, group_id: str, current_photo_id: str,
-                 current_photo_count: str, amount_photos: str) -> None:
+                 c_photo_count: str, amount_photos: str) -> None:
         self.actions = Actions()
         self.button_next = InlineKeyboardButton(
                 text=self.actions.next,
@@ -36,7 +36,7 @@ class KeyboardButtons:
                                            action=self.
                                            actions.next_text,
                                            current_photo_id=current_photo_id,
-                                           current_photo_count=current_photo_count,
+                                           current_photo_count=c_photo_count,
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
@@ -46,7 +46,7 @@ class KeyboardButtons:
                                            action=self.
                                            actions.prev_text,
                                            current_photo_id=current_photo_id,
-                                           current_photo_count=current_photo_count,
+                                           current_photo_count=c_photo_count,
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
@@ -56,7 +56,7 @@ class KeyboardButtons:
                                            action=self.
                                            actions.no_like_text,
                                            current_photo_id=current_photo_id,
-                                           current_photo_count=current_photo_count,
+                                           current_photo_count=c_photo_count,
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
@@ -66,17 +66,17 @@ class KeyboardButtons:
                                            action=self.
                                            actions.like_text,
                                            current_photo_id=current_photo_id,
-                                           current_photo_count=current_photo_count,
+                                           current_photo_count=c_photo_count,
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
         self.amount = InlineKeyboardButton(
-                text=current_photo_count+self.actions.amount+amount_photos,
+                text=c_photo_count+self.actions.amount+amount_photos,
                 callback_data=CallbackVote(user=user,
                                            action=self.
                                            actions.count,
                                            current_photo_id=current_photo_id,
-                                           current_photo_count=current_photo_count,
+                                           current_photo_count=c_photo_count,
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
@@ -86,16 +86,20 @@ class KeyboardButtons:
                                            action=self.
                                            actions.finish_text,
                                            current_photo_id=current_photo_id,
-                                           current_photo_count=current_photo_count,
+                                           current_photo_count=c_photo_count,
                                            amount_photos=amount_photos,
                                            group_id=group_id).pack()
                 )
 
 
 class Keyboard:
-    def __init__(self, user: str, current_photo_id: str, current_photo_count: str,
+    def __init__(self, user: str, current_photo_id: str,
+                 current_photo_count: str,
                  amount_photos: str, group_id: str) -> None:
-        self.buttons = KeyboardButtons(user, group_id, current_photo_id, current_photo_count, amount_photos)
+        self.buttons = KeyboardButtons(user, group_id,
+                                       current_photo_id,
+                                       current_photo_count,
+                                       amount_photos)
         self.keyboard_start = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
