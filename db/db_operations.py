@@ -3,8 +3,9 @@ from typing import Any
 from sqlalchemy import exc
 from sqlalchemy.dialects.sqlite import insert
 
-from db.db_classes import tmp_photo_like, User, Photo, Group, group_user, group_photo, group_admin, Contest, \
-    photo_like, contest_user
+from db.db_classes import tmp_photo_like, User, Photo, Group,\
+        group_user, group_photo, group_admin, Contest, \
+        photo_like, contest_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from sqlalchemy import Engine
@@ -24,7 +25,8 @@ class ObjectFactory:
 
     @staticmethod
     def build_contest(contest_name: str, contest_duration_sec: int) -> Contest:
-        contest = Contest(contest_name=contest_name, contest_duration_sec=contest_duration_sec)
+        contest = Contest(contest_name=contest_name,
+                          contest_duration_sec=contest_duration_sec)
         return contest
 
     @staticmethod
@@ -53,10 +55,11 @@ class BaseDB:
 
     def get_contest_id(self, telegram_group_id: int) -> int:
         stmt = (
-            select(Contest)
-            .join(Group, Group.id == Contest.group_id)
-            .where(Group.telegram_id == telegram_group_id).order_by(Contest.id.desc())
-        )
+                select(Contest)
+                .join(Group, Group.id == Contest.group_id)
+                .where(Group.telegram_id == telegram_group_id)
+                .order_by(Contest.id.desc())
+                )
         with Session(self.engine) as session, session.begin():
             contest = session.scalars(stmt).first()
             if not contest:
@@ -65,7 +68,10 @@ class BaseDB:
 
     def get_user_id(self, telegram_user_id: int) -> int:
         with Session(self.engine) as session, session.begin():
-            ret_id = session.scalars(select(User.id).where(User.telegram_id == telegram_user_id)).one()
+            ret_id = session.scalars(
+                    select(User.id)
+                    .where(User.telegram_id == telegram_user_id)
+                    ).one()
             return ret_id
 
 
@@ -73,7 +79,6 @@ class SelectDB(BaseDB):
 
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
-
 
     def select_file_type(self, id: int) -> str:
         stmt = (
@@ -97,30 +102,30 @@ class SelectDB(BaseDB):
 
     def find_group(self, telegram_id: int) -> bool:
         stmt = (
-            select(Group)
-            .where(Group.telegram_id == telegram_id)
-        )
+                select(Group)
+                .where(Group.telegram_id == telegram_id)
+                )
         with Session(self.engine) as session, session.begin():
             search = session.scalars(stmt).first()
             return search is not None
 
-
-    def find_user_in_group(self, telegram_user_id: int, group_telegram_id: int) -> bool:
+    def find_user_in_group(self, telegram_user_id: int,
+                           group_telegram_id: int) -> bool:
         stmt = (
-            select(User)
-            .join(
-                group_user,
-                (User.id == group_user.c.user_id)
-            )
-            .where(group_user.c.group_id == (
-                select(Group.id)
-                .where(Group.telegram_id == group_telegram_id)
-                .scalar_subquery()))
-            .where(group_user.c.user_id.in_(
-                select(User.id)
-                .where(User.telegram_id == telegram_user_id)
-                .scalar_subquery()))
-        )
+                select(User)
+                .join(
+                    group_user,
+                    (User.id == group_user.c.user_id)
+                    )
+                .where(group_user.c.group_id == (
+                    select(Group.id)
+                    .where(Group.telegram_id == group_telegram_id)
+                    .scalar_subquery()))
+                .where(group_user.c.user_id.in_(
+                    select(User.id)
+                    .where(User.telegram_id == telegram_user_id)
+                    .scalar_subquery()))
+                )
         with Session(self.engine) as session, session.begin():
             try:
                 search_result = session.scalars(stmt).one()
@@ -132,22 +137,24 @@ class SelectDB(BaseDB):
 
         return ret
 
-    def select_next_contest_photo(self, group_id: int, current_photo: int) -> list[str]:
+    def select_next_contest_photo(self, group_id: int,
+                                  current_photo: int) -> list[str]:
         ret: list[Any] = []
         stmt_g = (
-            select(Photo)
-            .join(
-                group_photo,
-                (Photo.id == group_photo.c.photo_id)
-            )
-            .where(
-                (group_photo.c.group_id == (
-                    select(Group.id)
-                    .where(Group.telegram_id == group_id).scalar_subquery())
-                 ) &
-                (Photo.id > current_photo))
-            .order_by(Photo.id)
-        )
+                select(Photo)
+                .join(
+                    group_photo,
+                    (Photo.id == group_photo.c.photo_id)
+                    )
+                .where(
+                    (group_photo.c.group_id == (
+                        select(Group.id)
+                        .where(Group.telegram_id == group_id)
+                        .scalar_subquery())
+                     ) &
+                    (Photo.id > current_photo))
+                .order_by(Photo.id)
+                )
         with Session(self.engine) as session, session.begin():
             photos = session.scalars(stmt_g).first()
             if photos:
@@ -155,22 +162,24 @@ class SelectDB(BaseDB):
                 ret.append(photos.id)
         return ret
 
-    def select_prev_contest_photo(self, group_id: int, current_photo: int) -> list[str]:
+    def select_prev_contest_photo(self, group_id: int,
+                                  current_photo: int) -> list[str]:
         ret = []
         stmt_g = (
-            select(Photo)
-            .join(
-                group_photo,
-                (Photo.id == group_photo.c.photo_id)
-            )
-            .where(
-                (group_photo.c.group_id == (
-                    select(Group.id)
-                    .where(Group.telegram_id == group_id).scalar_subquery())
-                 ) &
-                (Photo.id < current_photo))
-            .order_by(Photo.id.desc())
-        )
+                select(Photo)
+                .join(
+                    group_photo,
+                    (Photo.id == group_photo.c.photo_id)
+                    )
+                .where(
+                    (group_photo.c.group_id == (
+                        select(Group.id)
+                        .where(Group.telegram_id == group_id)
+                        .scalar_subquery())
+                     ) &
+                    (Photo.id < current_photo))
+                .order_by(Photo.id.desc())
+                )
         with Session(self.engine) as session, session.begin():
             photos = session.scalars(stmt_g).first()
             if photos:
@@ -181,15 +190,15 @@ class SelectDB(BaseDB):
     def select_contest_photos_ids(self, group_id: int) -> list:
         ret = []
         stmt_g = (
-            select(Photo)
-            .join(
-                group_photo,
-                (Photo.id == group_photo.c.photo_id)
-            )
-            .where(group_photo.c.group_id == (
-                select(Group.id)
-                .where(Group.telegram_id == group_id).scalar_subquery()))
-        )
+                select(Photo)
+                .join(
+                    group_photo,
+                    (Photo.id == group_photo.c.photo_id)
+                    )
+                .where(group_photo.c.group_id == (
+                    select(Group.id)
+                    .where(Group.telegram_id == group_id).scalar_subquery()))
+                )
         with Session(self.engine) as session, session.begin():
             photos = session.scalars(stmt_g)
             for photo in photos:
@@ -199,15 +208,15 @@ class SelectDB(BaseDB):
     def select_contest_photos_primary_ids(self, group_id: int) -> list:
         ret = []
         stmt_g = (
-            select(Photo)
-            .join(
-                group_photo,
-                (Photo.id == group_photo.c.photo_id)
-            )
-            .where(group_photo.c.group_id == (
-                select(Group.id)
-                .where(Group.telegram_id == group_id).scalar_subquery()))
-        )
+                select(Photo)
+                .join(
+                    group_photo,
+                    (Photo.id == group_photo.c.photo_id)
+                    )
+                .where(group_photo.c.group_id == (
+                    select(Group.id)
+                    .where(Group.telegram_id == group_id).scalar_subquery()))
+                )
         with Session(self.engine) as session, session.begin():
             photos = session.scalars(stmt_g)
             for photo in photos:
@@ -217,15 +226,15 @@ class SelectDB(BaseDB):
     def select_contest_photos_ids_and_types(self, group_id: int) -> list:
         ret = []
         stmt_g = (
-            select(Photo)
-            .join(
-                group_photo,
-                (Photo.id == group_photo.c.photo_id)
-            )
-            .where(group_photo.c.group_id == (
-                select(Group.id)
-                .where(Group.telegram_id == group_id).scalar_subquery()))
-        )
+                select(Photo)
+                .join(
+                    group_photo,
+                    (Photo.id == group_photo.c.photo_id)
+                    )
+                .where(group_photo.c.group_id == (
+                    select(Group.id)
+                    .where(Group.telegram_id == group_id).scalar_subquery()))
+                )
         with Session(self.engine) as session, session.begin():
             photos = session.scalars(stmt_g)
             for photo in photos:
@@ -261,7 +270,8 @@ class LikeDB(SelectDB):
         with Session(self.engine) as session, session.begin():
             user = session.scalars(search_stmt_user).one()
             photo = session.scalars(search_stmt_photo).one()
-            stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
+            stmt = insert(tmp_photo_like).values(user_id=user.id,
+                                                 photo_id=photo.id)
             session.execute(stmt)
 
         return likes
@@ -273,28 +283,32 @@ class LikeDB(SelectDB):
         with Session(self.engine) as session, session.begin():
             user = session.scalars(search_stmt_user).one()
             photo = session.scalars(search_stmt_photo).one()
-            stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
+            stmt = insert(tmp_photo_like).values(user_id=user.id,
+                                                 photo_id=photo.id)
             session.execute(stmt)
 
         return likes
 
     def remove_like_photo(self, tg_id: int, photo_id: int) -> None:
         stmt = (
-            delete(tmp_photo_like)
-            .where(tmp_photo_like.c.user_id == (select(User.id).where(User.telegram_id == tg_id).scalar_subquery())
-                   & (tmp_photo_like.c.photo_id == photo_id)
-                   ))
+                delete(tmp_photo_like)
+                .where(tmp_photo_like.c.user_id ==
+                       (select(User.id)
+                        .where(User.telegram_id == tg_id)
+                        .scalar_subquery())
+                       & (tmp_photo_like.c.photo_id == photo_id)
+                       ))
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
 
     def is_photo_liked(self, tg_id: int, ph_id: str) -> int:
         stmt = (
-            select(tmp_photo_like)
-            .join(User, tmp_photo_like.c.user_id == User.id)
-            .join(Photo, tmp_photo_like.c.photo_id == Photo.id)
-            .where(User.telegram_id == tg_id)
-            .where(Photo.id == ph_id)
-        )
+                select(tmp_photo_like)
+                .join(User, tmp_photo_like.c.user_id == User.id)
+                .join(Photo, tmp_photo_like.c.photo_id == Photo.id)
+                .where(User.telegram_id == tg_id)
+                .where(Photo.id == ph_id)
+                )
         likes = 0
         with Session(self.engine) as session, session.begin():
             like = session.scalars(stmt).fetchall()
@@ -306,42 +320,48 @@ class LikeDB(SelectDB):
     def get_all_likes_for_user(self, u_telegram_id: int, g_telegram_id: int):
         ret: list = []
         stmt = (
-            select(tmp_photo_like)
-            .join(Photo)
-            .join(group_photo)
-            .join(Group)
-            .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
-        )
+                select(tmp_photo_like)
+                .join(Photo)
+                .join(group_photo)
+                .join(Group)
+                .where((Group.telegram_id == g_telegram_id)
+                       & (User.telegram_id == u_telegram_id))
+                )
         with Session(self.engine) as session, session.begin():
             for row in session.execute(stmt):
                 ret.append(row)
         return ret
 
-    def delete_likes_from_tmp_vote(self, u_telegram_id: int, g_telegram_id: int):
+    def delete_likes_from_tmp_vote(self, u_telegram_id: int,
+                                   g_telegram_id: int):
         ret: list = []
         stmt = (
-            delete(tmp_photo_like)
-            .where(tmp_photo_like.c.photo_id.in_(
-                select(Photo.id)
-                .join(group_photo)
-                .join(Group)
-                .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
-            ))
-        )
+                delete(tmp_photo_like)
+                .where(tmp_photo_like.c.photo_id.in_(
+                    select(Photo.id)
+                    .join(group_photo)
+                    .join(Group)
+                    .where((Group.telegram_id == g_telegram_id)
+                           & (User.telegram_id == u_telegram_id))
+                    ))
+                )
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
         return ret
 
     def insert_all_likes(self, u_telegram_id: int, g_telegram_id: int):
         select_stmt = (
-            select(tmp_photo_like)
-            .join(User, User.id == tmp_photo_like.c.user_id)
-            .join(group_photo, tmp_photo_like.c.photo_id == group_photo.c.photo_id)
-            .join(Photo, Photo.id == tmp_photo_like.c.photo_id)
-            .join(Group, Group.id == group_photo.c.group_id)
-            .where((Group.telegram_id == g_telegram_id) & (User.telegram_id == u_telegram_id))
-        )
-        stmt = insert(photo_like).from_select(["user_id", "photo_id"], select_stmt)
+                select(tmp_photo_like)
+                .join(User, User.id == tmp_photo_like.c.user_id)
+                .join(group_photo, tmp_photo_like.c.photo_id ==
+                      group_photo.c.photo_id)
+                .join(Photo, Photo.id == tmp_photo_like.c.photo_id)
+                .join(Group, Group.id == group_photo.c.group_id)
+                .where((Group.telegram_id == g_telegram_id)
+                       & (User.telegram_id == u_telegram_id))
+                )
+        stmt = insert(photo_like).from_select(["user_id", "photo_id"],
+                                              select_stmt)
         with Session(self.engine) as session, session.begin():
             session.execute(stmt)
 
@@ -354,17 +374,19 @@ class VoteDB(LikeDB):
         contest_id = self.get_contest_id(telegram_group_id)
         user_id = self.get_user_id(telegram_user_id)
         with Session(self.engine) as session, session.begin():
-            stmt = insert(contest_user).values(contest_id=contest_id, user_id=user_id)
+            stmt = insert(contest_user).values(contest_id=contest_id,
+                                               user_id=user_id)
             session.execute(stmt)
 
-
-    def is_user_not_allowed_to_vote(self, telegram_group_id: int, telegram_user_id: int) -> bool:
+    def is_user_not_allowed_to_vote(self, telegram_group_id: int,
+                                    telegram_user_id: int) -> bool:
         contest_id = self.get_contest_id(telegram_group_id)
         user_id = self.get_user_id(telegram_user_id)
         stmt = (
-            select(contest_user)
-            .where((contest_user.c.user_id == user_id) & (contest_user.c.contest_id == contest_id))
-        )
+                select(contest_user)
+                .where((contest_user.c.user_id == user_id)
+                       & (contest_user.c.contest_id == contest_id))
+                )
         with Session(self.engine) as session, session.begin():
             res = session.scalars(stmt)
             allow = 0
@@ -374,13 +396,15 @@ class VoteDB(LikeDB):
 
     def select_winner_from_contest(self, telegram_group_id: int):
         stmt = (
-                select(photo_like.c.photo_id, 
-                      func.count(photo_like.c.photo_id))
-                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                select(photo_like.c.photo_id,
+                       func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id ==
+                      group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
                 .where(Group.telegram_id == telegram_group_id)
-                .group_by(photo_like.c.photo_id).order_by(func.count(photo_like.c.photo_id).desc())
-        )
+                .group_by(photo_like.c.photo_id)
+                .order_by(func.count(photo_like.c.photo_id).desc())
+                )
         with Session(self.engine) as session, session.begin():
             res = session.scalars(stmt).first()
             if not res:
@@ -389,33 +413,38 @@ class VoteDB(LikeDB):
 
     def select_all_likes(self, telegram_group_id: int, id: str):
         stmt = (
-                select( 
-                      func.count(photo_like.c.photo_id))
-                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                select(
+                       func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id ==
+                      group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
                 .join(Photo, group_photo.c.photo_id == Photo.id)
                 .where(Group.telegram_id == telegram_group_id)
                 .where(Photo.id == id)
-                .group_by(photo_like.c.photo_id).order_by(func.count(photo_like.c.photo_id).desc())
-        )
+                .group_by(photo_like.c.photo_id)
+                .order_by(func.count(photo_like.c.photo_id).desc())
+                )
         with Session(self.engine) as session, session.begin():
             rs = session.scalars(stmt).first()
         return rs
 
     def select_all_likes_file_id(self, telegram_group_id: int, file_id: str):
         stmt = (
-                select( 
-                      func.count(photo_like.c.photo_id))
-                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                select(
+                       func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id ==
+                      group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
                 .join(Photo, group_photo.c.photo_id == Photo.id)
                 .where(Group.telegram_id == telegram_group_id)
                 .where(Photo.file_id == file_id)
-                .group_by(photo_like.c.photo_id).order_by(func.count(photo_like.c.photo_id).desc())
-        )
+                .group_by(photo_like.c.photo_id)
+                .order_by(func.count(photo_like.c.photo_id).desc())
+                )
         with Session(self.engine) as session, session.begin():
             rs = session.scalars(stmt).first()
         return rs
+
 
 class RegisterDB(SelectDB):
     def __init__(self, engine: Engine) -> None:
@@ -445,7 +474,8 @@ class RegisterDB(SelectDB):
 
     def register_admin(self, adm_user: User, group_id: int, group=None):
         stmt = select(Group).where(Group.telegram_id == group_id)
-        stmt_user = select(User).where(User.telegram_id == adm_user.telegram_id)
+        stmt_user = select(User).where(User.telegram_id ==
+                                       adm_user.telegram_id)
         with Session(self.engine) as session, session.begin():
             try:
                 search_result = session.scalars(stmt).one()
@@ -466,15 +496,16 @@ class RegisterDB(SelectDB):
         return "Добавил администратора."
 
     def register_photo_for_contest(self, user_tg_id: int, grtg_id: int,
-                                   file_get_id='-1', user_p=None, group_p=None, type='photo'):
+                                   file_get_id='-1',
+                                   user_p=None, group_p=None, type='photo'):
         stmt_sel = (
-            select(User)
-            .where(User.telegram_id == user_tg_id)
-        )
+                select(User)
+                .where(User.telegram_id == user_tg_id)
+                )
         stmtg_sel = (
-            select(Group)
-            .where(Group.telegram_id == grtg_id)
-        )
+                select(Group)
+                .where(Group.telegram_id == grtg_id)
+                )
         stmt_photo_sel = (
                 select(Photo)
                 .join(group_photo)
@@ -497,18 +528,20 @@ class RegisterDB(SelectDB):
             if possible_register:
                 return
 
-            photo = Photo(file_id=file_get_id, user_id=user.id, telegram_type=type)
-            
+            photo = Photo(file_id=file_get_id,
+                          user_id=user.id, telegram_type=type)
+
             user.photos.append(photo)
             group.photos.append(photo)
             session.add(photo)
 
     def get_contest_theme(self, group_id: int):
         stmt = (
-            select(Contest)
-            .join(Group, Group.id == Contest.group_id)
-            .where(Group.telegram_id == group_id).order_by(Contest.id.desc())
-        )
+                select(Contest)
+                .join(Group, Group.id == Contest.group_id)
+                .where(Group.telegram_id == group_id)
+                .order_by(Contest.id.desc())
+                )
         with Session(self.engine) as session, session.begin():
             try:
                 theme = session.scalars(stmt).first()
@@ -523,10 +556,8 @@ class RegisterDB(SelectDB):
 
 class AdminDB(RegisterDB):
 
-
     def __init__(self, engine: Engine) -> None:
         super().__init__(engine)
-
 
     def change_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False
@@ -538,15 +569,12 @@ class AdminDB(RegisterDB):
             res = session.scalars(stmt).first()
             print(res)
             if res:
-                if res.vote_in_progress == False:
+                if not res.vote_in_progress:
                     ret = res.vote_in_progress = True
                 else:
                     ret = res.vote_in_progress = False
 
         return ret
-
-
-
 
     def select_all_administrated_groups(self, telegram_user_id: int) -> list:
         ret: list = []
@@ -554,7 +582,7 @@ class AdminDB(RegisterDB):
                 select(Group)
                 .join(group_admin)
                 .join(User)
-                .where(User.telegram_id == telegram_user_id)         
+                .where(User.telegram_id == telegram_user_id)
                 )
         with Session(self.engine) as session, session.begin():
             ids = session.scalars(stmt)
@@ -562,7 +590,6 @@ class AdminDB(RegisterDB):
                 ret.append([id.name, id.telegram_id])
 
         return ret
-
 
     def check_admin(self, user_id: int, group_id: int) -> bool:
         admin_right = False
@@ -586,8 +613,8 @@ class AdminDB(RegisterDB):
 
         return admin_right
 
-
-    def set_contest_theme(self, group_id: int, theme: str, contest_duration_sec=604800) -> str:
+    def set_contest_theme(self, group_id: int, theme: str,
+                          contest_duration_sec=604800) -> str:
         stmt_g = (
                 select(Group.id).where(Group.telegram_id == group_id)
                 )
@@ -599,4 +626,3 @@ class AdminDB(RegisterDB):
             session.add(theme_object)
 
         return f'Тема зарегистрирована. {theme}'
-
