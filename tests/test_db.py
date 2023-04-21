@@ -115,7 +115,7 @@ def test_is_user_not_registered(registered_group, user, group, db):
 
 def test_is_5_users_registered(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
     register_unit = RegisterDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -128,7 +128,7 @@ def test_is_5_users_registered(create_user, group, db):
 
 def test_is_5_users_not_registered(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
     register_unit = RegisterDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -178,7 +178,7 @@ def test_is_admin_not_registered(create_user, group, db):
 
 def test_is_photo_registered(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
     register_unit = RegisterDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -196,7 +196,7 @@ def test_is_photo_registered(create_user, group, db):
 def test_is_photo_registered_without_duplicating_submissions(create_user,
                                                              group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
     register_unit = RegisterDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -239,7 +239,7 @@ def test_is_vote_changed_again(create_user, group, db):
 
 def test_is_vote_finished_correctly(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
         print(users[-1].telegram_id)
     register_unit = AdminDB(db)
@@ -271,7 +271,7 @@ def test_is_vote_finished_correctly(create_user, group, db):
 
 def test_is_vote_finished_correctly_second(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
         print(users[-1].telegram_id)
     register_unit = AdminDB(db)
@@ -303,7 +303,7 @@ def test_is_vote_finished_correctly_second(create_user, group, db):
 
 def test_is_likes_correctly_counted(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
         print(users[-1].telegram_id)
     register_unit = AdminDB(db)
@@ -344,7 +344,7 @@ def test_is_likes_correctly_counted(create_user, group, db):
 
 def test_is_likes_correctly_counted_file_id(create_user, group, db):
     users: list[User] = []
-    for user in range(0, 5):
+    for _ in range(0, 5):
         users.append(create_user())
         print(users[-1].telegram_id)
     register_unit = AdminDB(db)
