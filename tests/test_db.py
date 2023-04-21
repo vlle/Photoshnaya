@@ -258,3 +258,70 @@ def test_is_vote_finished_correctly_second(create_user, group, db):
 
     photo_winner = vote.select_winner_from_contest(m_group.telegram_id)
     assert photo_winner == 3 
+
+
+def test_is_likes_correctly_counted(create_user, group, db):
+    users: list[User] = []
+    for user in range(0, 5):
+        users.append(create_user())
+        print(users[-1].telegram_id)
+    register_unit = AdminDB(db)
+    like = LikeDB(db)
+    vote = VoteDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    for user in users:
+        file_id = random.randint(0, 100000)
+        register_unit.register_photo_for_contest(user.telegram_id, m_group.telegram_id, file_get_id=str(file_id))
+    all_photo_ids = register_unit.select_contest_photos_ids(m_group.telegram_id)
+    like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+    like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
+    like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
+    like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[2])
+    like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2])
+    like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
+    like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
+    like.insert_all_likes(users[2].telegram_id, m_group.telegram_id)
+    all_photo_ids = register_unit.select_contest_photos_primary_ids(m_group.telegram_id)
+
+    list_of_likes = [1, 1, 3, 0, 0]
+    i = 0
+    for id in all_photo_ids:
+        photo_like = vote.select_all_likes(m_group.telegram_id, id)
+        if photo_like is None:
+            photo_like = 0
+        assert photo_like == list_of_likes[i]
+        i += 1
+
+def test_is_likes_correctly_counted_file_id(create_user, group, db):
+    users: list[User] = []
+    for user in range(0, 5):
+        users.append(create_user())
+        print(users[-1].telegram_id)
+    register_unit = AdminDB(db)
+    like = LikeDB(db)
+    vote = VoteDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    for user in users:
+        file_id = random.randint(0, 100000)
+        register_unit.register_photo_for_contest(user.telegram_id, m_group.telegram_id, file_get_id=str(file_id))
+    all_photo_ids = register_unit.select_contest_photos_ids(m_group.telegram_id)
+    like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+    like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
+    like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
+    like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[2])
+    like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2])
+    like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
+    like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
+    like.insert_all_likes(users[2].telegram_id, m_group.telegram_id)
+
+    list_of_likes = [1, 1, 3, 0, 0]
+    i = 0
+    for id in all_photo_ids:
+        photo_like = vote.select_all_likes_file_id(m_group.telegram_id, id)
+        if photo_like is None:
+            photo_like = 0
+        assert photo_like == list_of_likes[i]
+        i += 1
+
