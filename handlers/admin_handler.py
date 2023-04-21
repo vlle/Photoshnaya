@@ -254,27 +254,6 @@ async def get_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
     await bot.send_message(message.chat.id, msg)
 
 
-async def get_all_photos(message: types.Message, bot: Bot,
-                         admin_unit: AdminDB):
-    if not message.text or not message.from_user:
-        return
-    if message.chat.type != 'private':
-        return
-    group_id = message.text.split(' ')[1]
-    user, _ = TelegramDeserialize.unpack(message)
-    admin_right = admin_unit.check_admin(user.telegram_id, int(group_id))
-    if admin_right is False:
-        return
-
-    ids = admin_unit.select_contest_photos_ids(int(group_id))
-    for id in ids:
-        if admin_unit.select_file_type_by_file_id(id) == 'photo':
-            await bot.send_photo(chat_id=message.chat.id, photo=id)
-        else:
-            await bot.send_document(chat_id=message.chat.id, document=id)
-        await async_sleep(0.5)
-
-
 async def on_user_join(message: types.Message, bot: Bot,
                        register_unit: RegisterDB):
     user, chat = TelegramDeserialize.unpack(message,

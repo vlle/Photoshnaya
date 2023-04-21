@@ -445,6 +445,30 @@ class VoteDB(LikeDB):
             rs = session.scalars(stmt).first()
         return rs
 
+    def select_all_likes_with_user(self, telegram_group_id: int, file_id: str):
+        stmt_like = (
+                select(
+                       func.count(photo_like.c.photo_id))
+                .join(group_photo, photo_like.c.photo_id ==
+                      group_photo.c.photo_id)
+                .join(Group, group_photo.c.group_id == Group.id)
+                .join(Photo, group_photo.c.photo_id == Photo.id)
+                .where(Group.telegram_id == telegram_group_id)
+                .where(Photo.file_id == file_id)
+                .group_by(photo_like.c.photo_id)
+                .order_by(func.count(photo_like.c.photo_id).desc())
+                )
+        stmt_user = (
+                select(User)
+                .join(Photo)
+                .where(Photo.file_id == file_id)
+                )
+        with Session(self.engine) as session, session.begin():
+            rs = session.scalars(stmt_like).first()
+            rs_user: User = session.scalars(stmt_user).one()
+            user_data = [rs_user.name, rs_user.full_name, rs_user.telegram_id]
+        return rs, user_data
+
 
 class RegisterDB(SelectDB):
     def __init__(self, engine: Engine) -> None:
