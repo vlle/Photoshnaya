@@ -21,8 +21,12 @@ class AdminActions:
     sure_finish_vote_id = '22'
     view_votes_text = "Посмотреть текущие голоса"
     view_votes_id = '3'
-    view_submissions_text = "Посмотреть зарегистрированные фотографии"
+    view_submissions_text = "Посмотреть фотографии"
     view_submissions_id = '3'
+    add_admin_text = "Добавить админа"
+    add_admin_id = "4"
+    delete_submission_text = "Удалить фотку"
+    delete_submission_id = '5'
     back = 'b'
     back_text = 'Назад'
 
@@ -78,6 +82,22 @@ class AdminKeyboardButtons:
                                              msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
+        self.add_admin = InlineKeyboardButton(
+                text=self.actions.add_admin_text,
+                callback_data=CallbackManage(user=user,
+                                             action=self.
+                                             actions.add_admin_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
+                )
+        self.delete_submission = InlineKeyboardButton(
+                text=self.actions.delete_submission_text,
+                callback_data=CallbackManage(user=user,
+                                             action=self.
+                                             actions.delete_submission_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
+                )
         self.back = InlineKeyboardButton(
                 text=self.actions.back_text,
                 callback_data=CallbackManage(user=user,
@@ -94,20 +114,22 @@ class AdminKeyboard:
         self.buttons = AdminKeyboardButtons(user_id, msg_id, group_id)
         self.keyboard_no_vote = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.finish_contest],
-                                 [self.buttons.view_votes],
                                  [self.buttons.view_submissions],
+                                 [self.buttons.delete_submission],
+                                 [self.buttons.add_admin],
                                  [self.buttons.back]]
                 )
         self.keyboard_vote_in_progress = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.finish_vote],
                                  [self.buttons.view_votes],
-                                 [self.buttons.view_submissions],
+                                 [self.buttons.delete_submission],
+                                 [self.buttons.add_admin],
                                  [self.buttons.back]]
                 )
         self.keyboard_are_you_sure = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.sure_finish_vote], [self.buttons.back],]
                 )
-        self.keyboard_are_you_sure = InlineKeyboardMarkup(
+        self.keyboard_are_you_sure_start = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.sure_start_vote], [self.buttons.back],]
                 )
         self.keyboard_back = InlineKeyboardMarkup(

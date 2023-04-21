@@ -90,7 +90,16 @@ class SelectDB(BaseDB):
             res = res.telegram_type
         return res
 
-    def select_file_type_by_file_id(self, id: int) -> str:
+    def select_file_id(self, id: int) -> str:
+        stmt = (
+                select(Photo)
+                .where(Photo.id == id)
+                )
+        with Session(self.engine) as session, session.begin():
+            res = session.scalars(stmt).one()
+            return res.file_id
+
+    def select_file_type_by_file_id(self, id: str) -> str:
         stmt = (
                 select(Photo)
                 .where(Photo.file_id == id)
@@ -394,6 +403,20 @@ class VoteDB(LikeDB):
                 allow += 1
             return allow > 0
 
+    def erase_all_photos(self, telegram_group_id: int):
+        stmt_id = (
+                select(Group)
+                .where(Group.telegram_id == telegram_group_id)
+                )
+        with Session(self.engine) as session, session.begin():
+            group = session.scalars(stmt_id).one()
+            stmt_del = (
+                    delete(group_photo)
+                    .where(group_photo.c.group_id == group.id)
+                    )
+            session.execute(stmt_del)
+        return
+
     def select_winner_from_contest(self, telegram_group_id: int):
         stmt = (
                 select(photo_like.c.photo_id,
@@ -407,9 +430,15 @@ class VoteDB(LikeDB):
                 )
         with Session(self.engine) as session, session.begin():
             res = session.scalars(stmt).first()
+            stmt_user = session.scalars(
+                    select(User)
+                    .join(Photo)
+                    .where(Photo.id == res)
+                    ).one()
+            user = [stmt_user.name, stmt_user.full_name, stmt_user.telegram_id]
             if not res:
-                return -1
-            return res
+                return -1, None
+            return res, user
 
     def select_all_likes(self, telegram_group_id: int, id: str):
         stmt = (
@@ -443,6 +472,8 @@ class VoteDB(LikeDB):
                 )
         with Session(self.engine) as session, session.begin():
             rs = session.scalars(stmt).first()
+            if rs is None:
+                return 0
         return rs
 
     def select_all_likes_with_user(self, telegram_group_id: int, file_id: str):
@@ -521,7 +552,7 @@ class RegisterDB(SelectDB):
 
     def register_photo_for_contest(self, user_tg_id: int, grtg_id: int,
                                    file_get_id='-1',
-                                   user_p=None, group_p=None, type='photo'):
+                                   user_p=None, group_p=None, type='photo') -> bool:
         stmt_sel = (
                 select(User)
                 .where(User.telegram_id == user_tg_id)
@@ -549,8 +580,8 @@ class RegisterDB(SelectDB):
                 group = session.scalars(stmtg_sel).one()
 
             possible_register = session.scalars(stmt_photo_sel).first()
-            #if possible_register:
-            #    return
+            if possible_register:
+                return False
 
             photo = Photo(file_id=file_get_id,
                           user_id=user.id, telegram_type=type)
@@ -558,6 +589,7 @@ class RegisterDB(SelectDB):
             user.photos.append(photo)
             group.photos.append(photo)
             session.add(photo)
+        return True
 
     def get_contest_theme(self, group_id: int):
         stmt = (

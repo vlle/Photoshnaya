@@ -265,7 +265,7 @@ def test_is_vote_finished_correctly(create_user, group, db):
     like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
     like.insert_all_likes(users[2].telegram_id, m_group.telegram_id)
 
-    photo_winner = vote.select_winner_from_contest(m_group.telegram_id)
+    photo_winner, user = vote.select_winner_from_contest(m_group.telegram_id)
     assert photo_winner == 1
 
 
@@ -297,7 +297,7 @@ def test_is_vote_finished_correctly_second(create_user, group, db):
     like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
     like.insert_all_likes(users[2].telegram_id, m_group.telegram_id)
 
-    photo_winner = vote.select_winner_from_contest(m_group.telegram_id)
+    photo_winner, user = vote.select_winner_from_contest(m_group.telegram_id)
     assert photo_winner == 3
 
 

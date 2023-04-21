@@ -5,7 +5,7 @@ from utils.TelegramUserClass import Photo, TelegramChat,\
 from handlers.internal_logic.register import internal_register_photo
 
 
-async def register_photo(message: types.Message, register_unit: RegisterDB):
+async def register_photo(message: types.Message, register_unit: RegisterDB, msg: dict):
     if message.from_user is None:
         return
     user, chat = TelegramDeserialize.unpack(message)
@@ -19,7 +19,7 @@ async def register_photo(message: types.Message, register_unit: RegisterDB):
         obj = Document(message.document.file_id)
     else:
         return
-    ret_msg = internal_register_photo(user, chat, register_unit, obj)
+    ret_msg = internal_register_photo(user, chat, register_unit, obj, msg)
     await message.answer(ret_msg)
 
 
