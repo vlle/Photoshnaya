@@ -17,10 +17,11 @@ from utils.keyboard import Actions, CallbackVote
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
-from handlers.admin_handler import callback_back, cmd_action_choose, cmd_check_if_sure, cmd_check_if_sure_vote,\
+from handlers.admin_handler import callback_back, cmd_action_choose, cmd_check_if_sure,\
+        cmd_check_if_sure_vote,\
         cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
-        get_all_photos, set_theme, get_theme,\
-        on_user_join, view_submissions
+        set_theme, get_theme,\
+        on_user_join, view_submissions, view_votes
 from handlers.vote import finish_contest
 from handlers.personal_vote_menu import cmd_start, callback_next, \
     callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
@@ -53,7 +54,6 @@ async def main():
 
     dp.message.register(finish_contest, Command(commands=["finish_contest"]))
     dp.message.register(cmd_start, Command(commands=["start"]))
-    dp.message.register(get_all_photos, Command(commands=["get_all_photos"]))
     dp.message.register(get_theme, Command(commands=["get_theme"]))
     dp.message.register(set_theme, Command(commands=["set_theme"]))
     dp.my_chat_member.register(on_user_join, ChatMemberUpdatedFilter
@@ -82,6 +82,8 @@ async def main():
                                (F.action == AdminActions.sure_start_vote_id))
     dp.callback_query.register(view_submissions, CallbackManage.filter
                                (F.action == AdminActions.view_submissions_id))
+    dp.callback_query.register(view_votes, CallbackManage.filter
+                               (F.action == AdminActions.view_votes_id))
     dp.callback_query.register(cmd_check_if_sure, CallbackManage.filter
                                (F.action == AdminActions.finish_vote_id))
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter

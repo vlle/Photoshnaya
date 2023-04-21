@@ -6,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.TelegramUserClass import TelegramDeserialize
 from handlers.internal_logic.admin import i_set_theme
 from handlers.internal_logic.on_join import i_on_user_join
-from db.db_operations import RegisterDB, AdminDB
+from db.db_operations import RegisterDB, AdminDB, VoteDB
 from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
 
@@ -160,10 +160,14 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot,
     ids = admin_unit.select_contest_photos_ids_and_types(int(cb.group_id))
     if len(ids) == 0:
         return
-    await internal_view_submissions(query.from_user.id, ids, bot)
+    await internal_view_submissions(query.from_user.id, ids, bot, admin_unit,
+                                    callback_data)
 
 
-async def internal_view_submissions(chat_id: int, ids: list, bot: Bot):
+async def internal_view_submissions(chat_id: int, ids: list, bot: Bot,
+                                    admin_unit: AdminDB,
+                                    callback_data: CallbackManage):
+    cb = callback_data
     if len(ids) == 1:
         if ids[0][1] == 'photo':
             await bot.send_photo(chat_id=chat_id, photo=ids[0][0])
@@ -174,10 +178,11 @@ async def internal_view_submissions(chat_id: int, ids: list, bot: Bot):
     MAX_SUBMISSIONS = 10
     submissions_photos = []
     submissions_docs = []
+    vote = VoteDB(admin_unit.engine)
     for id in ids:
         media_type, media = id[1], id[0]
         if media_type == 'photo':
-            await send_other_type(submissions_docs, bot, chat_id)
+            #await send_other_type(submissions_docs, bot, chat_id)
             submissions_photos.append(InputMediaPhoto(type='photo',
                                                       media=media))
         else:
@@ -188,20 +193,57 @@ async def internal_view_submissions(chat_id: int, ids: list, bot: Bot):
             await send_other_type(submissions_docs, bot, chat_id)
             await bot.send_media_group(chat_id=chat_id,
                                        media=submissions_photos)
+            await send_possible_caption(submissions_photos,
+                                        int(cb.group_id),
+                                        bot, vote, chat_id)
+            submissions_docs.clear()
             submissions_photos.clear()
         if len(submissions_docs) == MAX_SUBMISSIONS:
             await send_other_type(submissions_photos, bot, chat_id)
             await bot.send_media_group(chat_id=chat_id,
                                        media=submissions_docs)
+            await send_possible_caption(submissions_docs,
+                                        int(cb.group_id),
+                                        bot, vote, chat_id)
             submissions_docs.clear()
+            submissions_photos.clear()
 
     if submissions_photos:
         await send_other_type(submissions_photos,  bot, chat_id)
+        await send_possible_caption(submissions_photos,
+                                    int(cb.group_id),
+                                    bot, vote, chat_id)
+        submissions_photos.clear()
     if submissions_docs:
         await send_other_type(submissions_docs, bot, chat_id)
+        await send_possible_caption(submissions_docs,
+                                    int(cb.group_id),
+                                    bot, vote, chat_id)
+        submissions_docs.clear()
 
     del submissions_photos
     del submissions_docs
+
+async def send_possible_caption(submissions: list[InputMediaDocument
+                                               | InputMediaPhoto],
+                                group_id: int,
+                                bot: Bot, vote: VoteDB,
+                                chat_id: int):
+       caption = ''
+       i = 1
+       for obj in submissions:
+           if isinstance(obj.media, str):
+               likes, user = vote.select_all_likes_with_user(group_id,
+                                                             obj.media)
+               if len(user) < 2:
+                   continue
+               print(likes, user)
+               if likes is None:
+                   likes = 0
+               caption += f"{i}) likes = {likes}, @{user[0]}, {user[1]}, {user[2]}\n"
+               i += 1
+       if caption:
+           await bot.send_message(chat_id=chat_id, text=caption)
 
 
 async def send_other_type(list_of_object: list[InputMediaDocument
@@ -217,7 +259,6 @@ async def send_other_type(list_of_object: list[InputMediaDocument
     elif len(list_of_object) == 1 and isinstance(list_of_object[0],
                                                  InputMediaPhoto):
         await bot.send_photo(chat_id=msg, photo=list_of_object[0].media)
-    list_of_object.clear()
     await async_sleep(0.5)
 
 
