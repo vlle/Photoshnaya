@@ -293,6 +293,7 @@ def test_is_likes_correctly_counted(create_user, group, db):
         assert photo_like == list_of_likes[i]
         i += 1
 
+
 def test_is_likes_correctly_counted_file_id(create_user, group, db):
     users: list[User] = []
     for user in range(0, 5):
