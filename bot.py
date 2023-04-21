@@ -17,7 +17,7 @@ from utils.keyboard import Actions, CallbackVote
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
-from handlers.admin_handler import callback_back, cmd_action_choose,\
+from handlers.admin_handler import callback_back, cmd_action_choose, cmd_check_if_sure, cmd_check_if_sure_vote,\
         cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
         get_all_photos, set_theme, get_theme,\
         on_user_join, view_submissions
@@ -76,12 +76,16 @@ async def main():
                                (F.action == AdminActions.back))
     dp.callback_query.register(cmd_action_choose, CallbackManage.filter
                                (F.action == AdminActions.chosen_group))
-    dp.callback_query.register(cmd_finish_contest, CallbackManage.filter
+    dp.callback_query.register(cmd_check_if_sure_vote, CallbackManage.filter
                                (F.action == AdminActions.finish_contest_id))
+    dp.callback_query.register(cmd_finish_contest, CallbackManage.filter
+                               (F.action == AdminActions.sure_start_vote_id))
     dp.callback_query.register(view_submissions, CallbackManage.filter
                                (F.action == AdminActions.view_submissions_id))
-    dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
+    dp.callback_query.register(cmd_check_if_sure, CallbackManage.filter
                                (F.action == AdminActions.finish_vote_id))
+    dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
+                               (F.action == AdminActions.sure_finish_vote_id))
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,

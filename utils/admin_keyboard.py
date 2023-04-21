@@ -13,8 +13,12 @@ class AdminActions:
     chosen_group = 'cg'
     finish_contest_text = "Начать голосование 🗳"
     finish_contest_id = '1'
+    sure_start_vote_text = "Да, хочу начать голосование"
+    sure_start_vote_id = '11'
     finish_vote_text = "Завершить голосование 🗳"
     finish_vote_id = '2'
+    sure_finish_vote_text = "Да, хочу завершить голосование"
+    sure_finish_vote_id = '22'
     view_votes_text = "Посмотреть текущие голоса"
     view_votes_id = '3'
     view_submissions_text = "Посмотреть зарегистрированные фотографии"
@@ -31,6 +35,22 @@ class AdminKeyboardButtons:
                 callback_data=CallbackManage(user=user,
                                              action=self.
                                              actions.finish_contest_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
+                )
+        self.sure_start_vote = InlineKeyboardButton(
+                text=self.actions.sure_start_vote_text,
+                callback_data=CallbackManage(user=user,
+                                             action=self.
+                                             actions.sure_start_vote_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
+                )
+        self.sure_finish_vote = InlineKeyboardButton(
+                text=self.actions.sure_finish_vote_text,
+                callback_data=CallbackManage(user=user,
+                                             action=self.
+                                             actions.sure_finish_vote_id,
                                              msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
@@ -83,6 +103,12 @@ class AdminKeyboard:
                                  [self.buttons.view_votes],
                                  [self.buttons.view_submissions],
                                  [self.buttons.back]]
+                )
+        self.keyboard_are_you_sure = InlineKeyboardMarkup(
+                inline_keyboard=[[self.buttons.sure_finish_vote], [self.buttons.back],]
+                )
+        self.keyboard_are_you_sure = InlineKeyboardMarkup(
+                inline_keyboard=[[self.buttons.sure_start_vote], [self.buttons.back],]
                 )
         self.keyboard_back = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.back],]

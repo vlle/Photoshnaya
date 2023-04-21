@@ -96,6 +96,30 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
                                 reply_markup=keyboard_r)
 
 
+async def cmd_check_if_sure(query: types.CallbackQuery, bot: Bot,
+                            callback_data: CallbackManage):
+    if not query.message:
+        return
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    msg = "Точно хочешь завершить голосование?"
+    await bot.edit_message_text(text=msg,
+                                chat_id=callback_data.user,
+                                message_id=query.message.message_id,
+                                reply_markup=keyboard.keyboard_are_you_sure)
+
+
+async def cmd_check_if_sure_vote(query: types.CallbackQuery, bot: Bot,
+                            callback_data: CallbackManage):
+    if not query.message:
+        return
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    msg = "Точно хочешь начать голосование?"
+    await bot.edit_message_text(text=msg,
+                                chat_id=callback_data.user,
+                                message_id=query.message.message_id,
+                                reply_markup=keyboard.keyboard_are_you_sure)
+
+
 async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot,
                              callback_data: CallbackManage,
                              admin_unit: AdminDB):
