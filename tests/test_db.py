@@ -155,43 +155,43 @@ async def test_is_5_users_not_registered(create_user, group, db):
                         m_group.telegram_id + 123123) is False
  
  
-# def test_is_admin_registered(create_user, group, db):
-#     users: list[User] = []
-#     for _ in range(0, 5):
-#         users.append(create_user())
-#     register_unit = RegisterDB(db)
-#     AdminUnit = AdminDB(db)
-#     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
-#     m_user = ObjectFactory.build_user(
-        #             users[0].name,
-        #             users[0].name + ' Ivanov',
-        #             users[0].telegram_id)
-#     register_unit.register_admin(m_user, m_group.telegram_id)
-# 
-#     m_user = ObjectFactory.build_user(
-        #             users[0].name,
-        #             users[0].name + ' Ivanov',
-        #             users[0].telegram_id)
-# 
-#     assert AdminUnit.check_admin(
-        #             m_user.telegram_id, m_group.telegram_id) is True
-# 
-# 
-# def test_is_admin_not_registered(create_user, group, db):
-#     users: list[User] = []
-#     for _ in range(0, 5):
-#         users.append(create_user())
-#     AdminUnit = AdminDB(db)
-#     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
-#     m_user = ObjectFactory.build_user(
-        #             users[0].name,
-        #             users[0].name + ' Ivanov',
-        #             users[0].telegram_id)
-# 
-#     assert AdminUnit.check_admin(
-        #             m_user.telegram_id, m_group.telegram_id) is False
-# 
-# 
+async def test_is_admin_registered(create_user, group, db):
+    users: list[User] = []
+    for _ in range(0, 5):
+        users.append(await create_user())
+    register_unit = RegisterDB(db)
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    m_user = ObjectFactory.build_user(
+                   users[0].name,
+                   users[0].name + ' Ivanov',
+                   users[0].telegram_id)
+    await register_unit.register_admin(m_user, m_group.telegram_id)
+
+    m_user = ObjectFactory.build_user(
+                   users[0].name,
+                   users[0].name + ' Ivanov',
+                   users[0].telegram_id)
+
+    assert await AdminUnit.check_admin(
+                   m_user.telegram_id, m_group.telegram_id) is True
+
+
+async def test_is_admin_not_registered(create_user, group, db):
+    users: list[User] = []
+    for _ in range(0, 5):
+        users.append(await create_user())
+    AdminUnit = AdminDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    m_user = ObjectFactory.build_user(
+                   users[0].name,
+                   users[0].name + ' Ivanov',
+                   users[0].telegram_id)
+
+    assert await AdminUnit.check_admin(
+                   m_user.telegram_id, m_group.telegram_id) is False
+
+
 # def test_is_photo_registered(create_user, group, db):
 #     users: list[User] = []
 #     for _ in range(0, 5):

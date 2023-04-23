@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_session, asy
 from db.db_classes import tmp_photo_like, User, Photo, Group,\
         group_user, group_photo, group_admin, Contest, \
         photo_like, contest_user
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select, delete
 from sqlalchemy import Engine
 
@@ -550,24 +550,29 @@ class RegisterDB(SelectDB):
 
     async def register_admin(self, adm_user: User, group_id: int, group=None):
         stmt = select(Group).where(Group.telegram_id == group_id)
-        stmt_user = select(User).where(User.telegram_id ==
+        stmt_user = (
+                select(User)
+                .options(selectinload(User.groups))
+                .options(selectinload(User.admin_in))
+                .where(User.telegram_id ==
                                        adm_user.telegram_id)
-        with Session(self.engine) as session, session.begin():
-            try:
-                search_result = session.scalars(stmt).one()
-                user_search = session.scalars(stmt_user).one_or_none()
-            except exc.NoResultFound:
-                if group:
-                    self.register_group(group)
-                search_result = session.scalars(stmt).one()
-                user_search = session.scalars(stmt_user).one_or_none()
-            if not user_search:
-                adm_user.admin_in.append(search_result)
-                adm_user.groups.append(search_result)
-                session.add(adm_user)
-            else:
-                user_search.admin_in.append(search_result)
-                user_search.groups.append(search_result)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                search_result = await session.scalars(stmt)
+                user_search = await session.scalars(stmt_user)
+                grp = search_result.one()
+                usr = user_search.one_or_none()
+                if not usr:
+                    adm_user.admin_in.append(grp)
+                    adm_user.groups.append(grp)
+                    session.add(adm_user)
+                    await session.commit()
+                    usr = user_search.one()
+                    grp = search_result.one()
+                usr.groups.append(grp)
+                usr.admin_in.append(grp)
+                session.add(usr)
 
         return "Добавил администратора."
 
@@ -652,27 +657,21 @@ class AdminDB(RegisterDB):
         return ret
 
     async def check_admin(self, user_id: int, group_id: int) -> bool:
-        async with async_session() as session:
-            admin_right = False
-            stmt = (
-                    select(User)
-                    .join(group_admin,
-                          (User.id == group_admin.c.user_id)
-                          )
-                    .where(group_admin.c.group_id == (
-                        select(Group.id).where(Group.telegram_id == group_id)
-                        ).scalar_subquery()))
-            with Session(self.engine) as session, session.begin():
-                try:
-                    admin = session.scalars(stmt).one()
-                    if user_id == admin.telegram_id:
-                        admin_right = True
-                except exc.NoResultFound:
-                    pass
-                except exc.MultipleResultsFound:
-                    admin_right = True
-
-            return admin_right
+        admin_right = False
+        stmt = (
+                select(User)
+                .options(selectinload(User.groups))
+                .join(group_admin,
+                      (User.id == group_admin.c.user_id)
+                      )
+                .where(group_admin.c.group_id == (
+                    select(Group.id).where(Group.telegram_id == group_id)
+                    ).scalar_subquery()))
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                srch = await session.scalars(stmt)
+                admin = srch.one_or_none()
+                return admin is not None and user_id == admin.telegram_id
 
     def set_contest_theme(self, group_id: int, theme: str,
                           contest_duration_sec=604800) -> str:
