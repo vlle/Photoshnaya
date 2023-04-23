@@ -11,6 +11,8 @@ class CallbackManage(CallbackData, prefix="adm"):
 
 class AdminActions:
     chosen_group = 'cg'
+    start_contest_text = "Создать челлендж 🗳"
+    start_contest_id = '0'
     finish_contest_text = "Начать голосование 🗳"
     finish_contest_id = '1'
     sure_start_vote_text = "Да, хочу начать голосование"
@@ -22,11 +24,11 @@ class AdminActions:
     view_votes_text = "Посмотреть текущие голоса"
     view_votes_id = '3'
     view_submissions_text = "Посмотреть фотографии"
-    view_submissions_id = '3'
+    view_submissions_id = '4'
     add_admin_text = "Добавить админа"
-    add_admin_id = "4"
+    add_admin_id = "5"
     delete_submission_text = "Удалить фотку"
-    delete_submission_id = '5'
+    delete_submission_id = '6'
     back = 'b'
     back_text = 'Назад'
 
@@ -34,6 +36,14 @@ class AdminActions:
 class AdminKeyboardButtons:
     def __init__(self, user: str, msg_id: str, group_id: str) -> None:
         self.actions = AdminActions()
+        self.start_contest = InlineKeyboardButton(
+                text=self.actions.start_contest_text,
+                callback_data=CallbackManage(user=user,
+                                             action=self.
+                                             actions.start_contest_id,
+                                             msg_id=msg_id,
+                                             group_id=group_id).pack()
+                )
         self.finish_contest = InlineKeyboardButton(
                 text=self.actions.finish_contest_text,
                 callback_data=CallbackManage(user=user,
@@ -112,6 +122,12 @@ class AdminKeyboard:
 
     def __init__(self, user_id: str, msg_id: str, group_id: str) -> None:
         self.buttons = AdminKeyboardButtons(user_id, msg_id, group_id)
+        self.keyboard_no_contest = InlineKeyboardMarkup(
+                inline_keyboard=[[self.buttons.start_contest],
+                                 [self.buttons.delete_submission],
+                                 [self.buttons.add_admin],
+                                 [self.buttons.back]]
+                )
         self.keyboard_no_vote = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.finish_contest],
                                  [self.buttons.view_submissions],

@@ -26,6 +26,7 @@ from handlers.vote import finish_contest
 from handlers.personal_vote_menu import cmd_start, callback_next, \
     callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
+from handlers.contest_fsm import state_router
 
 
 async def main():
@@ -88,6 +89,9 @@ async def main():
                                (F.action == AdminActions.finish_vote_id))
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
                                (F.action == AdminActions.sure_finish_vote_id))
+
+    router_fsm = await state_router()
+    dp.include_router(router_fsm)
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,

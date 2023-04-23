@@ -142,6 +142,10 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     keyboard = AdminKeyboard.fromcallback(callback_data)
     vote = VoteDB(admin_unit.engine)
 
+
+    ids = admin_unit.select_contest_photos_ids_and_types(int(callback_data.group_id))
+    if len(ids) == 0:
+        return
     id, user = vote.select_winner_from_contest(int(callback_data.group_id))
     if not user:
         return

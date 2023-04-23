@@ -508,7 +508,7 @@ class RegisterDB(SelectDB):
     def register_group(self, group: Group) -> tuple:
         if self.find_group(group.telegram_id is True):
             return "Группа уже зарегистрирована. 😮", False
-        contest = ObjectFactory.build_contest('none', -1)
+        contest = ObjectFactory.build_contest('-1', -1)
         with Session(self.engine) as session, session.begin():
             group.contest = contest
             session.add(group)
