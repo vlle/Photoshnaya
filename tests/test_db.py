@@ -59,12 +59,12 @@ async def registered_group(group, db):
 
 
 @pytest.fixture
-def registered_user(registered_group, group, user, db):
+async def registered_user(registered_group, group, user, db):
     m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
     register_unit = registered_group
-    register_unit.register_user(m_user, m_group.telegram_id)
+    await register_unit.register_user(m_user, m_group.telegram_id)
     return register_unit
 
 
@@ -109,18 +109,18 @@ async def test_is_group_not_registered(group, db):
      telegram_id = group.group_id
      register_unit = RegisterDB(db)
      assert await register_unit.find_group(telegram_id) is False
-# 
-# 
-# def test_is_user_registered(registered_user, user, group, db):
-#     m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
-#     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
-# 
-#     register_unit = RegisterDB(db)
-#     assert register_unit.find_user_in_group(
-#             m_user.telegram_id,
-#             m_group.telegram_id) is True
-# 
-# 
+ 
+ 
+async def test_is_user_registered(registered_user, user, group, db):
+     m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
+     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+ 
+     register_unit = RegisterDB(db)
+     assert await register_unit.find_user_in_group(
+             m_user.telegram_id,
+             m_group.telegram_id) is True
+ 
+ 
 # def test_is_user_not_registered(registered_group, user, group, db):
 #     m_user = ObjectFactory.build_user(user.name, user.full_name, user.id)
 #     m_group = ObjectFactory.build_group(group.group_name, group.group_id)

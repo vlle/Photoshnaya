@@ -141,7 +141,7 @@ class SelectDB(BaseDB):
                 search = await session.scalars(stmt)
                 return search.first() is not None
 
-    def find_user_in_group(self, telegram_user_id: int,
+    async def find_user_in_group(self, telegram_user_id: int,
                            group_telegram_id: int) -> bool:
         stmt = (
                 select(User)
@@ -158,16 +158,11 @@ class SelectDB(BaseDB):
                     .where(User.telegram_id == telegram_user_id)
                     .scalar_subquery()))
                 )
-        with Session(self.engine) as session, session.begin():
-            try:
-                search_result = session.scalars(stmt).one()
-                ret = search_result is not None
-            except exc.NoResultFound:
-                ret = False
-            except exc.MultipleResultsFound:
-                ret = True
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                search_result = await session.scalars(stmt)
+                return search_result.first() is not None
 
-        return ret
 
     def select_next_contest_photo(self, group_id: int,
                                   current_photo: int) -> list[str]:
@@ -466,7 +461,7 @@ class VoteDB(LikeDB):
     def select_all_likes(self, telegram_group_id: int, id: str):
         stmt = (
                 select(
-                       func.count(photo_like.c.photo_id))
+                    func.count(photo_like.c.photo_id))
                 .join(group_photo, photo_like.c.photo_id ==
                       group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
@@ -483,7 +478,7 @@ class VoteDB(LikeDB):
     def select_all_likes_file_id(self, telegram_group_id: int, file_id: str):
         stmt = (
                 select(
-                       func.count(photo_like.c.photo_id))
+                    func.count(photo_like.c.photo_id))
                 .join(group_photo, photo_like.c.photo_id ==
                       group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
@@ -502,7 +497,7 @@ class VoteDB(LikeDB):
     def select_all_likes_with_user(self, telegram_group_id: int, file_id: str):
         stmt_like = (
                 select(
-                       func.count(photo_like.c.photo_id))
+                    func.count(photo_like.c.photo_id))
                 .join(group_photo, photo_like.c.photo_id ==
                       group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
@@ -539,15 +534,17 @@ class RegisterDB(SelectDB):
 
         return "Зарегистрировал группу. ", True
 
-    def register_user(self, user: User, tg_group_id: int) -> str:
-        if (self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
+    async def register_user(self, user: User, tg_group_id: int) -> str:
+        if (await self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
             return "User was already registered"
 
         stmt = select(Group).where(Group.telegram_id == tg_group_id)
-        with Session(self.engine) as session, session.begin():
-            search_result = session.scalars(stmt).one()
-            user.groups.append(search_result)
-            session.add(user)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                search_result = await session.scalars(stmt)
+                group = search_result.one()
+                user.groups.append(group)
+                session.add(user)
 
         return "User was added"
 
