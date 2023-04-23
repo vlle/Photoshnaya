@@ -82,6 +82,26 @@ class SelectDB(BaseDB):
     def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
+    async def get_contest_theme(self, group_id: int):
+        stmt = (
+                select(Contest)
+                .join(Group, Group.id == Contest.group_id)
+                .where(Group.telegram_id == group_id)
+                .order_by(Contest.id.desc())
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                try:
+                    result = await session.execute(stmt)
+                    theme = result.scalars().one()
+                    if theme:
+                        theme = theme.contest_name
+                    else:
+                        theme = None
+                except exc.NoResultFound:
+                    theme = "Ошибка, не нашел группу."
+        return theme
+
     def select_file_type(self, id: int) -> str:
         stmt = (
                 select(Photo)
@@ -111,14 +131,15 @@ class SelectDB(BaseDB):
             res = res.telegram_type
         return res
 
-    def find_group(self, telegram_id: int) -> bool:
+    async def find_group(self, telegram_id: int) -> bool:
         stmt = (
                 select(Group)
                 .where(Group.telegram_id == telegram_id)
                 )
-        with Session(self.engine) as session, session.begin():
-            search = session.scalars(stmt).first()
-            return search is not None
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                search = await session.scalars(stmt)
+                return search.first() is not None
 
     def find_user_in_group(self, telegram_user_id: int,
                            group_telegram_id: int) -> bool:
@@ -594,25 +615,6 @@ class RegisterDB(SelectDB):
             session.add(photo)
         return True
 
-    async def get_contest_theme(self, group_id: int):
-        stmt = (
-                select(Contest)
-                .join(Group, Group.id == Contest.group_id)
-                .where(Group.telegram_id == group_id)
-                .order_by(Contest.id.desc())
-                )
-        async with AsyncSession(self.engine) as session:
-            async with session.begin():
-                try:
-                    result = await session.execute(stmt)
-                    theme = result.scalars().one()
-                    if theme:
-                        theme = theme.contest_name
-                    else:
-                        theme = None
-                except exc.NoResultFound:
-                    theme = "Ошибка, не нашел группу."
-        return theme
 
 
 class AdminDB(RegisterDB):
