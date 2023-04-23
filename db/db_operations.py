@@ -2,6 +2,7 @@ from typing import Any
 
 from sqlalchemy import exc
 from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_session, async_sessionmaker
 
 from db.db_classes import tmp_photo_like, User, Photo, Group,\
         group_user, group_photo, group_admin, Contest, \
@@ -50,8 +51,9 @@ class ObjectFactory:
 
 class BaseDB:
 
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: AsyncEngine) -> None:
         self.engine = engine
+        async_session: async_sessionmaker[AsyncSession]
 
     def get_contest_id(self, telegram_group_id: int) -> int:
         stmt = (
@@ -77,7 +79,7 @@ class BaseDB:
 
 class SelectDB(BaseDB):
 
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
     def select_file_type(self, id: int) -> str:
@@ -269,7 +271,7 @@ class SelectDB(BaseDB):
 
 class LikeDB(SelectDB):
 
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
     def like_photo(self, tg_id: int, p_id: int) -> int:
@@ -376,7 +378,7 @@ class LikeDB(SelectDB):
 
 
 class VoteDB(LikeDB):
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
     def mark_user_voted(self, telegram_group_id: int, telegram_user_id: int):
@@ -502,16 +504,17 @@ class VoteDB(LikeDB):
 
 
 class RegisterDB(SelectDB):
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
-    def register_group(self, group: Group) -> tuple:
-        if self.find_group(group.telegram_id is True):
-            return "Группа уже зарегистрирована. 😮", False
+    async def register_group(self, group: Group) -> tuple:
+        #if self.find_group(group.telegram_id is True):
+        #    return "Группа уже зарегистрирована. 😮", False
         contest = ObjectFactory.build_contest('-1', -1)
-        with Session(self.engine) as session, session.begin():
-            group.contest = contest
-            session.add(group)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                group.contest = contest
+                session.add(group)
 
         return "Зарегистрировал группу. ", True
 
@@ -527,7 +530,7 @@ class RegisterDB(SelectDB):
 
         return "User was added"
 
-    def register_admin(self, adm_user: User, group_id: int, group=None):
+    async def register_admin(self, adm_user: User, group_id: int, group=None):
         stmt = select(Group).where(Group.telegram_id == group_id)
         stmt_user = select(User).where(User.telegram_id ==
                                        adm_user.telegram_id)
@@ -591,28 +594,30 @@ class RegisterDB(SelectDB):
             session.add(photo)
         return True
 
-    def get_contest_theme(self, group_id: int):
+    async def get_contest_theme(self, group_id: int):
         stmt = (
                 select(Contest)
                 .join(Group, Group.id == Contest.group_id)
                 .where(Group.telegram_id == group_id)
                 .order_by(Contest.id.desc())
                 )
-        with Session(self.engine) as session, session.begin():
-            try:
-                theme = session.scalars(stmt).first()
-                if theme:
-                    theme = theme.contest_name
-                else:
-                    theme = None
-            except exc.NoResultFound:
-                theme = "Ошибка, не нашел группу."
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                try:
+                    result = await session.execute(stmt)
+                    theme = result.scalars().one()
+                    if theme:
+                        theme = theme.contest_name
+                    else:
+                        theme = None
+                except exc.NoResultFound:
+                    theme = "Ошибка, не нашел группу."
         return theme
 
 
 class AdminDB(RegisterDB):
 
-    def __init__(self, engine: Engine) -> None:
+    def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
     def change_current_vote_status(self, group_id: int) -> bool:
@@ -647,27 +652,28 @@ class AdminDB(RegisterDB):
 
         return ret
 
-    def check_admin(self, user_id: int, group_id: int) -> bool:
-        admin_right = False
-        stmt = (
-                select(User)
-                .join(group_admin,
-                      (User.id == group_admin.c.user_id)
-                      )
-                .where(group_admin.c.group_id == (
-                    select(Group.id).where(Group.telegram_id == group_id)
-                    ).scalar_subquery()))
-        with Session(self.engine) as session, session.begin():
-            try:
-                admin = session.scalars(stmt).one()
-                if user_id == admin.telegram_id:
+    async def check_admin(self, user_id: int, group_id: int) -> bool:
+        async with async_session() as session:
+            admin_right = False
+            stmt = (
+                    select(User)
+                    .join(group_admin,
+                          (User.id == group_admin.c.user_id)
+                          )
+                    .where(group_admin.c.group_id == (
+                        select(Group.id).where(Group.telegram_id == group_id)
+                        ).scalar_subquery()))
+            with Session(self.engine) as session, session.begin():
+                try:
+                    admin = session.scalars(stmt).one()
+                    if user_id == admin.telegram_id:
+                        admin_right = True
+                except exc.NoResultFound:
+                    pass
+                except exc.MultipleResultsFound:
                     admin_right = True
-            except exc.NoResultFound:
-                pass
-            except exc.MultipleResultsFound:
-                admin_right = True
 
-        return admin_right
+            return admin_right
 
     def set_contest_theme(self, group_id: int, theme: str,
                           contest_duration_sec=604800) -> str:

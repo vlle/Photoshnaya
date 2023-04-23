@@ -3,7 +3,7 @@ from typing import List
 from typing import Optional
 import datetime
 from sqlalchemy.orm import Mapped
-from sqlalchemy import Boolean, String, ForeignKey, Table, Column, DateTime
+from sqlalchemy import BigInteger, Boolean, String, ForeignKey, Table, Column, DateTime
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -77,7 +77,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30))
     full_name: Mapped[Optional[str]]
-    telegram_id: Mapped[int]
+    telegram_id: Mapped[int] = mapped_column(BigInteger)
     photos: Mapped[List["Photo"]] = relationship()
     created_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=functions.now()
@@ -125,7 +125,7 @@ class Group(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    telegram_id: Mapped[int]
+    telegram_id: Mapped[int] = mapped_column(BigInteger)
 
     contest: Mapped["Contest"] = relationship(back_populates="group")
     vote_in_progress: Mapped[int] = mapped_column(Boolean, default=False)
