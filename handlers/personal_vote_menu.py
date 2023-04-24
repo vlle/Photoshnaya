@@ -64,13 +64,6 @@ async def callback_next(query: CallbackQuery,
     if int(cb.current_photo_count) + 1 > int(cb.amount_photos):
         return
 
-    vote_db = VoteDB(like_engine.engine)
-    #is_user_allowed_to_vote = await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-    #                                       int(cb.user)) 
-    #if is_user_allowed_to_vote is True:
-    #    await bot.send_message(chat_id=int(cb.user),
-    #                           text=msg["vote"]["already_voted"])
-    #    return
 
     file_id = await like_engine.select_next_contest_photo(int(cb.group_id),
                                                     int(cb.current_photo_id))
@@ -106,12 +99,6 @@ async def callback_prev(query: CallbackQuery,
     if int(cb.current_photo_count) - 1 < 1:
         return
 
-    vote_db = VoteDB(like_engine.engine)
-    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-    #                                       int(cb.user)) is True:
-    #    await bot.send_message(chat_id=int(cb.user),
-    #                           text=msg["vote"]["already_voted"])
-    #    return
 
     file_id = await like_engine.select_prev_contest_photo(int(cb.group_id),
                                                     int(cb.current_photo_id))
@@ -146,11 +133,6 @@ async def callback_set_like(query: CallbackQuery,
         return
     vote_db = VoteDB(like_engine.engine)
 
-    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-    #                                       int(cb.user)) is True:
-    #    await bot.send_message(chat_id=int(cb.user),
-    #                           text=msg["vote"]["already_voted"])
-    #    return
 
     await like_engine.like_photo(int(cb.user), int(cb.current_photo_id))
 
@@ -168,13 +150,6 @@ async def callback_set_no_like(query: CallbackQuery,
     cb = callback_data
     if not query.message or not query.message.from_user:
         return
-    vote_db = VoteDB(like_engine.engine)
-
-    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-    #                                       int(cb.user)) is True:
-    #    await bot.send_message(chat_id=int(cb.user),
-    #                           text=msg["vote"]["already_voted"])
-    #    return
     msg_id = query.message.message_id
 
     await like_engine.remove_like_photo(int(cb.user), int(cb.current_photo_id))
@@ -195,23 +170,22 @@ async def callback_send_vote(query: CallbackQuery,
                              callback_data: CallbackVote,
                              bot: Bot, like_engine: LikeDB, msg: dict):
 
+    if not query.message:
+        return
     cb = callback_data
     user_id = cb.user
     vote_db = VoteDB(like_engine.engine)
 
-    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-    #                                       int(cb.user)) is True:
-    #    await bot.send_message(chat_id=int(cb.user),
-    #                           text=msg["vote"]["already_voted"])
-    #    return
-    lst = await like_engine.get_all_likes_for_user(int(cb.user), int(cb.group_id))
-    for i in lst:
-        print(i)
+    if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
+                                           int(cb.user)) is True:
+        await bot.send_message(chat_id=int(cb.user),
+                               text=msg["vote"]["already_voted"])
+        return
 
     await like_engine.insert_all_likes(int(cb.user), int(cb.group_id))
     await like_engine.delete_likes_from_tmp_vote(int(cb.user), int(cb.group_id))
     await vote_db.mark_user_voted(int(cb.group_id), int(user_id))
-    await bot.send_message(user_id, msg["vote"]["thanks_for_vote"])
+    await query.message.edit_caption(caption=msg["vote"]["thanks_for_vote"])
 
 
 async def choose_keyboard(is_liked_photo: int, current_photo_count: int,

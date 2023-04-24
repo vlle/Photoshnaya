@@ -473,8 +473,7 @@ class VoteDB(LikeDB):
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                res = await session.scalars(stmt)
-                res = res.first()
+                res = (await session.scalars(stmt)).first()
                 stmt_user = await session.scalars(
                         select(User)
                         .join(Photo)
@@ -582,13 +581,6 @@ class RegisterDB(SelectDB):
 
     async def register_admin(self, adm_user: User, group_id: int, group=None):
         stmt = select(Group).where(Group.telegram_id == group_id)
-        stmt_user = (
-                select(User)
-                .options(selectinload(User.groups))
-                .options(selectinload(User.admin_in))
-                .where(User.telegram_id ==
-                       adm_user.telegram_id)
-                )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 search_result = await session.scalars(stmt)
@@ -635,8 +627,8 @@ class RegisterDB(SelectDB):
                     group = g_search.one()
 
                 possible_register = await session.scalars(stmt_photo_sel)
-                #if possible_register.one_or_none() is not None:
-                #    return False
+                if possible_register.one_or_none() is not None:
+                    return False
 
 
                 if user and group:
@@ -685,6 +677,21 @@ class AdminDB(RegisterDB):
                         count_voted_users = '0'
                     info_list.append(count_voted_users)
                 return info_list
+
+    async def change_contest_to_none(self, group_id: int) -> bool:
+        ret: bool = False
+        contest = ObjectFactory.build_contest("-1", 1)
+        stmt = (
+                select(Group)
+                .where(Group.telegram_id == group_id)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                group = (await session.scalars(stmt)).one()
+                contest.group_id = group.id
+                contest = await session.merge(contest)
+
+        return ret
 
     async def change_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False

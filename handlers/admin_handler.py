@@ -203,6 +203,7 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     await internal_view_submissions(query.from_user.id, ids,
                                     bot, admin_unit, callback_data)
     await vote.erase_all_photos(int(callback_data.group_id))
+    await admin_unit.change_contest_to_none(int(callback_data.group_id))
 
 
 

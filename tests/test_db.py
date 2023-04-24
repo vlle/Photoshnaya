@@ -38,9 +38,14 @@ async def db():
 @pytest.fixture
 def group():
     return TGroup(group_name="FriendsGroupNumber"
-                             + str(random.randint(1, 100)),
+                             + str(random.randint(1, 1000)),
                   group_id=100)
 
+@pytest.fixture
+def group_another():
+    return TGroup(group_name="FriendsGroupNumber"
+                             + str(random.randint(1, 1000)),
+                  group_id=200)
 
 @pytest.fixture
 def user():
@@ -78,6 +83,35 @@ async def create_user(user, group, registered_group):
         m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
         register_unit = registered_group
+        await register_unit.register_user(m_user, m_group.telegram_id)
+
+        add_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
+        return add_user
+
+    yield c_u
+
+
+@pytest.fixture
+async def registered_group_another(group_another, db):
+    m_group = ObjectFactory.build_group(group_another.group_name,
+                                        group_another.group_id)
+    register_unit = RegisterDB(db)
+    await register_unit.register_group(m_group)
+    return register_unit
+
+
+@pytest.fixture()
+async def create_user_another(user, group_another, registered_group_another):
+    async def c_u(*args, **kwargs):
+        us = TUser(name="User №"
+                   + str(random.randint(1, 10000)),
+                   i_id=100 + random.randint(1, 2000))
+
+        m_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
+        m_group = ObjectFactory.build_group(group_another.group_name,
+                                            group_another.group_id)
+
+        register_unit = registered_group_another
         await register_unit.register_user(m_user, m_group.telegram_id)
 
         add_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
@@ -457,7 +491,6 @@ async def test_is_photos_deleted_correctly(create_user, group, db):
     users: list[User] = []
     for _ in range(0, 5):
         users.append(await create_user())
-        print(users[-1].telegram_id)
     register_unit = AdminDB(db)
     vote = VoteDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -480,3 +513,73 @@ async def test_is_photos_deleted_correctly(create_user, group, db):
     assert first_val == 5
     assert first_val != second_val
     assert second_val == 0
+
+# test multi-admin 
+async def test_is_multi_admin_ok():
+    pass
+
+# test multi-user
+async def test_is_multi_user_ok():
+    pass
+
+# test delete with multiple groups
+async def test_is_multi_groups_ok(create_user, create_user_another,
+                                  group, group_another,
+                                  db):
+    users1: list[User] = []
+    for _ in range(0, 5):
+        users1.append(await create_user())
+
+    users2: list[User] = []
+    for _ in range(0, 5):
+        users2.append(await create_user_another())
+
+    register_unit = AdminDB(db)
+    vote = VoteDB(db)
+    m_group1 = ObjectFactory.build_group(group.group_name, group.group_id)
+    m_group2 = ObjectFactory.build_group(group_another.group_name,
+                                         group_another.group_id)
+    print(m_group1)
+    print(m_group2)
+
+    for user in users1:
+        file_id = random.randint(0, 100000)
+        await register_unit.register_photo_for_contest(
+                       user.telegram_id,
+                       m_group1.telegram_id,
+                       file_get_id=str(file_id))
+
+    for user in users2:
+        file_id = random.randint(0, 100000)
+        await register_unit.register_photo_for_contest(
+                       user.telegram_id,
+                       m_group2.telegram_id,
+                       file_get_id=str(file_id))
+
+    all_photo_ids = await register_unit.select_contest_photos_ids(
+                   m_group1.telegram_id
+                   )
+    first_val = len(all_photo_ids)
+    await vote.erase_all_photos(m_group1.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(
+                   m_group1.telegram_id
+                   )
+    second_val = len(all_photo_ids)
+    assert first_val == 5
+    assert first_val != second_val
+    assert second_val == 0
+
+    all_photo_ids_second = await register_unit.select_contest_photos_ids(
+                   m_group2.telegram_id
+                   )
+
+    second_group_val = len(all_photo_ids_second)
+    await vote.erase_all_photos(m_group2.telegram_id)
+    all_photo_ids_second = await register_unit.select_contest_photos_ids(
+                   m_group2.telegram_id
+                   )
+    second_group_val2 = len(all_photo_ids_second)
+
+    assert second_group_val == 5
+    assert second_group_val != second_group_val2
+    assert second_group_val2 == 0
