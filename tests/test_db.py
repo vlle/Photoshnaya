@@ -443,7 +443,8 @@ async def test_is_likes_correctly_counted_with_user(create_user, group, db):
     list_of_likes = [1, 1, 3, 0, 0]
     i = 0
     for id in all_photo_ids:
-        photo_like, user = await vote.select_all_likes_with_user(m_group.telegram_id, id)
+        photo_like, user = await vote.select_all_likes_with_user(
+                m_group.telegram_id, id)
         if photo_like is None:
             photo_like = 0
         assert photo_like == list_of_likes[i]
@@ -451,3 +452,31 @@ async def test_is_likes_correctly_counted_with_user(create_user, group, db):
         assert user[1] == users[i].full_name
         assert user[2] == users[i].telegram_id
         i += 1
+
+async def test_is_photos_deleted_correctly(create_user, group, db):
+    users: list[User] = []
+    for _ in range(0, 5):
+        users.append(await create_user())
+        print(users[-1].telegram_id)
+    register_unit = AdminDB(db)
+    vote = VoteDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    for user in users:
+        file_id = random.randint(0, 100000)
+        await register_unit.register_photo_for_contest(
+                       user.telegram_id,
+                       m_group.telegram_id,
+                       file_get_id=str(file_id))
+    all_photo_ids = await register_unit.select_contest_photos_ids(
+                   m_group.telegram_id
+                   )
+    first_val = len(all_photo_ids)
+    await vote.erase_all_photos(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(
+                   m_group.telegram_id
+                   )
+    second_val = len(all_photo_ids)
+    assert first_val == 5
+    assert first_val != second_val
+    assert second_val == 0
