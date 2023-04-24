@@ -648,6 +648,24 @@ class AdminDB(RegisterDB):
     def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
+
+    async def get_info(self, group_id: int) -> list[str]:
+        stmt = (
+                select(Group)
+                .options(selectinload(Group.contest))
+                .where(Group.telegram_id == group_id)
+                )
+        stmt = (
+                select(Contest)
+                .join(Group)
+                .where(Group.telegram_id == group_id)
+                .order_by(Contest.id.desc()).limit(1)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                theme = (await session.scalars(stmt)).one().contest_name
+                return [theme]
+
     async def change_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False
         stmt = (

@@ -8,6 +8,8 @@ unexpected_error = "Ошибка в cmd_start, не сгенерировалос
 thanks_for_vote = "Спасибо, твой голос принят!"
 already_voted = "Вы уже голосовали в этом челлендже, увы"
 greeting_message_vote = "Голосуйте за фотографии!"
+#no_photos = "Ошибка. Нет фоток!"
+no_winner = "Победителя нет. Никто не проголосовал."
 
 [register_photo]
 photo_registered = "Зарегистрировал фото."

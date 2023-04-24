@@ -35,9 +35,13 @@ from handlers.contest_fsm import state_router
 async def main():
     load_dotenv()
     token = os.environ.get('token')
-    ps_url = os.environ.get('ps_url')
-    if not (token and ps_url):
+    if not token:
         logging.critical("No token")
+        return
+
+    ps_url = os.environ.get('ps_url')
+    if not ps_url:
+        logging.critical("No postgre_url")
         return
 
     logging.basicConfig(level=logging.INFO)
@@ -46,10 +50,8 @@ async def main():
     with open("handlers/handlers_text/text.toml", "rb") as f:
         msg = tomllib.load(f)
 
-
     engine = create_async_engine(ps_url, echo=True)
     async with engine.begin() as conn:
-        #await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     register = RegisterDB(engine)
@@ -95,9 +97,6 @@ async def main():
                                (F.action == AdminActions.finish_vote_id))
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
                                (F.action == AdminActions.sure_finish_vote_id))
-
-    #router_fsm = await state_router()
-    #dp.include_router(router_fsm)
 
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
