@@ -35,6 +35,11 @@ class ObjectFactory:
         return human
 
     @staticmethod
+    def build_vote_link(bot_username: str, group_id: int | str):
+        bot_link = f"t.me/{bot_username}?start=" + str(group_id) + "_3"
+        return bot_link
+
+    @staticmethod
     def build_theme(user_theme: list[str]) -> str:
         if user_theme[1][0] != '#':
             theme = '#' + user_theme[1]
@@ -650,7 +655,7 @@ class AdminDB(RegisterDB):
 
 
     async def get_info(self, group_id: int) -> list[str]:
-        stmt = (
+        stmt_grp = (
                 select(Group)
                 .options(selectinload(Group.contest))
                 .where(Group.telegram_id == group_id)
@@ -661,10 +666,24 @@ class AdminDB(RegisterDB):
                 .where(Group.telegram_id == group_id)
                 .order_by(Contest.id.desc()).limit(1)
                 )
+        info_list = []
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                theme = (await session.scalars(stmt)).one().contest_name
-                return [theme]
+                contest = (await session.scalars(stmt)).one() 
+                info_list.append(contest.contest_name)
+                group = (await session.scalars(stmt_grp)).one()
+                if group.vote_in_progress is True:
+                    stmt_count = (
+                            select(func.count(contest_user.c.user_id))
+                            .where(contest_user.c.contest_id == contest.id)
+                            .group_by(contest_user.c.user_id)
+                            .limit(1)
+                            )
+                    count_voted_users = (await session.scalars(stmt_count)).first()
+                    if count_voted_users is None:
+                        count_voted_users = '0'
+                    info_list.append(count_voted_users)
+                return info_list
 
     async def change_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False

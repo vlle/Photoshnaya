@@ -9,10 +9,7 @@ from aiogram.filters import JOIN_TRANSITION
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, ChatMemberUpdatedFilter
 
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.asyncio.session import async_sessionmaker
-from middlewares import DbSessionMiddleware
 from utils.admin_keyboard import AdminActions, CallbackManage
 
 from utils.keyboard import Actions, CallbackVote
@@ -23,13 +20,11 @@ from db.db_classes import Base
 from handlers.admin_handler import callback_back, cmd_action_choose, cmd_check_if_sure,\
         cmd_check_if_sure_vote,\
         cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
-        set_theme, get_theme,\
+        set_theme,\
         on_user_join, view_submissions, view_votes
-from handlers.vote import finish_contest
 from handlers.personal_vote_menu import cmd_start, callback_next, \
     callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
-from handlers.contest_fsm import state_router
 
 
 async def main():
