@@ -16,7 +16,7 @@ async def internal_start(chat: TelegramChat, user: TelegramUser,
         return msg["vote"]["not_private_chat"], True, None
     group_id = int(start_data[1])
     try:
-        photo_ids = like_engine.select_contest_photos_ids(group_id)
+        photo_ids = await like_engine.select_contest_photos_ids(group_id)
         if len(photo_ids) == 0:
             return msg["vote"]["no_photos"], True, None
     except SQLAlchemyError:

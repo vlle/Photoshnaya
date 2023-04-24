@@ -2,14 +2,13 @@ from typing import Any
 
 from sqlalchemy import exc
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_session, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from db.db_classes import tmp_photo_like, User, Photo, Group,\
         group_user, group_photo, group_admin, Contest, \
         photo_like, contest_user
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select, delete
-from sqlalchemy import Engine
 
 from sqlalchemy.sql import func
 
@@ -53,28 +52,30 @@ class BaseDB:
 
     def __init__(self, engine: AsyncEngine) -> None:
         self.engine = engine
-        async_session: async_sessionmaker[AsyncSession]
 
-    def get_contest_id(self, telegram_group_id: int) -> int:
+    async def get_contest_id(self, telegram_group_id: int) -> int:
         stmt = (
                 select(Contest)
                 .join(Group, Group.id == Contest.group_id)
                 .where(Group.telegram_id == telegram_group_id)
                 .order_by(Contest.id.desc())
                 )
-        with Session(self.engine) as session, session.begin():
-            contest = session.scalars(stmt).first()
-            if not contest:
-                return -1
-            return contest.id
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                contest = (await session.scalars(stmt)).first()
+                if not contest:
+                    return -1
+                return contest.id
 
-    def get_user_id(self, telegram_user_id: int) -> int:
-        with Session(self.engine) as session, session.begin():
-            ret_id = session.scalars(
-                    select(User.id)
-                    .where(User.telegram_id == telegram_user_id)
-                    ).one()
-            return ret_id
+    async def get_user_id(self, telegram_user_id: int) -> int:
+        stmt = (
+                select(User.id)
+                .where(User.telegram_id == telegram_user_id)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                ret_id = (await session.scalars(stmt)).one()
+                return ret_id
 
 
 class SelectDB(BaseDB):
@@ -93,7 +94,7 @@ class SelectDB(BaseDB):
             async with session.begin():
                 try:
                     result = await session.execute(stmt)
-                    theme = result.scalars().one()
+                    theme = result.scalars().first()
                     if theme:
                         theme = theme.contest_name
                     else:
@@ -102,33 +103,36 @@ class SelectDB(BaseDB):
                     theme = "Ошибка, не нашел группу."
         return theme
 
-    def select_file_type(self, id: int) -> str:
+    async def select_file_type(self, id: int) -> str:
         stmt = (
                 select(Photo)
                 .where(Photo.id == id)
                 )
-        with Session(self.engine) as session, session.begin():
-            res = session.scalars(stmt).one()
-            res = res.telegram_type
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one()
+                res = res.telegram_type
         return res
 
-    def select_file_id(self, id: int) -> str:
+    async def select_file_id(self, id: int) -> str:
         stmt = (
                 select(Photo)
                 .where(Photo.id == id)
                 )
-        with Session(self.engine) as session, session.begin():
-            res = session.scalars(stmt).one()
-            return res.file_id
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one()
+                return res.file_id
 
-    def select_file_type_by_file_id(self, id: str) -> str:
+    async def select_file_type_by_file_id(self, id: str) -> str:
         stmt = (
                 select(Photo)
                 .where(Photo.file_id == id)
                 )
-        with Session(self.engine) as session, session.begin():
-            res = session.scalars(stmt).one()
-            res = res.telegram_type
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one()
+                res = res.telegram_type
         return res
 
     async def find_group(self, telegram_id: int) -> bool:
@@ -142,7 +146,7 @@ class SelectDB(BaseDB):
                 return search.first() is not None
 
     async def find_user_in_group(self, telegram_user_id: int,
-                           group_telegram_id: int) -> bool:
+                                 group_telegram_id: int) -> bool:
         stmt = (
                 select(User)
                 .join(
@@ -164,7 +168,7 @@ class SelectDB(BaseDB):
                 return search_result.first() is not None
 
 
-    def select_next_contest_photo(self, group_id: int,
+    async def select_next_contest_photo(self, group_id: int,
                                   current_photo: int) -> list[str]:
         ret: list[Any] = []
         stmt_g = (
@@ -182,14 +186,15 @@ class SelectDB(BaseDB):
                     (Photo.id > current_photo))
                 .order_by(Photo.id)
                 )
-        with Session(self.engine) as session, session.begin():
-            photos = session.scalars(stmt_g).first()
-            if photos:
-                ret.append(photos.file_id)
-                ret.append(photos.id)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                photos = (await session.scalars(stmt_g)).first()
+                if photos:
+                    ret.append(photos.file_id)
+                    ret.append(photos.id)
         return ret
 
-    def select_prev_contest_photo(self, group_id: int,
+    async def select_prev_contest_photo(self, group_id: int,
                                   current_photo: int) -> list[str]:
         ret = []
         stmt_g = (
@@ -207,11 +212,12 @@ class SelectDB(BaseDB):
                     (Photo.id < current_photo))
                 .order_by(Photo.id.desc())
                 )
-        with Session(self.engine) as session, session.begin():
-            photos = session.scalars(stmt_g).first()
-            if photos:
-                ret.append(photos.file_id)
-                ret.append(photos.id)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                photos = (await session.scalars(stmt_g)).first()
+                if photos:
+                    ret.append(photos.file_id)
+                    ret.append(photos.id)
         return ret
 
     async def select_contest_photos_ids(self, group_id: int) -> list:
@@ -252,7 +258,7 @@ class SelectDB(BaseDB):
                     ret.append(photo.id)
         return ret
 
-    def select_contest_photos_ids_and_types(self, group_id: int) -> list:
+    async def select_contest_photos_ids_and_types(self, group_id: int) -> list:
         ret = []
         stmt_g = (
                 select(Photo)
@@ -264,10 +270,11 @@ class SelectDB(BaseDB):
                     select(Group.id)
                     .where(Group.telegram_id == group_id).scalar_subquery()))
                 )
-        with Session(self.engine) as session, session.begin():
-            photos = session.scalars(stmt_g)
-            for photo in photos:
-                ret.append([photo.file_id, photo.telegram_type])
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                photos = await session.scalars(stmt_g)
+                for photo in photos:
+                    ret.append([photo.file_id, photo.telegram_type])
         return ret
 
     async def get_current_vote_status(self, group_id: int) -> bool:
@@ -293,16 +300,17 @@ class LikeDB(SelectDB):
     def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
-    def like_photo(self, tg_id: int, p_id: int) -> int:
+    async def like_photo(self, tg_id: int, p_id: int) -> int:
         search_stmt_user = select(User).where(User.telegram_id == tg_id)
         search_stmt_photo = select(Photo).where(Photo.id == p_id)
         likes = 0
-        with Session(self.engine) as session, session.begin():
-            user = session.scalars(search_stmt_user).one()
-            photo = session.scalars(search_stmt_photo).one()
-            stmt = insert(tmp_photo_like).values(user_id=user.id,
-                                                 photo_id=photo.id)
-            session.execute(stmt)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                user = (await session.scalars(search_stmt_user)).one()
+                photo = (await session.scalars(search_stmt_photo)).one()
+                stmt = insert(tmp_photo_like).values(user_id=user.id,
+                                                     photo_id=photo.id)
+                await session.execute(stmt)
 
         return likes
 
@@ -322,7 +330,7 @@ class LikeDB(SelectDB):
 
         return likes
 
-    def remove_like_photo(self, tg_id: int, photo_id: int) -> None:
+    async def remove_like_photo(self, tg_id: int, photo_id: int) -> None:
         stmt = (
                 delete(tmp_photo_like)
                 .where(tmp_photo_like.c.user_id ==
@@ -331,10 +339,11 @@ class LikeDB(SelectDB):
                         .scalar_subquery())
                        & (tmp_photo_like.c.photo_id == photo_id)
                        ))
-        with Session(self.engine) as session, session.begin():
-            session.execute(stmt)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                await session.execute(stmt)
 
-    def is_photo_liked(self, tg_id: int, ph_id: str) -> int:
+    async def is_photo_liked(self, tg_id: int, ph_id: str) -> int:
         stmt = (
                 select(tmp_photo_like)
                 .join(User, tmp_photo_like.c.user_id == User.id)
@@ -343,14 +352,15 @@ class LikeDB(SelectDB):
                 .where(Photo.id == ph_id)
                 )
         likes = 0
-        with Session(self.engine) as session, session.begin():
-            like = session.scalars(stmt).fetchall()
-            for _ in like:
-                likes += 1
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                like = (await session.scalars(stmt)).fetchall()
+                for _ in like:
+                    likes += 1
 
         return likes
 
-    def get_all_likes_for_user(self, u_telegram_id: int, g_telegram_id: int):
+    async def get_all_likes_for_user(self, u_telegram_id: int, g_telegram_id: int):
         ret: list = []
         stmt = (
                 select(tmp_photo_like)
@@ -360,12 +370,14 @@ class LikeDB(SelectDB):
                 .where((Group.telegram_id == g_telegram_id)
                        & (User.telegram_id == u_telegram_id))
                 )
-        with Session(self.engine) as session, session.begin():
-            for row in session.execute(stmt):
-                ret.append(row)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = await session.execute(stmt)
+                for row in res:
+                    ret.append(row)
         return ret
 
-    def delete_likes_from_tmp_vote(self, u_telegram_id: int,
+    async def delete_likes_from_tmp_vote(self, u_telegram_id: int,
                                    g_telegram_id: int):
         ret: list = []
         stmt = (
@@ -378,8 +390,9 @@ class LikeDB(SelectDB):
                            & (User.telegram_id == u_telegram_id))
                     ))
                 )
-        with Session(self.engine) as session, session.begin():
-            session.execute(stmt)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                await session.execute(stmt)
         return ret
 
     async def insert_all_likes(self, u_telegram_id: int, g_telegram_id: int):
@@ -404,42 +417,42 @@ class VoteDB(LikeDB):
     def __init__(self, engine: AsyncEngine) -> None:
         super().__init__(engine)
 
-    def mark_user_voted(self, telegram_group_id: int, telegram_user_id: int):
-        contest_id = self.get_contest_id(telegram_group_id)
-        user_id = self.get_user_id(telegram_user_id)
-        with Session(self.engine) as session, session.begin():
-            stmt = insert(contest_user).values(contest_id=contest_id,
-                                               user_id=user_id)
-            session.execute(stmt)
+    async def mark_user_voted(self, telegram_group_id: int, telegram_user_id: int):
+        contest_id = await self.get_contest_id(telegram_group_id)
+        user_id = await self.get_user_id(telegram_user_id)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = insert(contest_user).values(contest_id=contest_id,
+                                                   user_id=user_id)
+                await session.execute(stmt)
 
-    def is_user_not_allowed_to_vote(self, telegram_group_id: int,
+    async def is_user_not_allowed_to_vote(self, telegram_group_id: int,
                                     telegram_user_id: int) -> bool:
-        contest_id = self.get_contest_id(telegram_group_id)
-        user_id = self.get_user_id(telegram_user_id)
+        contest_id = await self.get_contest_id(telegram_group_id)
+        user_id = await self.get_user_id(telegram_user_id)
         stmt = (
                 select(contest_user)
                 .where((contest_user.c.user_id == user_id)
                        & (contest_user.c.contest_id == contest_id))
                 )
-        with Session(self.engine) as session, session.begin():
-            res = session.scalars(stmt)
-            allow = 0
-            for _ in res:
-                allow += 1
-            return allow > 0
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one_or_none()
+                return res is not None
 
-    def erase_all_photos(self, telegram_group_id: int):
+    async def erase_all_photos(self, telegram_group_id: int):
         stmt_id = (
                 select(Group)
                 .where(Group.telegram_id == telegram_group_id)
                 )
-        with Session(self.engine) as session, session.begin():
-            group = session.scalars(stmt_id).one()
-            stmt_del = (
-                    delete(group_photo)
-                    .where(group_photo.c.group_id == group.id)
-                    )
-            session.execute(stmt_del)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                group = (await session.scalars(stmt_id)).one()
+                stmt_del = (
+                        delete(group_photo)
+                        .where(group_photo.c.group_id == group.id)
+                        )
+                await session.execute(stmt_del)
         return
 
     async def select_winner_from_contest(self, telegram_group_id: int):
@@ -569,30 +582,21 @@ class RegisterDB(SelectDB):
                 .options(selectinload(User.groups))
                 .options(selectinload(User.admin_in))
                 .where(User.telegram_id ==
-                                       adm_user.telegram_id)
+                       adm_user.telegram_id)
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 search_result = await session.scalars(stmt)
-                user_search = await session.scalars(stmt_user)
                 grp = search_result.one()
-                usr = user_search.one_or_none()
-                if not usr:
-                    adm_user.admin_in.append(grp)
-                    adm_user.groups.append(grp)
-                    session.add(adm_user)
-                    await session.commit()
-                    usr = user_search.one()
-                    grp = search_result.one()
-                usr.groups.append(grp)
-                usr.admin_in.append(grp)
-                session.add(usr)
+                adm_user = await session.merge(adm_user)
+                adm_user.groups.append(grp)
+                adm_user.admin_in.append(grp)
 
         return "Добавил администратора."
 
     async def register_photo_for_contest(self, user_tg_id: int, grtg_id: int,
-                                   file_get_id='-1',
-                                   user_p=None, group_p=None, type='photo') -> bool:
+                                         file_get_id='-1',
+                                         user_p=None, group_p=None, type='photo') -> bool:
         stmt_sel = (
                 select(User)
                 .options(selectinload(User.photos))
@@ -661,7 +665,7 @@ class AdminDB(RegisterDB):
 
         return ret
 
-    def select_all_administrated_groups(self, telegram_user_id: int) -> list:
+    async def select_all_administrated_groups(self, telegram_user_id: int) -> list:
         ret: list = []
         stmt = (
                 select(Group)
@@ -669,21 +673,22 @@ class AdminDB(RegisterDB):
                 .join(User)
                 .where(User.telegram_id == telegram_user_id)
                 )
-        with Session(self.engine) as session, session.begin():
-            ids = session.scalars(stmt)
-            for id in ids:
-                ret.append([id.name, id.telegram_id])
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                ids = await session.scalars(stmt)
+                for id in ids:
+                    ret.append([id.name, id.telegram_id])
 
         return ret
 
     async def check_admin(self, user_id: int, group_id: int) -> bool:
-        admin_right = False
         stmt = (
                 select(User)
                 .options(selectinload(User.groups))
                 .join(group_admin,
                       (User.id == group_admin.c.user_id)
                       )
+                .where(User.telegram_id == user_id)
                 .where(group_admin.c.group_id == (
                     select(Group.id).where(Group.telegram_id == group_id)
                     ).scalar_subquery()))
@@ -691,18 +696,18 @@ class AdminDB(RegisterDB):
             async with session.begin():
                 srch = await session.scalars(stmt)
                 admin = srch.one_or_none()
-                return admin is not None and user_id == admin.telegram_id
+                return admin is not None
 
-    def set_contest_theme(self, group_id: int, theme: str,
-                          contest_duration_sec=604800) -> str:
+    async def set_contest_theme(self, group_id: int, theme: str,
+                                contest_duration_sec=604800) -> str:
         stmt_g = (
                 select(Group.id).where(Group.telegram_id == group_id)
                 )
-        obj_factory = ObjectFactory()
-        theme_object = obj_factory.build_contest(theme, contest_duration_sec)
-        with Session(self.engine) as session, session.begin():
-            group_id = session.scalars(stmt_g).one()
-            theme_object.group_id = group_id
-            session.add(theme_object)
+        theme_object = ObjectFactory.build_contest(theme, contest_duration_sec)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                group_id = (await session.scalars(stmt_g)).one()
+                theme_object.group_id = group_id
+                session.add(theme_object)
 
         return f'Тема зарегистрирована. {theme}'
