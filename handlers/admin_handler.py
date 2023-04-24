@@ -299,12 +299,13 @@ async def set_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
     user, chat = TelegramDeserialize.unpack(message)
     print(user)
     print(chat)
-    admin_right = admin_unit.check_admin(user.telegram_id, chat.telegram_id)
+    admin_right = await admin_unit.check_admin(user.telegram_id, chat.telegram_id)
     if admin_right is False:
+        await bot.send_message(message.chat.id, "-1111")
         return
 
     user_theme = message.text.split()
-    msg = i_set_theme(user_theme, admin_unit, chat)
+    msg = await i_set_theme(user_theme, admin_unit, chat)
     await bot.send_message(message.chat.id, msg)
 
 

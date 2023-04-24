@@ -48,10 +48,7 @@ async def main():
 
 
     engine = create_async_engine(ps_url, echo=True)
-    #dialect+driver://username:password@host:port/database
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
-    #async with engine.begin() as conn:
-    #    await conn.run_sync(Base.metadata.drop_all)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -68,7 +65,7 @@ async def main():
     #dp.message.register(finish_contest, Command(commands=["finish_contest"]))
     #dp.message.register(cmd_start, Command(commands=["start"]))
     dp.message.register(get_theme, Command(commands=["get_theme"]))
-    #dp.message.register(set_theme, Command(commands=["set_theme"]))
+    dp.message.register(set_theme, Command(commands=["set_theme"]))
     dp.my_chat_member.register(on_user_join, ChatMemberUpdatedFilter
                                (member_status_changed=JOIN_TRANSITION))
 

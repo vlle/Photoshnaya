@@ -13,7 +13,7 @@ async def i_on_user_join(register_unit: RegisterDB, chat: TelegramChat,
     adm_user = ObjectFactory.build_user(user.username,
                                         user.full_name,
                                         user.telegram_id)
-    #await register_unit.register_admin(adm_user, chat.telegram_id)
+    await register_unit.register_admin(adm_user, chat.telegram_id)
     msg = f"Добавил в качестве админа {user.username}"
 
     return msg, reg_msg

@@ -2,9 +2,8 @@ import os
 import random
 from dotenv import load_dotenv
 
-from sqlalchemy import create_engine, Engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from db.db_operations import AdminDB, RegisterDB, ObjectFactory, LikeDB, SelectDB, VoteDB
+from db.db_operations import AdminDB, RegisterDB, ObjectFactory, LikeDB, VoteDB
 from db.db_classes import Base, User
 import pytest
 
