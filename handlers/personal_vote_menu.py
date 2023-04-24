@@ -65,12 +65,12 @@ async def callback_next(query: CallbackQuery,
         return
 
     vote_db = VoteDB(like_engine.engine)
-    is_user_allowed_to_vote = await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-                                           int(cb.user)) 
-    if is_user_allowed_to_vote is True:
-        await bot.send_message(chat_id=int(cb.user),
-                               text=msg["vote"]["already_voted"])
-        return
+    #is_user_allowed_to_vote = await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
+    #                                       int(cb.user)) 
+    #if is_user_allowed_to_vote is True:
+    #    await bot.send_message(chat_id=int(cb.user),
+    #                           text=msg["vote"]["already_voted"])
+    #    return
 
     file_id = await like_engine.select_next_contest_photo(int(cb.group_id),
                                                     int(cb.current_photo_id))
@@ -107,11 +107,11 @@ async def callback_prev(query: CallbackQuery,
         return
 
     vote_db = VoteDB(like_engine.engine)
-    if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-                                           int(cb.user)) is True:
-        await bot.send_message(chat_id=int(cb.user),
-                               text=msg["vote"]["already_voted"])
-        return
+    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
+    #                                       int(cb.user)) is True:
+    #    await bot.send_message(chat_id=int(cb.user),
+    #                           text=msg["vote"]["already_voted"])
+    #    return
 
     file_id = await like_engine.select_prev_contest_photo(int(cb.group_id),
                                                     int(cb.current_photo_id))
@@ -146,11 +146,11 @@ async def callback_set_like(query: CallbackQuery,
         return
     vote_db = VoteDB(like_engine.engine)
 
-    if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-                                           int(cb.user)) is True:
-        await bot.send_message(chat_id=int(cb.user),
-                               text=msg["vote"]["already_voted"])
-        return
+    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
+    #                                       int(cb.user)) is True:
+    #    await bot.send_message(chat_id=int(cb.user),
+    #                           text=msg["vote"]["already_voted"])
+    #    return
 
     await like_engine.like_photo(int(cb.user), int(cb.current_photo_id))
 
@@ -170,11 +170,11 @@ async def callback_set_no_like(query: CallbackQuery,
         return
     vote_db = VoteDB(like_engine.engine)
 
-    if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-                                           int(cb.user)) is True:
-        await bot.send_message(chat_id=int(cb.user),
-                               text=msg["vote"]["already_voted"])
-        return
+    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
+    #                                       int(cb.user)) is True:
+    #    await bot.send_message(chat_id=int(cb.user),
+    #                           text=msg["vote"]["already_voted"])
+    #    return
     msg_id = query.message.message_id
 
     await like_engine.remove_like_photo(int(cb.user), int(cb.current_photo_id))
@@ -199,11 +199,11 @@ async def callback_send_vote(query: CallbackQuery,
     user_id = cb.user
     vote_db = VoteDB(like_engine.engine)
 
-    if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-                                           int(cb.user)) is True:
-        await bot.send_message(chat_id=int(cb.user),
-                               text=msg["vote"]["already_voted"])
-        return
+    #if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
+    #                                       int(cb.user)) is True:
+    #    await bot.send_message(chat_id=int(cb.user),
+    #                           text=msg["vote"]["already_voted"])
+    #    return
     lst = await like_engine.get_all_likes_for_user(int(cb.user), int(cb.group_id))
     for i in lst:
         print(i)

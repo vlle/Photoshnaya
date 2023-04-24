@@ -23,7 +23,7 @@ from handlers.admin_handler import callback_back, cmd_action_choose, cmd_check_i
         set_theme,\
         on_user_join, view_submissions, view_votes
 from handlers.personal_vote_menu import cmd_start, callback_next, \
-    callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
+        callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
 
 
@@ -47,6 +47,7 @@ async def main():
 
     engine = create_async_engine(ps_url, echo=True)
     async with engine.begin() as conn:
+        #await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     register = RegisterDB(engine)
@@ -58,7 +59,6 @@ async def main():
     dp.edited_message.register(register_photo, F.caption_entities)
 
     dp.message.register(cmd_start, Command(commands=["start"]))
-    dp.message.register(get_theme, Command(commands=["get_theme"]))
     dp.message.register(set_theme, Command(commands=["set_theme"]))
     dp.my_chat_member.register(on_user_join, ChatMemberUpdatedFilter
                                (member_status_changed=JOIN_TRANSITION))

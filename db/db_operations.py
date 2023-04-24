@@ -601,7 +601,8 @@ class RegisterDB(SelectDB):
 
     async def register_photo_for_contest(self, user_tg_id: int, grtg_id: int,
                                          file_get_id='-1',
-                                         user_p=None, group_p=None, type='photo') -> bool:
+                                         user_p=None, group_p=None,
+                                         type='photo') -> bool:
         stmt_sel = (
                 select(User)
                 .options(selectinload(User.photos))
@@ -634,8 +635,8 @@ class RegisterDB(SelectDB):
                     group = g_search.one()
 
                 possible_register = await session.scalars(stmt_photo_sel)
-                if possible_register.one_or_none() is not None:
-                    return False
+                #if possible_register.one_or_none() is not None:
+                #    return False
 
 
                 if user and group:
