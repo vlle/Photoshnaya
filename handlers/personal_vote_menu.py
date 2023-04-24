@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, InputMediaDocument, InputMediaPhoto
 from handlers.internal_logic.vote_start import internal_start
 from utils.TelegramUserClass import TelegramDeserialize
 from utils.keyboard import Keyboard, CallbackVote
-from db.db_operations import LikeDB, VoteDB
+from db.db_operations import LikeDB, ObjectFactory, RegisterDB, VoteDB
 
 
 async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
@@ -21,11 +21,18 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
         await message.answer(return_text)
         return
 
+    user_obj = ObjectFactory.build_user(user.username,
+                                        user.full_name,
+                                        user.telegram_id)
+
+    register_unit = RegisterDB(like_engine.engine)
+    await register_unit.register_user(user_obj, chat.telegram_id)
+
     start_data = message.text.replace('_', ' ').split()
     group_id = int(start_data[1])
-    file_id = await like_engine.select_next_contest_photo(group_id, 0)
-    photo_file_id = file_id[0]
-    photo_id = file_id[1]
+    photo_file_id, photo_id  = await like_engine.select_next_contest_photo(group_id, 0)
+    #photo_file_id = file_id[0]
+    #photo_id = file_id[1]
 
     amount_photo = 0
     for _ in photo_ids:

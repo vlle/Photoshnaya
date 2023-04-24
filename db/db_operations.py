@@ -626,9 +626,9 @@ class RegisterDB(SelectDB):
                     g_search = await session.scalars(stmtg_sel)
                     group = g_search.one()
 
-                possible_register = await session.scalars(stmt_photo_sel)
-                if possible_register.one_or_none() is not None:
-                    return False
+                #possible_register = await session.scalars(stmt_photo_sel)
+                #if possible_register.one_or_none() is not None:
+                #    return False
 
 
                 if user and group:
