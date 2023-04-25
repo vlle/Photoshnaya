@@ -579,7 +579,7 @@ class RegisterDB(SelectDB):
 
         return "User was added"
 
-    async def register_admin(self, adm_user: User, group_id: int, group=None):
+    async def register_admin(self, adm_user: User, group_id: int):
         stmt = select(Group).where(Group.telegram_id == group_id)
         async with AsyncSession(self.engine) as session:
             async with session.begin():
@@ -669,10 +669,10 @@ class AdminDB(RegisterDB):
                     stmt_count = (
                             select(func.count(contest_user.c.user_id))
                             .where(contest_user.c.contest_id == contest.id)
-                            .group_by(contest_user.c.user_id)
-                            .limit(1)
+                            .group_by(contest_user.c.contest_id)
                             )
-                    count_voted_users = (await session.scalars(stmt_count)).first()
+                    count_voted_users = (
+                            await session.scalars(stmt_count)).one_or_none()
                     if count_voted_users is None:
                         count_voted_users = '0'
                     info_list.append(count_voted_users)
