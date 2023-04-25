@@ -52,6 +52,18 @@ class ObjectFactory:
 
         return theme
 
+    @staticmethod
+    def build_theme_fsm(user_theme: str) -> str:
+        if user_theme[0] != '#':
+            theme = '#' + user_theme
+        else:
+            theme = '#'
+            for let in user_theme:
+                if let == '#':
+                    continue
+                theme += let
+
+        return theme
 
 class BaseDB:
 
@@ -292,6 +304,7 @@ class SelectDB(BaseDB):
             async with session.begin():
                 srch = await session.scalars(stmt)
                 res = srch.one()
+                print(res)
                 if res.vote_in_progress == 0:
                     ret = False
                 elif res:
@@ -474,6 +487,8 @@ class VoteDB(LikeDB):
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 res = (await session.scalars(stmt)).first()
+                if not res:
+                    return -1, None
                 stmt_user = await session.scalars(
                         select(User)
                         .join(Photo)
@@ -481,8 +496,6 @@ class VoteDB(LikeDB):
                         )
                 stmt_user = stmt_user.one()
                 user = [stmt_user.name, stmt_user.full_name, stmt_user.telegram_id]
-                if not res:
-                    return -1, None
                 return res, user
 
     async def select_all_likes(self, telegram_group_id: int, id: str):

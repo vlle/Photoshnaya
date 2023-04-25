@@ -24,10 +24,10 @@ async def internal_start(chat: TelegramChat, user: TelegramUser,
 
     vote_db = VoteDB(like_engine.engine)
 
-    if vote_db.get_current_vote_status(group_id) is False:
+    if await vote_db.get_current_vote_status(group_id) is False:
         return msg["vote"]["no_vote_yet"], True, None
 
-    if vote_db.is_user_not_allowed_to_vote(group_id, user.telegram_id) is True:
+    if await vote_db.is_user_not_allowed_to_vote(group_id, user.telegram_id) is True:
         return msg["vote"]["already_voted"], True, None
 
     return msg["vote"]["greeting_message_vote"], False, photo_ids

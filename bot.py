@@ -17,11 +17,11 @@ from utils.keyboard import Actions, CallbackVote
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
-from handlers.admin_handler import callback_back, cmd_action_choose, cmd_check_if_sure,\
+from handlers.admin_handler import ContestCreate, callback_back, cmd_action_choose, cmd_check_if_sure,\
         cmd_check_if_sure_vote,\
         cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
         set_theme,\
-        on_user_join, view_submissions, view_votes
+        on_user_join, set_theme_accept_message, view_submissions, view_votes
 from handlers.personal_vote_menu import cmd_start, callback_next, \
         callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
@@ -59,7 +59,6 @@ async def main():
     dp.edited_message.register(register_photo, F.caption_entities)
 
     dp.message.register(cmd_start, Command(commands=["start"]))
-    dp.message.register(set_theme, Command(commands=["set_theme"]))
     dp.my_chat_member.register(on_user_join, ChatMemberUpdatedFilter
                                (member_status_changed=JOIN_TRANSITION))
 
@@ -92,7 +91,9 @@ async def main():
                                (F.action == AdminActions.finish_vote_id))
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
                                (F.action == AdminActions.sure_finish_vote_id))
-
+    dp.callback_query.register(set_theme, CallbackManage.filter
+                               (F.action == AdminActions.start_contest_id))
+    dp.message.register(set_theme_accept_message, ContestCreate.name_contest)
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,

@@ -1,6 +1,9 @@
 from asyncio import sleep as async_sleep
+from typing import Any
 from aiogram import types
 from aiogram import Bot
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.TelegramUserClass import TelegramDeserialize
@@ -77,8 +80,10 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
     vote_in_progress = await admin_unit.get_current_vote_status(
             int(callback_data.group_id)
             )
-
-    if not vote_in_progress:
+    theme = await admin_unit.get_contest_theme(int(callback_data.group_id))
+    if theme == '-1':
+        keyboard_r = keyboard.keyboard_no_contest
+    elif not vote_in_progress:
         keyboard_r = keyboard.keyboard_no_vote
     else:
         keyboard_r = keyboard.keyboard_vote_in_progress
@@ -159,8 +164,10 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
 
     id, user = await vote.select_winner_from_contest(int(callback_data.group_id))
     if not user:
-        await query.message.edit_text(text=msg["admin"]["no_winner"],
+        await query.message.edit_text(text=msg["vote"]["no_winner"],
                               reply_markup=keyboard.keyboard_back)
+        await vote.erase_all_photos(int(callback_data.group_id))
+        await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
     file_id = await vote.select_file_id(id)
@@ -257,6 +264,59 @@ async def internal_view_submissions(chat_id: int, ids: list, bot: Bot,
     del submissions_photos
     del submissions_docs
 
+
+class ContestCreate(StatesGroup):
+    name_contest = State()
+    are_you_sure = State()
+    thanks_for_info = State()
+
+async def set_theme(query: types.CallbackQuery, bot: Bot,
+                    callback_data: CallbackManage, admin_unit: AdminDB,
+                    state: FSMContext):
+    if not query.message:
+        return
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    await query.message.edit_text(text="Пришли название для челленджа",
+                                  reply_markup=keyboard.keyboard_back)
+    data = {}
+    data["group"] = callback_data.group_id
+    data["user_id"] = query.from_user.id
+    data["msg_id"] = query.message.message_id
+    data["keyboard"] = keyboard
+    await state.set_data(data)
+    await state.set_state(ContestCreate.name_contest)
+
+async def set_theme_accept_message(message: types.Message, bot: Bot,
+                                   state: FSMContext, admin_unit: AdminDB):
+    if not message.text:
+        return
+    theme = message.text
+    string: dict[str, Any] = await state.get_data()
+    
+    keyboard = string["keyboard"]
+    msg = await i_set_theme(theme, admin_unit, int(
+        string["group"]))
+    await bot.edit_message_text(text=msg,
+                                 chat_id=string["user_id"],
+                                 message_id=string["msg_id"],
+                                 reply_markup=keyboard.keyboard_back)
+    #await bot.send_message(message.chat.id, msg)
+
+
+
+async def on_user_join(message: types.Message, bot: Bot,
+                       register_unit: RegisterDB):
+    user, chat = TelegramDeserialize.unpack(message,
+                                            message_id_not_exists=True)
+
+    msg, reg_msg = await i_on_user_join(register_unit=register_unit,
+                                  user=user, chat=chat)
+
+    await bot.send_message(chat.telegram_id, msg)
+    if reg_msg:
+        await bot.send_message(chat.telegram_id, reg_msg)
+
+
 async def send_possible_caption(submissions: list,
                                 group_id: int,
                                 bot: Bot, vote: VoteDB,
@@ -292,30 +352,3 @@ async def send_photos(list_of_object: list[InputMediaDocument
                                                  InputMediaPhoto):
         await bot.send_photo(chat_id=msg, photo=list_of_object[0].media)
     await async_sleep(0.5)
-
-
-async def set_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
-    if not message.text or not message.from_user:
-        return
-    user, chat = TelegramDeserialize.unpack(message)
-    admin_right = await admin_unit.check_admin(user.telegram_id, chat.telegram_id)
-    if admin_right is False:
-        return
-
-    user_theme = message.text.split()
-    msg = await i_set_theme(user_theme, admin_unit, chat)
-    await bot.send_message(message.chat.id, msg)
-
-
-
-async def on_user_join(message: types.Message, bot: Bot,
-                       register_unit: RegisterDB):
-    user, chat = TelegramDeserialize.unpack(message,
-                                            message_id_not_exists=True)
-
-    msg, reg_msg = await i_on_user_join(register_unit=register_unit,
-                                  user=user, chat=chat)
-
-    await bot.send_message(chat.telegram_id, msg)
-    if reg_msg:
-        await bot.send_message(chat.telegram_id, reg_msg)
