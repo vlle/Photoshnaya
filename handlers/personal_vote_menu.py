@@ -31,12 +31,8 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     start_data = message.text.replace('_', ' ').split()
     group_id = int(start_data[1])
     photo_file_id, photo_id  = await like_engine.select_next_contest_photo(group_id, 0)
-    #photo_file_id = file_id[0]
-    #photo_id = file_id[1]
 
-    amount_photo = 0
-    for _ in photo_ids:
-        amount_photo += 1
+    amount_photo = len(photo_ids)
 
     build_keyboard = Keyboard(user=str(user.telegram_id),
                               amount_photos=str(amount_photo),
@@ -72,16 +68,15 @@ async def callback_next(query: CallbackQuery,
         return
 
 
-    file_id = await like_engine.select_next_contest_photo(int(cb.group_id),
-                                                    int(cb.current_photo_id))
-    photo_file_id = file_id[0]
-    photo_id = file_id[1]
+    photo_file_id, photo_id = await like_engine.select_next_contest_photo(
+                                                        int(cb.group_id),
+                                                        int(cb.current_photo_id))
 
     cb.current_photo_count = str(int(cb.current_photo_count) + 1)
     cb.current_photo_id = photo_id
 
     build_keyboard = Keyboard.fromcallback(cb)
-    file_type = await like_engine.select_file_type(int(file_id[1]))
+    file_type = await like_engine.select_file_type(int(photo_id))
     if file_type == 'photo':
         obj = InputMediaPhoto(type='photo', media=photo_file_id)
     else:
@@ -107,16 +102,15 @@ async def callback_prev(query: CallbackQuery,
         return
 
 
-    file_id = await like_engine.select_prev_contest_photo(int(cb.group_id),
-                                                    int(cb.current_photo_id))
-    photo_file_id = file_id[0]
-    photo_id = file_id[1]
+    photo_file_id, photo_id = await like_engine.select_prev_contest_photo(
+                                                          int(cb.group_id),
+                                                          int(cb.current_photo_id))
 
     cb.current_photo_count = str(int(cb.current_photo_count) - 1)
     cb.current_photo_id = photo_id
 
     build_keyboard = Keyboard.fromcallback(cb)
-    file_type = await like_engine.select_file_type(int(file_id[1]))
+    file_type = await like_engine.select_file_type(int(photo_id))
     if file_type == 'photo':
         obj = InputMediaPhoto(type='photo', media=photo_file_id)
     else:
@@ -138,8 +132,6 @@ async def callback_set_like(query: CallbackQuery,
     cb = callback_data
     if not query.message or not query.message.from_user:
         return
-    vote_db = VoteDB(like_engine.engine)
-
 
     await like_engine.like_photo(int(cb.user), int(cb.current_photo_id))
 
@@ -184,7 +176,7 @@ async def callback_send_vote(query: CallbackQuery,
     vote_db = VoteDB(like_engine.engine)
 
     if await vote_db.is_user_not_allowed_to_vote(int(cb.group_id),
-                                           int(cb.user)) is True:
+                                                 int(cb.user)) is True:
         await bot.send_message(chat_id=int(cb.user),
                                text=msg["vote"]["already_voted"])
         return

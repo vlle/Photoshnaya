@@ -22,9 +22,7 @@ async def cmd_choose_group(message: types.Message, bot: Bot,
         return
 
     builder = InlineKeyboardBuilder()
-    data = CallbackManage(user=str(user.telegram_id),
-                          action=AdminActions.chosen_group,
-                          msg_id=str(user.message_id),
+    data = CallbackManage(action=AdminActions.chosen_group,
                           group_id='-1')
 
     for admin in admin_right:
@@ -42,13 +40,13 @@ async def callback_back(query: types.CallbackQuery, bot: Bot,
                         callback_data: CallbackManage, admin_unit: AdminDB,
                         msg: dict):
     admin_right = await admin_unit.select_all_administrated_groups(
-            int(callback_data.user)
+            query.from_user.id
             )
 
     if not query.message:
         return
     if len(admin_right) == 0:
-        await bot.send_message(int(callback_data.user),
+        await bot.send_message(query.from_user.id,
                                msg["admin"]["you_are_not_admin"])
         return
 
@@ -63,10 +61,8 @@ async def callback_back(query: types.CallbackQuery, bot: Bot,
 
     builder.adjust(1, 1)
 
-    await bot.edit_message_text(text=msg["admin"]["choose_group"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=builder.as_markup())
+    await query.message.edit_text(text=msg["admin"]["choose_group"],
+                                  reply_markup=builder.as_markup())
 
 
 
@@ -102,33 +98,27 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
                 f"Количество проголосовавших: {status[1]}\n"
                 "Ссылка на голосование ")
     caption = info + '\n' + msg["admin"]["choose_action"]
-    await bot.edit_message_text(text=caption,
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard_r,
-                                parse_mode="HTML")
+    await query.message.edit_text(text=caption,
+                                  reply_markup=keyboard_r,
+                                  parse_mode="HTML")
 
 
-async def cmd_check_if_sure(query: types.CallbackQuery, bot: Bot,
+async def cmd_check_if_sure(query: types.CallbackQuery,
                             callback_data: CallbackManage, msg: dict):
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await bot.edit_message_text(text=msg["admin"]["are_you_sure_F"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_are_you_sure)
+    await query.message.edit_text(text=msg["admin"]["are_you_sure_F"],
+                                  reply_markup=keyboard.keyboard_are_you_sure)
 
 
-async def cmd_check_if_sure_vote(query: types.CallbackQuery, bot: Bot,
+async def cmd_check_if_sure_vote(query: types.CallbackQuery,
                                  callback_data: CallbackManage, msg: dict):
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await bot.edit_message_text(text=msg["admin"]["are_you_sure_S"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_are_you_sure_start)
+    await query.message.edit_text(text=msg["admin"]["are_you_sure_S"],
+                                  reply_markup=keyboard.keyboard_are_you_sure_start)
 
 
 async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot,
@@ -139,19 +129,15 @@ async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot,
     keyboard = AdminKeyboard.fromcallback(callback_data)
     bot_t = await bot.me()
     if not bot_t.username:
-        await bot.edit_message_text(text=msg["vote"]["no_username_bot"],
-                                    chat_id=callback_data.user,
-                                    message_id=query.message.message_id,
-                                    reply_markup=keyboard.keyboard_back)
+        await query.message.edit_text(text=msg["vote"]["no_username_bot"],
+                                  reply_markup=keyboard.keyboard_back)
         return
 
     bot_link = ObjectFactory.build_vote_link(bot_t.username, callback_data.group_id)
     message = msg["vote"]["vote_started"] + f" {bot_link}"
     await admin_unit.change_current_vote_status(int(callback_data.group_id))
-    await bot.edit_message_text(text=message,
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_back)
+    await query.message.edit_text(text=message,
+                              reply_markup=keyboard.keyboard_back)
 
 
 async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
@@ -167,27 +153,21 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     ids = await admin_unit.select_contest_photos_ids_and_types(
             int(callback_data.group_id))
     if len(ids) == 0:
-        await bot.edit_message_text(text=msg["admin"]["no_photos_at_end"],
-                                    chat_id=callback_data.user,
-                                    message_id=query.message.message_id,
-                                    reply_markup=keyboard.keyboard_back)
+        await query.message.edit_text(text=msg["admin"]["no_photos_at_end"],
+                              reply_markup=keyboard.keyboard_back)
         return
 
     id, user = await vote.select_winner_from_contest(int(callback_data.group_id))
     if not user:
-        await bot.edit_message_text(text=msg["admin"]["no_winner"],
-                                    chat_id=callback_data.user,
-                                    message_id=query.message.message_id,
-                                    reply_markup=keyboard.keyboard_back)
+        await query.message.edit_text(text=msg["admin"]["no_winner"],
+                              reply_markup=keyboard.keyboard_back)
         return
 
     file_id = await vote.select_file_id(id)
     likes = await vote.select_all_likes_file_id(int(callback_data.group_id), file_id)
     type_photo = await vote.select_file_type_by_file_id(file_id)
-    await bot.edit_message_text(text=msg["admin"]["vote_end"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_back)
+    await query.message.edit_text(text=msg["admin"]["vote_end"],
+                          reply_markup=keyboard.keyboard_back)
 
     user_info = f"Победитель: @{user[0]}, {user[1]}\nЛайков: {likes}"
     if type_photo == 'photo':
@@ -217,9 +197,9 @@ async def view_votes(query: types.CallbackQuery, bot: Bot,
 
 async def view_submissions(query: types.CallbackQuery, bot: Bot,
                            callback_data: CallbackManage, admin_unit: AdminDB):
-    cb = callback_data
 
-    ids = await admin_unit.select_contest_photos_ids_and_types(int(cb.group_id))
+    ids = await admin_unit.select_contest_photos_ids_and_types(
+            int(callback_data.group_id))
     if len(ids) == 0:
         return
     await internal_view_submissions(query.from_user.id, ids, bot, admin_unit,

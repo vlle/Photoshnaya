@@ -9,7 +9,7 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
     if message.from_user is None:
         return
     user, chat = TelegramDeserialize.unpack(message)
-    valid_check = is_valid_input(message.caption, register_unit, chat, user)
+    valid_check = await is_valid_input(message.caption, register_unit, chat, user)
     if valid_check is False:
         return
 
