@@ -25,11 +25,11 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
                                         user.full_name,
                                         user.telegram_id)
 
-    register_unit = RegisterDB(like_engine.engine)
-    await register_unit.register_user(user_obj, chat.telegram_id)
 
     start_data = message.text.replace('_', ' ').split()
     group_id = int(start_data[1])
+    register_unit = RegisterDB(like_engine.engine)
+    await register_unit.register_user(user_obj, group_id)
     photo_file_id, photo_id  = await like_engine.select_next_contest_photo(group_id, 0)
 
     amount_photo = len(photo_ids)
