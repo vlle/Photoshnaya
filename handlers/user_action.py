@@ -20,7 +20,7 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
     else:
         return
     ret_msg = await internal_register_photo(user, chat, register_unit, obj, msg)
-    await message.answer(ret_msg)
+    await message.reply(ret_msg)
 
 
 async def is_valid_input(caption: str | None,

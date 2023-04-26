@@ -17,12 +17,14 @@ from utils.keyboard import Actions, CallbackVote
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
-from handlers.admin_handler import ContestCreate, callback_back,\
+from handlers.contest_fsm import ContestCreate,\
+        set_theme, set_theme_accept_message 
+from handlers.on_join import on_user_join
+from handlers.admin_handler import  callback_back,\
         cmd_action_choose, cmd_check_if_sure,\
         cmd_check_if_sure_vote,\
         cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
-        set_theme,\
-        on_user_join, set_theme_accept_message, view_submissions, view_votes
+view_submissions, view_votes
 from handlers.personal_vote_menu import cmd_start, callback_next, \
         callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
@@ -48,7 +50,7 @@ async def main():
 
     engine = create_async_engine(ps_url, echo=True)
     async with engine.begin() as conn:
-        # await conn.run_sync(Base.metadata.drop_all)
+        #await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     register = RegisterDB(engine)
