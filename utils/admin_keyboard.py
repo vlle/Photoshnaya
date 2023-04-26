@@ -102,7 +102,6 @@ class AdminKeyboard:
         self.buttons = AdminKeyboardButtons(group_id)
         self.keyboard_no_contest = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.start_contest],
-                                 [self.buttons.delete_submission],
                                  [self.buttons.add_admin],
                                  [self.buttons.back]]
                 )

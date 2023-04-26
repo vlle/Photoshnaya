@@ -10,6 +10,7 @@ from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy.ext.asyncio import create_async_engine
 from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
+from handlers.delete_submission import delete_photo_r_u_sure, delete_submission, DeletePhoto, make_delete_decision, set_admin_delete_photo
 from utils.admin_keyboard import AdminActions, CallbackManage
 
 from utils.keyboard import Actions, CallbackVote
@@ -22,9 +23,9 @@ from handlers.contest_fsm import ContestCreate,\
 from handlers.on_join import on_user_join
 from handlers.admin_handler import  callback_back,\
         cmd_action_choose, cmd_check_if_sure,\
-        cmd_check_if_sure_vote,\
-        cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
-view_submissions, view_votes
+        cmd_check_if_sure_vote, cmd_choose_group,\
+        cmd_finish_contest, cmd_finish_vote,\
+        view_submissions, view_votes
 from handlers.personal_vote_menu import cmd_start, callback_next, \
         callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
 from handlers.user_action import register_photo
@@ -94,12 +95,19 @@ async def main():
                                (F.action == AdminActions.finish_vote_id))
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
                                (F.action == AdminActions.sure_finish_vote_id))
+
+    dp.callback_query.register(delete_submission, CallbackManage.filter
+                               (F.action == AdminActions.delete_submission_id))
     dp.callback_query.register(set_theme, CallbackManage.filter
                                (F.action == AdminActions.start_contest_id))
     dp.callback_query.register(set_admin, CallbackManage.filter
                                (F.action == AdminActions.add_admin_id))
+
     dp.message.register(set_theme_accept_message, ContestCreate.name_contest)
     dp.message.register(set_admin_accept_message, AdminAdd.send_admin)
+    dp.message.register(set_admin_delete_photo, DeletePhoto.send_photo_owner)
+    dp.message.register(delete_photo_r_u_sure, DeletePhoto.are_you_sure)
+    dp.message.register(make_delete_decision, DeletePhoto.wait_for_confirmation)
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,

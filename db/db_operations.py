@@ -154,6 +154,27 @@ class SelectDB(BaseDB):
                 res = res.telegram_type
         return res
 
+    async def find_photo_by_user_in_group(self, u_telegram_id: int,
+                                          g_telegram_id: int):
+        stmt = (
+                select(Photo)
+                .join(User)
+                .join(
+                    group_photo,
+                    (Photo.id == group_photo.c.photo_id)
+                    )
+                .join(Group)
+                .where(User.telegram_id == u_telegram_id)
+                .where(Group.telegram_id == g_telegram_id)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one_or_none()
+                if res is None:
+                    return None
+                return [res.id, res.file_id, res.telegram_type]
+
+
     async def find_group(self, telegram_id: int) -> bool:
         stmt = (
                 select(Group)
@@ -731,11 +752,20 @@ class AdminDB(RegisterDB):
                 .where(Group.telegram_id == group_id)
                 .order_by(Contest.id.desc()).limit(1)
                 )
+        count_photo = (
+                select(func.count(group_photo.c.photo_id))
+                .join(Group)
+                .where(Group.telegram_id == group_id)
+                )
         info_list = []
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 contest = (await session.scalars(stmt)).one() 
                 info_list.append(contest.contest_name)
+                photo_count = (await session.scalars(count_photo)).one_or_none()
+                if photo_count is None:
+                    photo_count = 0
+                info_list.append(photo_count)
                 group = (await session.scalars(stmt_grp)).one()
                 if group.vote_in_progress is True:
                     stmt_count = (
@@ -764,6 +794,18 @@ class AdminDB(RegisterDB):
                 contest = await session.merge(contest)
 
         return ret
+
+    async def remove_photo(self, photo_file_id: str):
+        #todo: tests
+        stmt = (
+                select(Photo)
+                .where(Photo.file_id == photo_file_id)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                photo = (await session.scalars(stmt)).one()
+                await session.delete(photo)
+        return True
 
     async def change_current_vote_status(self, group_id: int) -> bool:
         ret: bool = False

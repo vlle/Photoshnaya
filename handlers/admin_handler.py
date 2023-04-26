@@ -86,15 +86,17 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
 
     status = await admin_unit.get_info(int(callback_data.group_id))
     info = ''
-    if len(status) == 1:
-        info = f"Текущая тема: {status[0]}\n"
-    elif len(status) == 2:
+    if len(status) == 2:
+        info = (f"Текущая тема: {status[0]}\n"
+                f"Количество фоток: <b>{status[1]}\n</b>")
+    elif len(status) == 3:
         link_vote = ObjectFactory.build_vote_link(bot_name.username,
                                                   callback_data.group_id)
         info = (f"Текущая тема: {status[0]}\n"
-                f"Количество проголосовавших: <b>{status[1]}</b>\n"
+                f"Количество фоток: {status[1]}\n"
+                f"Количество проголосовавших: <b>{status[2]}</b>\n"
                 f"Ссылка на голосование: {link_vote}\n")
-    elif len(status) == 3:
+    elif len(status) == 4:
         info = (f"Текущая тема: {status[0]}\n"
                 f"Количество проголосовавших: {status[1]}\n"
                 "Ссылка на голосование ")
@@ -204,11 +206,16 @@ async def view_votes(query: types.CallbackQuery, bot: Bot,
 
 
 async def view_submissions(query: types.CallbackQuery, bot: Bot,
-                           callback_data: CallbackManage, admin_unit: AdminDB):
+                           callback_data: CallbackManage, admin_unit: AdminDB,
+                           msg: dict):
 
     ids = await admin_unit.select_contest_photos_ids_and_types(
             int(callback_data.group_id))
     if len(ids) == 0:
+        if query.message:
+            keyboard = AdminKeyboard.fromcallback(callback_data)
+            await query.message.edit_text(msg["admin"]["no_photos_at_start"],
+                                          reply_markup=keyboard.keyboard_back)
         return
     await internal_view_submissions(query.from_user.id, ids, bot, admin_unit,
                                     callback_data)
@@ -303,3 +310,5 @@ async def send_photos(list_of_object: list[InputMediaDocument
                                                  InputMediaPhoto):
         await bot.send_photo(chat_id=msg, photo=list_of_object[0].media)
     await async_sleep(0.5)
+
+

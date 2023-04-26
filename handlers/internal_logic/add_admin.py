@@ -1,5 +1,5 @@
 from sqlalchemy.exc import IntegrityError
-from db.db_operations import ObjectFactory, AdminDB, RegisterDB
+from db.db_operations import ObjectFactory, RegisterDB
 from utils.TelegramUserClass import TelegramUser
 
 async def i_add_admin(user_object: TelegramUser, register: RegisterDB,

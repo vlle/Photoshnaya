@@ -4,7 +4,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram import types
 from aiogram import Bot
 from handlers.internal_logic.add_admin import i_add_admin
-from utils.TelegramUserClass import TelegramDeserialize, TelegramUser
+from utils.TelegramUserClass import TelegramUser
 from utils.admin_keyboard import AdminKeyboard, CallbackManage
 from db.db_operations import AdminDB
 
@@ -20,7 +20,8 @@ async def set_admin(query: types.CallbackQuery,
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await query.message.edit_text(text=msg["add_admin"]["create_greet_adm"])
+    await query.message.edit_text(text=msg["add_admin"]["create_greet_adm"],
+                                  parse_mode="HTML")
     data = {}
     data["group"] = callback_data.group_id
     data["user_id"] = query.from_user.id
