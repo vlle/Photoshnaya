@@ -377,9 +377,9 @@ class LikeDB(SelectDB):
                 .where(tmp_photo_like.c.user_id ==
                        (select(User.id)
                         .where(User.telegram_id == tg_id)
-                        .scalar_subquery())
-                       & (tmp_photo_like.c.photo_id == photo_id)
-                       ))
+                        .scalar_subquery()))
+                .where(tmp_photo_like.c.photo_id == photo_id)
+                       )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 await session.execute(stmt)
@@ -796,7 +796,6 @@ class AdminDB(RegisterDB):
         return ret
 
     async def remove_photo(self, photo_file_id: str):
-        #todo: tests
         stmt = (
                 select(Photo)
                 .where(Photo.file_id == photo_file_id)
