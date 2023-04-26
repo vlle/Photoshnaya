@@ -145,13 +145,10 @@ async def callback_set_no_like(query: CallbackQuery,
 
     await like_engine.remove_like_photo(query.from_user.id, int(cb.current_photo_id))
 
+
     bk = Keyboard.fromcallback(cb)
-    if int(cb.current_photo_count) >= int(cb.amount_photos):
-        keyboard = bk.keyboard_end
-    elif int(cb.current_photo_count) <= 1:
-        keyboard = bk.keyboard_start
-    else:
-        keyboard = bk.keyboard_vote
+    keyboard = await choose_keyboard(0, int(cb.current_photo_count),
+                                     int(cb.amount_photos), bk)
     await query.message.edit_reply_markup(reply_markup=keyboard)
 
 
