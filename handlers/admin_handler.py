@@ -1,6 +1,5 @@
 from asyncio import sleep as async_sleep
-from aiogram import types
-from aiogram import Bot
+from aiogram import types, Bot
 from aiogram.types import InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.TelegramUserClass import TelegramDeserialize
@@ -42,6 +41,7 @@ async def callback_back(query: types.CallbackQuery, bot: Bot,
             )
 
     if not query.message:
+        query.answer("Слишком старое сообщение, запусти новое")
         return
     if len(admin_right) == 0:
         await bot.send_message(query.from_user.id,
@@ -70,6 +70,7 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
 
     bot_name = await bot.me()
     if not query.message or not bot_name.username:
+        query.answer("Слишком старое сообщение, запусти новое")
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
     vote_in_progress = await admin_unit.get_current_vote_status(
@@ -106,6 +107,7 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
 async def cmd_check_if_sure(query: types.CallbackQuery,
                             callback_data: CallbackManage, msg: dict):
     if not query.message:
+        query.answer("Слишком старое сообщение, запусти новое")
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
     await query.message.edit_text(text=msg["admin"]["are_you_sure_F"],
@@ -115,6 +117,7 @@ async def cmd_check_if_sure(query: types.CallbackQuery,
 async def cmd_check_if_sure_vote(query: types.CallbackQuery,
                                  callback_data: CallbackManage, msg: dict):
     if not query.message:
+        query.answer("Слишком старое сообщение, запусти новое")
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
     await query.message.edit_text(text=msg["admin"]["are_you_sure_S"],
@@ -125,6 +128,7 @@ async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot,
                              callback_data: CallbackManage,
                              admin_unit: AdminDB, msg: dict):
     if not query.message:
+        query.answer("Слишком старое сообщение, запусти новое")
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
     bot_t = await bot.me()
@@ -144,6 +148,7 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
                           callback_data: CallbackManage, admin_unit: AdminDB,
                           msg: dict):
     if not query.message:
+        query.answer("Слишком старое сообщение, запусти новое")
         return
     await admin_unit.change_current_vote_status(int(callback_data.group_id))
     keyboard = AdminKeyboard.fromcallback(callback_data)

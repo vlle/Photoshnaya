@@ -1,6 +1,4 @@
 from db.db_operations import ObjectFactory, AdminDB
-from utils.TelegramUserClass import TelegramChat
-
 
 async def i_set_theme(user_theme: str,
                 admin_unit: AdminDB, chat_id: int):

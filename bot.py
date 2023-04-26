@@ -4,12 +4,12 @@ import os
 import tomllib
 from dotenv import load_dotenv
 
-from aiogram import F
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import JOIN_TRANSITION
-from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy.ext.asyncio import create_async_engine
+from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
 from utils.admin_keyboard import AdminActions, CallbackManage
 
 from utils.keyboard import Actions, CallbackVote
@@ -96,7 +96,10 @@ async def main():
                                (F.action == AdminActions.sure_finish_vote_id))
     dp.callback_query.register(set_theme, CallbackManage.filter
                                (F.action == AdminActions.start_contest_id))
+    dp.callback_query.register(set_admin, CallbackManage.filter
+                               (F.action == AdminActions.add_admin_id))
     dp.message.register(set_theme_accept_message, ContestCreate.name_contest)
+    dp.message.register(set_admin_accept_message, AdminAdd.send_admin)
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,
