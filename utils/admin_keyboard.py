@@ -116,7 +116,6 @@ class AdminKeyboard:
         self.keyboard_vote_in_progress = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.finish_vote],
                                  [self.buttons.view_votes],
-                                 [self.buttons.delete_submission],
                                  [self.buttons.add_admin],
                                  [self.buttons.back]]
                 )
