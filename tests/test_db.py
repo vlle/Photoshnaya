@@ -50,7 +50,7 @@ def group_another():
 @pytest.fixture
 def user():
     return TUser(name="User №"
-                      + str(random.randint(1, 10000)),
+                      + str(random.randint(-100, 10000)),
                  i_id=100 + random.randint(1, 2000))
 
 
@@ -515,9 +515,6 @@ async def test_is_photos_deleted_correctly(create_user, group, db):
     assert second_val == 0
 
 # test multi-admin 
-async def test_is_multi_admin_ok():
-    pass
-
 # test multi-user
 async def test_is_multi_user_ok():
     pass
@@ -583,3 +580,52 @@ async def test_is_multi_groups_ok(create_user, create_user_another,
     assert second_group_val == 5
     assert second_group_val != second_group_val2
     assert second_group_val2 == 0
+
+
+
+async def test_is_multi_admins_ok(create_user, create_user_another,
+                                  group, group_another,
+                                  db):
+    users1: list[User] = []
+    for _ in range(0, 5):
+        users1.append(await create_user())
+
+    users2: list[User] = []
+    users2.append(users1[0])
+    users2.append(users1[1])
+    for _ in range(2, 5):
+        users2.append(await create_user_another())
+
+    register_unit = RegisterDB(db)
+    AdminUnit = AdminDB(db)
+    m_group1 = ObjectFactory.build_group(group.group_name, group.group_id)
+    m_group2 = ObjectFactory.build_group(group_another.group_name,
+                                         group_another.group_id)
+    user_in1_admin_in2 = ObjectFactory.build_user(
+                   users1[0].name,
+                   users1[0].name + ' Ivanov',
+                   users1[0].telegram_id)
+    user_in2_admin_in1 = ObjectFactory.build_user(
+                   users1[1].name,
+                   users1[1].name + ' Ivanov',
+                   users1[1].telegram_id)
+    await register_unit.register_admin(user_in1_admin_in2, m_group2.telegram_id)
+    await register_unit.register_admin(user_in2_admin_in1, m_group1.telegram_id)
+    administrated_groups1: list = (await AdminUnit.select_all_administrated_groups(
+        user_in1_admin_in2.telegram_id))
+    administrated_groups2: list = (await AdminUnit.select_all_administrated_groups(
+        user_in2_admin_in1.telegram_id))
+
+    assert len(administrated_groups1) == len(administrated_groups2)
+    assert administrated_groups2 != administrated_groups1
+
+    await register_unit.register_admin(user_in2_admin_in1, m_group2.telegram_id)
+
+    administrated_groups1: list = (await AdminUnit.select_all_administrated_groups(
+        user_in1_admin_in2.telegram_id))
+    administrated_groups2: list = (await AdminUnit.select_all_administrated_groups(
+        user_in2_admin_in1.telegram_id))
+
+    assert len(administrated_groups1) != len(administrated_groups2)
+    assert administrated_groups1[0] in administrated_groups2
+
