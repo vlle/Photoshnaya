@@ -3,9 +3,7 @@ from aiogram.filters.callback_data import CallbackData
 
 
 class CallbackManage(CallbackData, prefix="adm"):
-    user: str
     action: str
-    msg_id: str
     group_id: str
 
 
@@ -34,94 +32,74 @@ class AdminActions:
 
 
 class AdminKeyboardButtons:
-    def __init__(self, user: str, msg_id: str, group_id: str) -> None:
+    def __init__(self, group_id: str) -> None:
         self.actions = AdminActions()
         self.start_contest = InlineKeyboardButton(
                 text=self.actions.start_contest_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.start_contest_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.finish_contest = InlineKeyboardButton(
                 text=self.actions.finish_contest_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.finish_contest_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.sure_start_vote = InlineKeyboardButton(
                 text=self.actions.sure_start_vote_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.sure_start_vote_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.sure_finish_vote = InlineKeyboardButton(
                 text=self.actions.sure_finish_vote_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.sure_finish_vote_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.finish_vote = InlineKeyboardButton(
                 text=self.actions.finish_vote_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.finish_vote_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.view_votes = InlineKeyboardButton(
                 text=self.actions.view_votes_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.view_votes_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.view_submissions = InlineKeyboardButton(
                 text=self.actions.view_submissions_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.view_submissions_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.add_admin = InlineKeyboardButton(
                 text=self.actions.add_admin_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.add_admin_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.delete_submission = InlineKeyboardButton(
                 text=self.actions.delete_submission_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.delete_submission_id,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
         self.back = InlineKeyboardButton(
                 text=self.actions.back_text,
-                callback_data=CallbackManage(user=user,
-                                             action=self.
+                callback_data=CallbackManage(action=self.
                                              actions.back,
-                                             msg_id=msg_id,
                                              group_id=group_id).pack()
                 )
 
 
 class AdminKeyboard:
 
-    def __init__(self, user_id: str, msg_id: str, group_id: str) -> None:
-        self.buttons = AdminKeyboardButtons(user_id, msg_id, group_id)
+    def __init__(self, group_id: str) -> None:
+        self.buttons = AdminKeyboardButtons(group_id)
         self.keyboard_no_contest = InlineKeyboardMarkup(
                 inline_keyboard=[[self.buttons.start_contest],
                                  [self.buttons.delete_submission],
@@ -154,4 +132,4 @@ class AdminKeyboard:
 
     @classmethod
     def fromcallback(cls, cb: CallbackManage):
-        return cls(cb.user, cb.msg_id, cb.group_id)
+        return cls(cb.group_id)

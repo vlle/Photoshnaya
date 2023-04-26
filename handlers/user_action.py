@@ -9,7 +9,7 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
     if message.from_user is None:
         return
     user, chat = TelegramDeserialize.unpack(message)
-    valid_check = is_valid_input(message.caption, register_unit, chat, user)
+    valid_check = await is_valid_input(message.caption, register_unit, chat, user)
     if valid_check is False:
         return
 
@@ -19,17 +19,17 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
         obj = Document(message.document.file_id)
     else:
         return
-    ret_msg = internal_register_photo(user, chat, register_unit, obj, msg)
+    ret_msg = await internal_register_photo(user, chat, register_unit, obj, msg)
     await message.answer(ret_msg)
 
 
-def is_valid_input(caption: str | None,
+async def is_valid_input(caption: str | None,
                    register: RegisterDB,
                    chat_object: TelegramChat,
                    user_object: TelegramUser) -> bool:
     if not caption:
         return False
-    theme = register.get_contest_theme(chat_object.telegram_id)
+    theme = await register.get_contest_theme(chat_object.telegram_id)
     if not theme:
         return False
 

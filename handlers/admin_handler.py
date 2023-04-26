@@ -1,12 +1,15 @@
 from asyncio import sleep as async_sleep
+from typing import Any
 from aiogram import types
 from aiogram import Bot
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.TelegramUserClass import TelegramDeserialize
 from handlers.internal_logic.admin import i_set_theme
 from handlers.internal_logic.on_join import i_on_user_join
-from db.db_operations import RegisterDB, AdminDB, VoteDB
+from db.db_operations import ObjectFactory, RegisterDB, AdminDB, VoteDB
 from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
 async def cmd_choose_group(message: types.Message, bot: Bot,
@@ -14,7 +17,7 @@ async def cmd_choose_group(message: types.Message, bot: Bot,
     if not message.text:
         return
     user, _ = TelegramDeserialize.unpack(message)
-    admin_right = admin_unit.select_all_administrated_groups(user.telegram_id)
+    admin_right = await admin_unit.select_all_administrated_groups(user.telegram_id)
 
     if len(admin_right) == 0:
         await bot.send_message(user.telegram_id,
@@ -22,9 +25,7 @@ async def cmd_choose_group(message: types.Message, bot: Bot,
         return
 
     builder = InlineKeyboardBuilder()
-    data = CallbackManage(user=str(user.telegram_id),
-                          action=AdminActions.chosen_group,
-                          msg_id=str(user.message_id),
+    data = CallbackManage(action=AdminActions.chosen_group,
                           group_id='-1')
 
     for admin in admin_right:
@@ -41,14 +42,14 @@ async def cmd_choose_group(message: types.Message, bot: Bot,
 async def callback_back(query: types.CallbackQuery, bot: Bot,
                         callback_data: CallbackManage, admin_unit: AdminDB,
                         msg: dict):
-    admin_right = admin_unit.select_all_administrated_groups(
-            int(callback_data.user)
+    admin_right = await admin_unit.select_all_administrated_groups(
+            query.from_user.id
             )
 
     if not query.message:
         return
     if len(admin_right) == 0:
-        await bot.send_message(int(callback_data.user),
+        await bot.send_message(query.from_user.id,
                                msg["admin"]["you_are_not_admin"])
         return
 
@@ -63,10 +64,8 @@ async def callback_back(query: types.CallbackQuery, bot: Bot,
 
     builder.adjust(1, 1)
 
-    await bot.edit_message_text(text=msg["admin"]["choose_group"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=builder.as_markup())
+    await query.message.edit_text(text=msg["admin"]["choose_group"],
+                                  reply_markup=builder.as_markup())
 
 
 
@@ -74,63 +73,76 @@ async def cmd_action_choose(query: types.CallbackQuery, bot: Bot,
                             callback_data: CallbackManage,
                             admin_unit: AdminDB, msg: dict):
 
-    if not query.message:
+    bot_name = await bot.me()
+    if not query.message or not bot_name.username:
         return
-    print(callback_data)
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    vote_in_progress = admin_unit.get_current_vote_status(
+    vote_in_progress = await admin_unit.get_current_vote_status(
             int(callback_data.group_id)
             )
-
-    if not vote_in_progress:
+    theme = await admin_unit.get_contest_theme(int(callback_data.group_id))
+    if theme == '-1':
+        keyboard_r = keyboard.keyboard_no_contest
+    elif not vote_in_progress:
         keyboard_r = keyboard.keyboard_no_vote
     else:
         keyboard_r = keyboard.keyboard_vote_in_progress
 
-    await bot.edit_message_text(text=msg["admin"]["choose_action"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard_r)
+    status = await admin_unit.get_info(int(callback_data.group_id))
+    info = ''
+    if len(status) == 1:
+        info = f"Текущая тема: {status[0]}\n"
+    elif len(status) == 2:
+        link_vote = ObjectFactory.build_vote_link(bot_name.username,
+                                                  callback_data.group_id)
+        info = (f"Текущая тема: {status[0]}\n"
+                f"Количество проголосовавших: <b>{status[1]}</b>\n"
+                f"Ссылка на голосование: {link_vote}\n")
+    elif len(status) == 3:
+        info = (f"Текущая тема: {status[0]}\n"
+                f"Количество проголосовавших: {status[1]}\n"
+                "Ссылка на голосование ")
+    caption = info + '\n' + msg["admin"]["choose_action"]
+    await query.message.edit_text(text=caption,
+                                  reply_markup=keyboard_r,
+                                  parse_mode="HTML")
 
 
-async def cmd_check_if_sure(query: types.CallbackQuery, bot: Bot,
+async def cmd_check_if_sure(query: types.CallbackQuery,
                             callback_data: CallbackManage, msg: dict):
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await bot.edit_message_text(text=msg["admin"]["are_you_sure_F"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_are_you_sure)
+    await query.message.edit_text(text=msg["admin"]["are_you_sure_F"],
+                                  reply_markup=keyboard.keyboard_are_you_sure)
 
 
-async def cmd_check_if_sure_vote(query: types.CallbackQuery, bot: Bot,
+async def cmd_check_if_sure_vote(query: types.CallbackQuery,
                                  callback_data: CallbackManage, msg: dict):
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await bot.edit_message_text(text=msg["admin"]["are_you_sure_S"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_are_you_sure_start)
+    await query.message.edit_text(text=msg["admin"]["are_you_sure_S"],
+                                  reply_markup=keyboard.keyboard_are_you_sure_start)
 
 
 async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot,
                              callback_data: CallbackManage,
-                             admin_unit: AdminDB):
+                             admin_unit: AdminDB, msg: dict):
     if not query.message:
         return
-    admin_unit.change_current_vote_status(int(callback_data.group_id))
     keyboard = AdminKeyboard.fromcallback(callback_data)
     bot_t = await bot.me()
-    bot_link = f"t.me/{bot_t.username}?start=" + callback_data.group_id + "_3"
-    msg = f"Голосование запущено. Вот ссылка, отправьте ее в чат: {bot_link}"
-    msg_duplicate = f"На всякий случай дублирую отдельным сообщением: {bot_link}"
-    await bot.send_message(text=msg_duplicate, chat_id=callback_data.user)
-    await bot.edit_message_text(text=msg,
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_back)
+    if not bot_t.username:
+        await query.message.edit_text(text=msg["vote"]["no_username_bot"],
+                                  reply_markup=keyboard.keyboard_back)
+        return
+
+    bot_link = ObjectFactory.build_vote_link(bot_t.username, callback_data.group_id)
+    message = msg["vote"]["vote_started"] + f" {bot_link}"
+    await admin_unit.change_current_vote_status(int(callback_data.group_id))
+    await query.message.edit_text(text=message,
+                              reply_markup=keyboard.keyboard_back)
 
 
 async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
@@ -138,25 +150,32 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
                           msg: dict):
     if not query.message:
         return
-    admin_unit.change_current_vote_status(int(callback_data.group_id))
+    await admin_unit.change_current_vote_status(int(callback_data.group_id))
     keyboard = AdminKeyboard.fromcallback(callback_data)
     vote = VoteDB(admin_unit.engine)
 
 
-    ids = admin_unit.select_contest_photos_ids_and_types(int(callback_data.group_id))
+    ids = await admin_unit.select_contest_photos_ids_and_types(
+            int(callback_data.group_id))
     if len(ids) == 0:
-        return
-    id, user = vote.select_winner_from_contest(int(callback_data.group_id))
-    if not user:
+        await query.message.edit_text(text=msg["admin"]["no_photos_at_end"],
+                              reply_markup=keyboard.keyboard_back)
+        await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
-    file_id = vote.select_file_id(id)
-    likes = vote.select_all_likes_file_id(int(callback_data.group_id), file_id)
-    type_photo = vote.select_file_type_by_file_id(file_id)
-    await bot.edit_message_text(text=msg["admin"]["vote_end"],
-                                chat_id=callback_data.user,
-                                message_id=query.message.message_id,
-                                reply_markup=keyboard.keyboard_back)
+    id, user = await vote.select_winner_from_contest(int(callback_data.group_id))
+    if not user:
+        await query.message.edit_text(text=msg["vote"]["no_winner"],
+                              reply_markup=keyboard.keyboard_back)
+        await vote.erase_all_photos(int(callback_data.group_id))
+        await admin_unit.change_contest_to_none(int(callback_data.group_id))
+        return
+
+    file_id = await vote.select_file_id(id)
+    likes = await vote.select_all_likes_file_id(int(callback_data.group_id), file_id)
+    type_photo = await vote.select_file_type_by_file_id(file_id)
+    await query.message.edit_text(text=msg["admin"]["vote_end"],
+                          reply_markup=keyboard.keyboard_back)
 
     user_info = f"Победитель: @{user[0]}, {user[1]}\nЛайков: {likes}"
     if type_photo == 'photo':
@@ -165,26 +184,30 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     else:
         await bot.send_document(chat_id=query.from_user.id, document=file_id,
                                 caption=user_info)
-    ids = admin_unit.select_contest_photos_ids_and_types(int(callback_data.group_id))
+    ids = await admin_unit.select_contest_photos_ids_and_types(
+            int(callback_data.group_id))
     if len(ids) == 0:
         return
     await internal_view_submissions(query.from_user.id, ids,
                                     bot, admin_unit, callback_data)
-    vote.erase_all_photos(int(callback_data.group_id))
+    await vote.erase_all_photos(int(callback_data.group_id))
+    await admin_unit.change_contest_to_none(int(callback_data.group_id))
 
 
 
 async def view_votes(query: types.CallbackQuery, bot: Bot,
                      callback_data: CallbackManage, admin_unit: AdminDB):
-
-    pass
+    ids = await admin_unit.select_contest_photos_ids_and_types(
+            int(callback_data.group_id))
+    await internal_view_submissions(query.from_user.id, ids,
+                                    bot, admin_unit, callback_data)
 
 
 async def view_submissions(query: types.CallbackQuery, bot: Bot,
                            callback_data: CallbackManage, admin_unit: AdminDB):
-    cb = callback_data
 
-    ids = admin_unit.select_contest_photos_ids_and_types(int(cb.group_id))
+    ids = await admin_unit.select_contest_photos_ids_and_types(
+            int(callback_data.group_id))
     if len(ids) == 0:
         return
     await internal_view_submissions(query.from_user.id, ids, bot, admin_unit,
@@ -194,7 +217,7 @@ async def view_submissions(query: types.CallbackQuery, bot: Bot,
 async def internal_view_submissions(chat_id: int, ids: list, bot: Bot,
                                     admin_unit: AdminDB,
                                     callback_data: CallbackManage):
-    cb = callback_data
+    group_id = int(callback_data.group_id)
     if len(ids) == 1:
         if ids[0][1] == 'photo':
             await bot.send_photo(chat_id=chat_id, photo=ids[0][0])
@@ -216,39 +239,89 @@ async def internal_view_submissions(chat_id: int, ids: list, bot: Bot,
                                                        media=media))
 
         if len(submissions_photos) == MAX_SUBMISSIONS:
-            await send_other_type(submissions_docs, bot, chat_id)
-            await bot.send_media_group(chat_id=chat_id,
-                                       media=submissions_photos)
+            await send_photos(submissions_photos, bot, chat_id)
             await send_possible_caption(submissions_photos,
-                                        int(cb.group_id),
+                                        group_id,
                                         bot, vote, chat_id)
-            submissions_docs.clear()
             submissions_photos.clear()
         if len(submissions_docs) == MAX_SUBMISSIONS:
-            await send_other_type(submissions_photos, bot, chat_id)
-            await bot.send_media_group(chat_id=chat_id,
-                                       media=submissions_docs)
+            await send_photos(submissions_docs, bot, chat_id)
             await send_possible_caption(submissions_docs,
-                                        int(cb.group_id),
+                                        group_id,
                                         bot, vote, chat_id)
             submissions_docs.clear()
-            submissions_photos.clear()
 
     if submissions_photos:
-        await send_other_type(submissions_photos,  bot, chat_id)
+        await send_photos(submissions_photos,  bot, chat_id)
         await send_possible_caption(submissions_photos,
-                                    int(cb.group_id),
+                                        group_id,
                                     bot, vote, chat_id)
-        submissions_photos.clear()
     if submissions_docs:
-        await send_other_type(submissions_docs, bot, chat_id)
+        await send_photos(submissions_docs, bot, chat_id)
         await send_possible_caption(submissions_docs,
-                                    int(cb.group_id),
+                                        group_id,
                                     bot, vote, chat_id)
-        submissions_docs.clear()
 
     del submissions_photos
     del submissions_docs
+
+
+class ContestCreate(StatesGroup):
+    name_contest = State()
+    are_you_sure = State()
+    thanks_for_info = State()
+
+async def set_theme(query: types.CallbackQuery, 
+                    callback_data: CallbackManage, 
+                    state: FSMContext,
+                    msg: dict):
+    if not query.message:
+        return
+    keyboard = AdminKeyboard.fromcallback(callback_data)
+    await query.message.edit_text(text=msg["contest"]["create_greet_contest"])
+    data = {}
+    data["group"] = callback_data.group_id
+    data["user_id"] = query.from_user.id
+    data["msg_id"] = query.message.message_id
+    data["keyboard"] = keyboard
+    await state.set_data(data)
+    await state.set_state(ContestCreate.name_contest)
+
+async def set_theme_accept_message(message: types.Message, bot: Bot,
+                                   state: FSMContext, admin_unit: AdminDB,
+                                   msg: dict):
+    if not message.text:
+        return
+    theme = message.text.split()
+    string: dict[str, Any] = await state.get_data()
+    keyboard = string["keyboard"]
+    if (len(theme) > 1 or theme[0].lower() == 'отмена' 
+            or theme[0].lower() == 'cancel'):
+        text = msg["contest"]["cancel_contest"]
+    else:
+        text = await i_set_theme(theme[0], admin_unit, int(
+            string["group"]))
+
+    await state.clear()
+    await bot.edit_message_text(text=text,
+                                 chat_id=string["user_id"],
+                                 message_id=string["msg_id"],
+                                 reply_markup=keyboard.keyboard_back)
+
+
+
+async def on_user_join(message: types.Message, bot: Bot,
+                       register_unit: RegisterDB):
+    user, chat = TelegramDeserialize.unpack(message,
+                                            message_id_not_exists=True)
+
+    msg, reg_msg = await i_on_user_join(register_unit=register_unit,
+                                  user=user, chat=chat)
+
+    await bot.send_message(chat.telegram_id, msg)
+    if reg_msg:
+        await bot.send_message(chat.telegram_id, reg_msg)
+
 
 async def send_possible_caption(submissions: list,
                                 group_id: int,
@@ -257,21 +330,21 @@ async def send_possible_caption(submissions: list,
     caption = ''
     i = 1
     for obj in submissions:
-        if isinstance(obj.media, str):
-            likes, user = vote.select_all_likes_with_user(group_id,
-                                                          obj.media)
-            if len(user) < 2:
-                continue
-            print(likes, user)
-            if likes is None:
-                likes = 0
-            caption += f"{i}) likes = {likes}, @{user[0]}, {user[1]}, {user[2]}\n"
-            i += 1
+        if not isinstance(obj.media, str):
+            continue
+        likes, user = await vote.select_all_likes_with_user(group_id,
+                                                      obj.media)
+        if len(user) < 2:
+            continue
+        if likes is None:
+            likes = 0
+        caption += f"{i}) Лайков = {likes}, @{user[0]}, {user[1]}, {user[2]}\n"
+        i += 1
     if caption:
         await bot.send_message(chat_id=chat_id, text=caption)
 
 
-async def send_other_type(list_of_object: list[InputMediaDocument
+async def send_photos(list_of_object: list[InputMediaDocument
                                                | InputMediaPhoto],
                           bot: Bot, msg: int):
     if len(list_of_object) == 0:
@@ -285,49 +358,3 @@ async def send_other_type(list_of_object: list[InputMediaDocument
                                                  InputMediaPhoto):
         await bot.send_photo(chat_id=msg, photo=list_of_object[0].media)
     await async_sleep(0.5)
-
-
-async def finish_contest(query: types.CallbackQuery, bot: Bot,
-                         callback_data: CallbackManage, admin_unit: AdminDB):
-    pass
-
-
-async def set_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
-    if not message.text or not message.from_user:
-        return
-    user, chat = TelegramDeserialize.unpack(message)
-    print(user)
-    print(chat)
-    admin_right = admin_unit.check_admin(user.telegram_id, chat.telegram_id)
-    if admin_right is False:
-        return
-
-    user_theme = message.text.split()
-    msg = i_set_theme(user_theme, admin_unit, chat)
-    await bot.send_message(message.chat.id, msg)
-
-
-async def get_theme(message: types.Message, bot: Bot, admin_unit: AdminDB):
-    if not message.text or not message.from_user:
-        return
-    user, chat = TelegramDeserialize.unpack(message)
-    admin_right = admin_unit.check_admin(user.telegram_id, chat.telegram_id)
-    if admin_right is False:
-        return
-
-    theme = admin_unit.get_contest_theme(chat.telegram_id)
-    msg = f"Текущая тема: {theme}"
-    await bot.send_message(message.chat.id, msg)
-
-
-async def on_user_join(message: types.Message, bot: Bot,
-                       register_unit: RegisterDB):
-    user, chat = TelegramDeserialize.unpack(message,
-                                            message_id_not_exists=True)
-
-    msg, reg_msg = i_on_user_join(register_unit=register_unit,
-                                  user=user, chat=chat)
-
-    await bot.send_message(chat.telegram_id, msg)
-    if reg_msg:
-        await bot.send_message(chat.telegram_id, reg_msg)
