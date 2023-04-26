@@ -160,6 +160,7 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     if len(ids) == 0:
         await query.message.edit_text(text=msg["admin"]["no_photos_at_end"],
                               reply_markup=keyboard.keyboard_back)
+        await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
     id, user = await vote.select_winner_from_contest(int(callback_data.group_id))
@@ -270,14 +271,14 @@ class ContestCreate(StatesGroup):
     are_you_sure = State()
     thanks_for_info = State()
 
-async def set_theme(query: types.CallbackQuery, bot: Bot,
-                    callback_data: CallbackManage, admin_unit: AdminDB,
-                    state: FSMContext):
+async def set_theme(query: types.CallbackQuery, 
+                    callback_data: CallbackManage, 
+                    state: FSMContext,
+                    msg: dict):
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await query.message.edit_text(text="Пришли название для челленджа",
-                                  reply_markup=keyboard.keyboard_back)
+    await query.message.edit_text(text=msg["contest"]["create_greet_contest"])
     data = {}
     data["group"] = callback_data.group_id
     data["user_id"] = query.from_user.id
@@ -287,20 +288,25 @@ async def set_theme(query: types.CallbackQuery, bot: Bot,
     await state.set_state(ContestCreate.name_contest)
 
 async def set_theme_accept_message(message: types.Message, bot: Bot,
-                                   state: FSMContext, admin_unit: AdminDB):
+                                   state: FSMContext, admin_unit: AdminDB,
+                                   msg: dict):
     if not message.text:
         return
-    theme = message.text
+    theme = message.text.split()
     string: dict[str, Any] = await state.get_data()
-    
     keyboard = string["keyboard"]
-    msg = await i_set_theme(theme, admin_unit, int(
-        string["group"]))
-    await bot.edit_message_text(text=msg,
+    if (len(theme) > 1 or theme[0].lower() == 'отмена' 
+            or theme[0].lower() == 'cancel'):
+        text = msg["contest"]["cancel_contest"]
+    else:
+        text = await i_set_theme(theme[0], admin_unit, int(
+            string["group"]))
+
+    await state.clear()
+    await bot.edit_message_text(text=text,
                                  chat_id=string["user_id"],
                                  message_id=string["msg_id"],
                                  reply_markup=keyboard.keyboard_back)
-    #await bot.send_message(message.chat.id, msg)
 
 
 

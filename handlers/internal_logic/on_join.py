@@ -6,10 +6,7 @@ async def i_on_user_join(register_unit: RegisterDB, chat: TelegramChat,
                    user: TelegramUser) -> tuple:
 
     group = ObjectFactory.build_group(chat.full_name, chat.telegram_id)
-    reg_msg, is_registered = await register_unit.register_group(group)
-    if not is_registered:
-        return reg_msg, None
-
+    reg_msg, _ = await register_unit.register_group(group)
     adm_user = ObjectFactory.build_user(user.username,
                                         user.full_name,
                                         user.telegram_id)

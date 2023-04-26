@@ -17,7 +17,8 @@ from utils.keyboard import Actions, CallbackVote
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
-from handlers.admin_handler import ContestCreate, callback_back, cmd_action_choose, cmd_check_if_sure,\
+from handlers.admin_handler import ContestCreate, callback_back,\
+        cmd_action_choose, cmd_check_if_sure,\
         cmd_check_if_sure_vote,\
         cmd_choose_group, cmd_finish_contest, cmd_finish_vote,\
         set_theme,\

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from db.db_classes import tmp_photo_like, User, Photo, Group,\
         group_user, group_photo, group_admin, Contest, \
         photo_like, contest_user
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select, delete
 
 from sqlalchemy.sql import func
@@ -91,7 +91,9 @@ class BaseDB:
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                ret_id = (await session.scalars(stmt)).one()
+                ret_id = (await session.scalars(stmt)).one_or_none()
+                if ret_id is None:
+                    ret_id = -1
                 return ret_id
 
 
@@ -160,7 +162,7 @@ class SelectDB(BaseDB):
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 search = await session.scalars(stmt)
-                return search.first() is not None
+                return search.one_or_none() is not None
 
     async def find_user_in_group(self, telegram_user_id: int,
                                  group_telegram_id: int) -> bool:
@@ -448,6 +450,8 @@ class VoteDB(LikeDB):
                                     telegram_user_id: int) -> bool:
         contest_id = await self.get_contest_id(telegram_group_id)
         user_id = await self.get_user_id(telegram_user_id)
+        if (user_id == -1):
+            return False
         stmt = (
                 select(contest_user)
                 .where((contest_user.c.user_id == user_id)
@@ -568,8 +572,9 @@ class RegisterDB(SelectDB):
         super().__init__(engine)
 
     async def register_group(self, group: Group) -> tuple:
-        #if self.find_group(group.telegram_id is True):
-        #    return "Группа уже зарегистрирована. 😮", False
+        #why no test ffs
+        if await self.find_group(group.telegram_id) is True:
+            return "Группа уже зарегистрирована. 😮", False
         contest = ObjectFactory.build_contest('-1', -1)
         async with AsyncSession(self.engine) as session:
             async with session.begin():
@@ -578,29 +583,83 @@ class RegisterDB(SelectDB):
 
         return "Зарегистрировал группу. ", True
 
-    async def register_user(self, user: User, tg_group_id: int) -> str:
-        if (await self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
-            return "User was already registered"
+    #async def register_user(self, user: User, tg_group_id: int) -> str:
+    #    if (await self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
+    #        return "User was already registered"
+    #    stmt = select(Group).where(Group.telegram_id == tg_group_id)
+    #    async with AsyncSession(self.engine) as session:
+    #        async with session.begin():
+    #            rs = (await session.scalars(select(User)
+    #                                         .where(User.telegram_id
+    #                                                == user.telegram_id))).one_or_none()
+    #            if rs is not None:
+    #                user = rs
+    #                search_result = await session.scalars(stmt)
+    #                group = search_result.one()
+    #                user.groups.append(group)
+    #            else:
+    #                search_result = await session.scalars(stmt)
+    #                group = search_result.one()
+    #                user.groups.append(group)
+    #                session.add(user)
 
-        stmt = select(Group).where(Group.telegram_id == tg_group_id)
+    #    return "User was added"
+
+
+    async def register_user(self, user: User, tg_group_id: int) -> str:
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                search_result = await session.scalars(stmt)
-                group = search_result.one()
+                # Check if the user already exists in the database
+                rs = (await session.scalars(select(User)
+                                            .options(selectinload(User.groups))
+                                            .where(User.telegram_id 
+                                                   == user.telegram_id))).one_or_none()
+                if rs is not None:
+                    # User already exists, add the group to their groups list
+                    group = (await session.scalars(select(Group)
+                                                   .where(Group.telegram_id
+                                                   == tg_group_id))).one()
+                    if group not in rs.groups:
+                        rs.groups.append(group)
+                    return "User was already registered"
+
+                # User doesn't exist, add them to the database
+                group = (await session.scalars(
+                        select(Group).
+                        where(Group.telegram_id == tg_group_id))).one()
                 user.groups.append(group)
                 session.add(user)
+                try:
+                    await session.commit()
+                    return "User was added"
+                except exc.IntegrityError as e:
+                    await session.rollback()
+                    # Duplicate user detected, return an appropriate error message
+                    if "UNIQUE constraint failed" in str(e):
+                        return "User was already registered"
+                    else:
+                        return "Failed to register user"
 
-        return "User was added"
 
     async def register_admin(self, adm_user: User, group_id: int):
         stmt = select(Group).where(Group.telegram_id == group_id)
         async with AsyncSession(self.engine) as session:
             async with session.begin():
+                rs = (await session.scalars(select(User)
+                                            .options(selectinload(User.groups))
+                                            .options(selectinload(User.admin_in))
+                                            .where(User.telegram_id 
+                                                   == adm_user.telegram_id)
+                                            )).one_or_none()
                 search_result = await session.scalars(stmt)
                 grp = search_result.one()
-                adm_user = await session.merge(adm_user)
-                adm_user.groups.append(grp)
-                adm_user.admin_in.append(grp)
+                if rs is None:
+                    adm_user = await session.merge(adm_user)
+                    adm_user.groups.append(grp)
+                    adm_user.admin_in.append(grp)
+                else:
+                    rs.groups.append(grp)
+                    rs.admin_in.append(grp)
 
         return "Добавил администратора."
 
