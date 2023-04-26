@@ -3,15 +3,3 @@ services:
   web:
     build: .
       #restart: always
-    depends_on:
-      - db
-  db:
-      image: postgres:15-alpine
-        #restart: always
-      environment:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-      volumes:
-        - ./db/:/db
-#╰─>$ docker run -d --rm --name postgres  -p 5432:5432  -e POSTGRES_USER=postgres  -e POSTGRES_PASSWORD=postgres  -e POSTGRES_DB=postgres postgres -N 2000
