@@ -84,5 +84,3 @@ async def test_is_on_join_registers_admin(random_user, random_group, db):
     assert msg.startswith("Добавил в качестве админа") is True
     assert reg_msg.startswith("Зарегистрировал группу.") is True
 
-async def test_is_test(db):
-    assert 1 == 1

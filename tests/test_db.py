@@ -25,7 +25,7 @@ class TUser:
 @pytest.fixture
 async def db():
     load_dotenv()
-    ps_url = os.environ.get('ps_url')
+    ps_url = os.environ.get('testps_url')
     if not ps_url:
         return
     engine: AsyncEngine = create_async_engine(ps_url, echo=False)
