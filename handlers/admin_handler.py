@@ -1,13 +1,14 @@
 from typing import Tuple
 from asyncio import sleep as async_sleep
 from aiogram import types, Bot
-from aiogram.types import ChatMemberOwner, InlineKeyboardMarkup, InputMediaDocument, InputMediaPhoto
+from aiogram.types import ChatMemberOwner, InlineKeyboardMarkup,\
+        InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.TelegramUserClass import TelegramDeserialize
 from db.db_operations import ObjectFactory, AdminDB, VoteDB
 from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
-NO_THEME: str = '-1'
+NO_THEME = '-1'
 
 async def cmd_choose_group(message: types.Message, bot: Bot,
                            admin_unit: AdminDB, msg: dict):
@@ -311,18 +312,18 @@ async def send_photos(list_of_object: list[InputMediaDocument
 
 async def choose_action_board(vote_in_progress: bool, theme: str, is_owner,
                               keyboard: AdminKeyboard):
-    keyboard_options: dict[Tuple[bool, str, bool], InlineKeyboardMarkup] = {
-        (True, NO_THEME, False): keyboard.keyboard_no_contest,
-        (False, NO_THEME, False): keyboard.keyboard_no_vote,
-        (True, NO_THEME, True): keyboard.keyboard_no_contest_own,
-        (False, NO_THEME, True): keyboard.keyboard_no_vote_own,
-        (True, theme, False): keyboard.keyboard_vote_in_progress,
-        (False, theme, False): keyboard.keyboard_no_vote,
-        (True, theme, True): keyboard.keyboard_vote_in_progress_own,
-        (False, theme, True): keyboard.keyboard_no_vote_own
+    keyboard_options: dict[Tuple[bool, bool, bool], InlineKeyboardMarkup] = {
+        (False, False, False): keyboard.keyboard_no_contest,
+        (False, False, True): keyboard.keyboard_no_contest_own,
+        # (True, NO_THEME, False): keyboard.keyboard_no_contest,
+        # (True, NO_THEME, True): keyboard.keyboard_no_contest_own,
+        (False, True, False): keyboard.keyboard_no_vote,
+        (True,  True, False): keyboard.keyboard_vote_in_progress,
+        (False, True, True): keyboard.keyboard_no_vote_own,
+        (True,  True, True): keyboard.keyboard_vote_in_progress_own
     }
 
-    keyboard_r = keyboard_options.get((vote_in_progress, theme,
+    keyboard_r = keyboard_options.get((vote_in_progress, theme != NO_THEME,
                                        isinstance(is_owner, ChatMemberOwner)))
 
     return keyboard_r
