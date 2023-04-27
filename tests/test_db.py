@@ -629,3 +629,36 @@ async def test_is_multi_admins_ok(create_user, create_user_another,
     assert len(administrated_groups1) != len(administrated_groups2)
     assert administrated_groups1[0] in administrated_groups2
 
+
+async def test_select_next_contest_photo(create_user, group, db):
+     users: list[User] = []
+     for _ in range(0, 5):
+         users.append(await create_user())
+         print(users[-1].telegram_id)
+     register_unit = AdminDB(db)
+     like = LikeDB(db)
+     vote = VoteDB(db)
+     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+ 
+     for user in users:
+         file_id = random.randint(0, 100000)
+         await register_unit.register_photo_for_contest(
+                        user.telegram_id,
+                        m_group.telegram_id,
+                        file_get_id=str(file_id))
+     all_photo_ids = await register_unit.select_contest_photos_primary_ids(
+                    m_group.telegram_id
+                    )
+     print(all_photo_ids)
+     first_id = all_photo_ids[0]
+     _, next_id = await like.select_next_contest_photo(m_group.telegram_id, first_id)
+     assert next_id == all_photo_ids[1]
+     _, next_id = await like.select_next_contest_photo(m_group.telegram_id,
+                                                       int(next_id))
+     assert next_id == all_photo_ids[2]
+     _, next_id = await like.select_next_contest_photo(m_group.telegram_id,
+                                                       int(next_id))
+     assert next_id == all_photo_ids[3]
+     _, next_id = await like.select_next_contest_photo(m_group.telegram_id,
+                                                       int(next_id))
+     assert next_id == all_photo_ids[4]
