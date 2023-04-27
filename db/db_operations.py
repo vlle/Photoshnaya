@@ -1,6 +1,7 @@
 from typing import Any
 
 from sqlalchemy import exc
+from sqlalchemy import and_
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -209,7 +210,7 @@ class SelectDB(BaseDB):
 
 
     async def select_next_contest_photo(self, group_id: int,
-                                  current_photo: int) -> list[str]:
+                                  current_photo: int) -> list[Any]:
         ret: list[Any] = []
         stmt_g = (
                 select(Photo)
@@ -218,12 +219,13 @@ class SelectDB(BaseDB):
                     (Photo.id == group_photo.c.photo_id)
                     )
                 .where(
-                    (group_photo.c.group_id == (
+                    and_(
+                    group_photo.c.group_id == (
                         select(Group.id)
                         .where(Group.telegram_id == group_id)
                         .scalar_subquery())
-                     ) &
-                    (Photo.id > current_photo))
+                     ,
+                    Photo.id > current_photo))
                 .order_by(Photo.id)
                 )
         async with AsyncSession(self.engine) as session:
@@ -279,8 +281,8 @@ class SelectDB(BaseDB):
                     ret.append(photo.file_id)
         return ret
 
-    async def select_contest_photos_primary_ids(self, group_id: int) -> list:
-        ret = []
+    async def select_contest_photos_primary_ids(self, group_id: int) -> list[int]:
+        ret: list[int] = []
         stmt_g = (
                 select(Photo)
                 .join(
@@ -290,6 +292,7 @@ class SelectDB(BaseDB):
                 .where(group_photo.c.group_id == (
                     select(Group.id)
                     .where(Group.telegram_id == group_id).scalar_subquery()))
+                    .order_by(Photo.id)
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
