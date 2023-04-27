@@ -226,7 +226,7 @@ class SelectDB(BaseDB):
                         .scalar_subquery())
                      ,
                     Photo.id > current_photo))
-                .order_by(Photo.id)
+                .order_by(Photo.id.asc())
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
