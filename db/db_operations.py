@@ -825,7 +825,7 @@ class AdminDB(RegisterDB):
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                link = (await session.scalars(stmt)).one()
+                link = (await session.scalars(stmt)).one_or_none()
                 if link:
                     return link.link_to_results
                 return link
