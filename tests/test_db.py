@@ -366,6 +366,36 @@ async def test_is_vote_finished_correctly_second(create_user, group, db):
     photo_winner, user = await vote.select_winner_from_contest(m_group.telegram_id)
     assert photo_winner == 3
 
+async def test_is_vote_finished_correctly_multiple_winners(create_user, group, db):
+    users: list[User] = []
+    for _ in range(0, 5):
+        users.append(await create_user())
+        print(users[-1].telegram_id)
+    register_unit = AdminDB(db)
+    like = LikeDB(db)
+    vote = VoteDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    for user in users:
+        file_id = random.randint(0, 100000)
+        await register_unit.register_photo_for_contest(
+                       user.telegram_id,
+                       m_group.telegram_id,
+                       file_get_id=str(file_id))
+    all_photo_ids = await register_unit.select_contest_photos_ids(
+                   m_group.telegram_id
+                   )
+    await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+    await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
+    await like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[1])
+    await like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
+    await like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
+
+    photo_winner, user = await vote.select_winner_from_contest(m_group.telegram_id)
+    await vote.erase_all_photos(m_group.telegram_id)
+    assert user is not None
+    assert user[-1] is False
+    assert photo_winner in [1, 2]
 
 async def test_is_likes_correctly_counted(create_user, group, db):
     users: list[User] = []
