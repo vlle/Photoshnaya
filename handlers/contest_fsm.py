@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram import types
 from aiogram import Bot
 from utils.admin_keyboard import AdminKeyboard, CallbackManage
-from db.db_operations import AdminDB
+from db.db_operations import AdminDB, ObjectFactory
 from handlers.internal_logic.admin import i_set_theme
 
 class ContestCreate(StatesGroup):
@@ -22,7 +22,8 @@ async def set_theme(query: types.CallbackQuery,
     if not query.message:
         return
     keyboard = AdminKeyboard.fromcallback(callback_data)
-    await query.message.edit_text(text=msg["contest"]["create_greet_contest"])
+    await query.message.edit_text(text=msg["contest"]["create_greet_contest"],
+                                  parse_mode="HTML")
     data = {}
     data["group"] = callback_data.group_id
     data["user_id"] = query.from_user.id
@@ -45,7 +46,7 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
         text = msg["contest"]["cancel_contest"]
     else:
         time = data_theme_date[1] + data_theme_date[2]
-        theme = data_theme_date[0]
+        theme = ObjectFactory.build_theme_fsm(data_theme_date[0])
         week_to_second: dict[str, int] ={
                 '1неделя': 604800,
                 '1неделю': 604800,
@@ -91,7 +92,7 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
         date_str += full_month_names[end.month]
 
         ret_text = msg["contest"]["start_contest"].format(num=num,
-                                                          theme='#'+theme,
+                                                          theme=theme,
                                                           date_now=date_now,
                                                           date_str=date_str,
                                                           week=week)

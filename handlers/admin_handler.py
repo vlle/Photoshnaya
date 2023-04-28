@@ -1,12 +1,10 @@
 import io
-from random import Random, random
 from typing import Tuple
 from asyncio import sleep as async_sleep
 from aiogram import types, Bot
-from aiogram.types import BufferedInputFile, ChatMemberOwner, FSInputFile, InlineKeyboardMarkup, InputFile,\
-        InputMediaDocument, InputMediaPhoto, URLInputFile
+from aiogram.types import BufferedInputFile, ChatMemberOwner, InlineKeyboardMarkup, \
+        InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from handlers.internal_logic.on_join import i_on_user_join
 from utils.TelegramUserClass import TelegramDeserialize
 from db.db_operations import ObjectFactory, AdminDB, VoteDB
 from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
@@ -193,16 +191,21 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
                                                 likes=likes)
     receiver_list = [query.from_user.id, int(callback_data.group_id)]
     for receiver in receiver_list:
-        if type_photo == 'photo':
-            await bot.send_photo(chat_id=receiver, photo=file_id,
-                                 caption=user_info)
+        if user[-1] is False:
+            if type_photo == 'photo':
+                await bot.send_photo(chat_id=receiver, photo=file_id,
+                                     caption=user_info)
+            else:
+                await bot.send_document(chat_id=receiver, document=file_id,
+                                        caption=user_info)
         else:
-            await bot.send_document(chat_id=receiver, document=file_id,
-                                    caption=user_info)
+            await bot.send_message(chat_id=receiver,
+                                   text=msg["vote"]["many_winners"])
         await internal_view_submissions(receiver, ids,
                                     bot, admin_unit, callback_data)
 
-    await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
+    if user[-1] is False:
+        await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
     await vote.erase_all_photos(int(callback_data.group_id))
     await admin_unit.change_contest_to_none(int(callback_data.group_id))
 

@@ -505,33 +505,46 @@ class VoteDB(LikeDB):
 
     async def select_winner_from_contest(self, telegram_group_id: int):
         stmt = (
-                select(photo_like.c.photo_id,
-                       func.count(photo_like.c.photo_id))
-                .join(group_photo, photo_like.c.photo_id ==
-                      group_photo.c.photo_id)
+                select(photo_like.c.photo_id, func.count(photo_like.c.user_id))
+                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
                 .where(Group.telegram_id == telegram_group_id)
                 .group_by(photo_like.c.photo_id)
-                .order_by(func.count(photo_like.c.photo_id).desc())
+                .having(func.count(photo_like.c.user_id) == (
+                    select(func.count(photo_like.c.user_id))
+                    .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+                    .join(Group, group_photo.c.group_id == Group.id)
+                    .where(Group.telegram_id == telegram_group_id)
+                    .group_by(photo_like.c.photo_id)
+                    .order_by(func.count(photo_like.c.user_id).desc())
+                    .limit(1)
+                    )
+                        )
                 )
+
+        multiple = False
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                res = (await session.scalars(stmt)).first()
+                res = (await session.scalars(stmt)).all()
                 if not res:
                     return -1, None
+                if len(res) > 1:
+                    multiple = True
+                print(res)
                 stmt_user = await session.scalars(
                         select(User)
                         .join(Photo)
-                        .where(Photo.id == res)
+                        .where(Photo.id == res[0])
                         )
                 stmt_user = stmt_user.one()
-                user = [stmt_user.name, stmt_user.full_name, stmt_user.telegram_id]
-                return res, user
+                user = [stmt_user.name, stmt_user.full_name, stmt_user.telegram_id,
+                        multiple]
+                return res[0], user
 
     async def select_all_likes(self, telegram_group_id: int, id: str):
         stmt = (
                 select(
-                    func.count(photo_like.c.photo_id))
+                    func.count(photo_like.c.user_id))
                 .join(group_photo, photo_like.c.photo_id ==
                       group_photo.c.photo_id)
                 .join(Group, group_photo.c.group_id == Group.id)
@@ -623,15 +636,15 @@ class RegisterDB(SelectDB):
                     # User already exists, add the group to their groups list
                     group = (await session.scalars(select(Group)
                                                    .where(Group.telegram_id
-                                                   == tg_group_id))).one()
+                                                          == tg_group_id))).one()
                     if group not in rs.groups:
                         rs.groups.append(group)
                     return "User was already registered"
 
                 # User doesn't exist, add them to the database
                 group = (await session.scalars(
-                        select(Group).
-                        where(Group.telegram_id == tg_group_id))).one()
+                    select(Group).
+                    where(Group.telegram_id == tg_group_id))).one()
                 user.groups.append(group)
                 session.add(user)
                 try:
@@ -707,12 +720,6 @@ class RegisterDB(SelectDB):
                 select(Group)
                 .options(selectinload(Group.photos))
                 .where(Group.telegram_id == grtg_id)
-                )
-        stmt_photo_sel = (
-                select(Photo)
-                .join(group_photo)
-                .join(User)
-                .where(User.telegram_id == user_tg_id)
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
@@ -842,7 +849,7 @@ class AdminDB(RegisterDB):
                     Group.telegram_id == telegram_group_id,
                     Contest.contest_name != NO_THEME
                     )
-                )
+                       )
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():

@@ -3,7 +3,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram import types
 from aiogram import Bot
-from handlers.internal_logic.add_admin import i_add_admin
 from handlers.internal_logic.del_admin import i_del_admin
 from utils.TelegramUserClass import TelegramUser
 from utils.admin_keyboard import AdminKeyboard, CallbackManage

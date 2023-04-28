@@ -12,6 +12,7 @@ already_voted = "Вы уже голосовали в этом челлендже
 greeting_message_vote = "Голосуйте за фотографии!"
 no_winner = "Победителя нет. Никто не проголосовал."
 user_info = "Победитель: @{username}, {full_name}\nЛайков: {likes}"
+many_winners = "Победитель не один!"
 
 [register_photo]
 photo_registered = "Зарегистрировал фото."
