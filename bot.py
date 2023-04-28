@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import tomllib
+from aiogram.types import BotCommand
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, F
@@ -113,6 +114,9 @@ async def main():
     dp.message.register(set_admin_delete_photo, DeletePhoto.send_photo_owner)
     dp.message.register(delete_photo_r_u_sure, DeletePhoto.are_you_sure)
     dp.message.register(make_delete_decision, DeletePhoto.wait_for_confirmation)
+    admin: BotCommand = BotCommand(command="/admin",
+                                   description="Команда для вызова админской панели")
+    await bot.set_my_commands([admin])
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,
