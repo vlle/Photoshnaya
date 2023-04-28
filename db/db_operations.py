@@ -737,6 +737,12 @@ class RegisterDB(SelectDB):
                 .options(selectinload(Group.photos))
                 .where(Group.telegram_id == grtg_id)
                 )
+        stmt_photo_sel = (
+                select(Photo)
+                .join(group_photo)
+                .join(User)
+                .where(User.telegram_id == user_tg_id)
+                )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 u_search = await session.scalars(stmt_sel)
@@ -752,9 +758,9 @@ class RegisterDB(SelectDB):
                     g_search = await session.scalars(stmtg_sel)
                     group = g_search.one()
 
-                #possible_register = await session.scalars(stmt_photo_sel)
-                #if possible_register.one_or_none() is not None:
-                #    return False
+                possible_register = await session.scalars(stmt_photo_sel)
+                if possible_register.one_or_none() is not None:
+                    return False
 
 
                 if user and group:
