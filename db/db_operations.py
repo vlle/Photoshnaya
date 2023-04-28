@@ -541,6 +541,22 @@ class VoteDB(LikeDB):
                         multiple]
                 return res[0], user
 
+    async def update_link_to_results(self, telegram_group_id: int,
+                                     results: str): 
+        stmt = (
+                select(Contest)
+                .join(Group, Group.id == Contest.group_id)
+                .where(Group.telegram_id == telegram_group_id)
+                .order_by(Contest.id.desc())
+                .limit(1)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                contest = (await session.scalars(stmt)).one()
+                contest.link_to_results = results
+
+
+
     async def select_all_likes(self, telegram_group_id: int, id: str):
         stmt = (
                 select(
@@ -796,6 +812,23 @@ class AdminDB(RegisterDB):
                         count_voted_users = '0'
                     info_list.append(count_voted_users)
                 return info_list
+
+    async def get_last_results_link(self, group_id: int) -> str | None:
+        stmt = (
+                select(Contest)
+                .join(Group, Group.id == Contest.group_id)
+                .where(and_(
+                    Group.telegram_id == group_id,
+                    Contest.contest_name != NO_THEME))
+                .order_by(Contest.id.desc())
+                .limit(1)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                link = (await session.scalars(stmt)).one()
+                if link:
+                    return link.link_to_results
+                return link
 
     async def change_contest_to_none(self, group_id: int) -> bool:
         ret: bool = False

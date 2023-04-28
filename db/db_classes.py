@@ -35,8 +35,8 @@ group_user = Table(
     Column("group_id", ForeignKey("group.id"), primary_key=True),
 )
 
-user_vote = Table(
-    "user_vote",
+group_admin = Table(
+    "group_admin",
     Base.metadata,
     Column("user_id", ForeignKey("user.id"), primary_key=True),
     Column("group_id", ForeignKey("group.id"), primary_key=True),
@@ -56,12 +56,6 @@ tmp_photo_like = Table(
     Column("photo_id", ForeignKey("photo.id"), primary_key=True),
 )
 
-group_admin = Table(
-    "group_admin",
-    Base.metadata,
-    Column("user_id", ForeignKey("user.id"), primary_key=True),
-    Column("group_id", ForeignKey("group.id"), primary_key=True),
-)
 
 contest_user = Table(
     "contest_user",
@@ -154,6 +148,7 @@ class Contest(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     contest_name: Mapped[str]
     contest_duration_sec: Mapped[int]
+    link_to_results: Mapped[Optional[str]]
 
     created_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=functions.now()

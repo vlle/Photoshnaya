@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from babel.dates import format_date
-from babel.dates import get_day_names, get_month_names
+from babel.dates import get_month_names
 from typing import Any
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -62,6 +62,11 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
             await state.clear()
             return
 
+        link = await admin_unit.get_last_results_link(int(string["group"]))
+        if link is not None:
+            link_msg = f'Результаты предыдущего челленджа вот <a href="{link}">тут</a>.'
+        else:
+            link_msg = ''
         text = await i_set_theme(theme, admin_unit, int(
             string["group"]), time)
 
@@ -91,11 +96,12 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
         date_str = format_date(end.date(), format='d', locale='ru') + ' '
         date_str += full_month_names[end.month]
 
+
         ret_text = msg["contest"]["start_contest"].format(num=num,
                                                           theme=theme,
                                                           date_now=date_now,
                                                           date_str=date_str,
-                                                          week=week)
+                                                          week=week) + link_msg
         message_to_pin = await bot.send_message(chat_id=string["group"],
                                                 text=ret_text,
                                                 parse_mode="HTML")

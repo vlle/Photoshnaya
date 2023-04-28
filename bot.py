@@ -1,5 +1,3 @@
-from datetime import datetime
-import locale
 import asyncio
 import logging
 import os
@@ -55,7 +53,7 @@ async def main():
 
     engine = create_async_engine(ps_url, echo=True)
     async with engine.begin() as conn:
-        #await conn.run_sync(Base.metadata.drop_all)
+        # await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     register = RegisterDB(engine)

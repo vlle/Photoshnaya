@@ -1,7 +1,8 @@
 import io
+import logging
 from typing import Tuple
 from asyncio import sleep as async_sleep
-from aiogram import types, Bot
+from aiogram import types, Bot, exceptions
 from aiogram.types import BufferedInputFile, ChatMemberOwner, InlineKeyboardMarkup, \
         InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -189,23 +190,31 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     user_info = msg["vote"]["user_info"].format(username=user[0],
                                                 full_name=user[1],
                                                 likes=likes)
-    receiver_list = [query.from_user.id, int(callback_data.group_id)]
-    for receiver in receiver_list:
-        if user[-1] is False:
-            if type_photo == 'photo':
-                await bot.send_photo(chat_id=receiver, photo=file_id,
-                                     caption=user_info)
-            else:
-                await bot.send_document(chat_id=receiver, document=file_id,
-                                        caption=user_info)
+    receiver = int(callback_data.group_id)
+    if user[-1] is False:
+        if type_photo == 'photo':
+            win_msg = await bot.send_photo(chat_id=receiver, photo=file_id,
+                                 caption=user_info)
         else:
-            await bot.send_message(chat_id=receiver,
-                                   text=msg["vote"]["many_winners"])
-        await internal_view_submissions(receiver, ids,
+            win_msg = await bot.send_document(chat_id=receiver, document=file_id,
+                                    caption=user_info)
+    else:
+        win_msg = await bot.send_message(chat_id=receiver,
+                               text=msg["vote"]["many_winners"])
+    win_link = win_msg.get_url()
+    if win_link:
+        await vote.update_link_to_results(receiver, win_link)
+    await internal_view_submissions(receiver, ids,
                                     bot, admin_unit, callback_data)
 
     if user[-1] is False:
-        await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
+        #check if telegram bad request size etc
+        try:
+            await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
+        except exceptions.TelegramBadRequest as e:
+            await bot.send_message(chat_id=receiver,
+                                   text=msg["vote"]["err"])
+            logging.warning(e)
     await vote.erase_all_photos(int(callback_data.group_id))
     await admin_unit.change_contest_to_none(int(callback_data.group_id))
 
