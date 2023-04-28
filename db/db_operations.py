@@ -645,6 +645,32 @@ class RegisterDB(SelectDB):
                     else:
                         return "Failed to register user"
 
+    async def unregister_admin(self, adm_user_id: int, group_id: int):
+        #todo: tests
+        stmt_user = (
+                select(User.id)
+                .join(group_user, group_user.c.user_id == User.id)
+                .join(Group, group_user.c.group_id == Group.id)
+                .where(and_(
+                    Group.telegram_id == group_id,
+                    User.telegram_id == adm_user_id))
+                )
+        stmt_gr = select(Group.id).where(Group.telegram_id == group_id)
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                user_id = (await session.scalars(stmt_user)).one_or_none()
+                if not user_id:
+                    return False
+                gr_id = (await session.scalars(stmt_gr)).one()
+                stmt = (
+                        delete(group_admin)
+                        .where(and_(
+                            group_admin.c.group_id == gr_id,
+                            group_admin.c.user_id == user_id)
+                               )
+                        )
+                await session.execute(stmt)
+        return "Удалил администратора."
 
     async def register_admin(self, adm_user: User, group_id: int):
         stmt = select(Group).where(Group.telegram_id == group_id)

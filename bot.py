@@ -12,6 +12,7 @@ from aiogram.filters import Command, ChatMemberUpdatedFilter
 
 from sqlalchemy.ext.asyncio import create_async_engine
 from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
+from handlers.admin_del_fsm import AdminDel, del_admin, del_admin_accept_message
 from handlers.delete_submission import delete_photo_r_u_sure, delete_submission,\
                         DeletePhoto, make_delete_decision, set_admin_delete_photo
 from utils.admin_keyboard import AdminActions, CallbackManage
@@ -105,9 +106,12 @@ async def main():
                                (F.action == AdminActions.start_contest_id))
     dp.callback_query.register(set_admin, CallbackManage.filter
                                (F.action == AdminActions.add_admin_id))
+    dp.callback_query.register(del_admin, CallbackManage.filter
+                               (F.action == AdminActions.delete_admin_id))
 
     dp.message.register(set_theme_accept_message, ContestCreate.name_contest)
     dp.message.register(set_admin_accept_message, AdminAdd.send_admin)
+    dp.message.register(del_admin_accept_message, AdminDel.send_admin)
     dp.message.register(set_admin_delete_photo, DeletePhoto.send_photo_owner)
     dp.message.register(delete_photo_r_u_sure, DeletePhoto.are_you_sure)
     dp.message.register(make_delete_decision, DeletePhoto.wait_for_confirmation)
