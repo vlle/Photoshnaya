@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from babel.dates import format_date
 from babel.dates import get_day_names, get_month_names
 from typing import Any
@@ -36,48 +36,68 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
                                    msg: dict):
     if not message.text:
         return
-    theme = message.text.split()
+    data_theme_date = message.text.split()
     string: dict[str, Any] = await state.get_data()
     keyboard = string["keyboard"]
     
-    if (len(theme) > 1 or theme[0].lower() == 'отмена' 
-            or theme[0].lower() == 'cancel'):
+    if (len(data_theme_date) != 3 or data_theme_date[0].lower() == 'отмена' 
+            or data_theme_date[0].lower() == 'cancel'):
         text = msg["contest"]["cancel_contest"]
     else:
-        text = await i_set_theme(theme[0], admin_unit, int(
-            string["group"]))
+        time = data_theme_date[1] + data_theme_date[2]
+        theme = data_theme_date[0]
+        week_to_second: dict[str, int] ={
+                '1неделя': 604800,
+                '1неделю': 604800,
+                '2недели': 1209600,
+                '2неделя': 1209600,
+                '3неделя': 1814400,
+                '3недели': 1814400,
+                }
+        try:
+            time = week_to_second[time]
+        except KeyError:
+            await message.reply(msg["admin"]["wrong_time"])
+            await state.clear()
+            return
 
-        num = 1
+        text = await i_set_theme(theme, admin_unit, int(
+            string["group"]), time)
+
+        num = str(await admin_unit.count_contests(int(string["group"])))
 
         # Get the current date
         now = datetime.now()
+        end = timedelta(seconds=time) + now
         
         week_parent: dict[int, str] = {
                     0: 'понедельника',
                     1: 'вторника',
                     2: 'среды',
                     3: 'четверга',
-                    4: 'субботы',
-                    5: 'пятницы',
+                    4: 'пятницы',
+                    5: 'субботы',
                     6: 'воскресенья'
                 }
+
         #Get the short and full month names in Russian
-        short_month_names = get_month_names('abbreviated', locale='ru')
         full_month_names = get_month_names('wide', locale='ru')
 
         # Get the day name and format the date
-        day_names = get_day_names('wide', locale='ru')
-        week = week_parent[now.weekday()]
-        date_str = format_date(now.date(), format='d', locale='ru') + ' '  # day number
-        date_str += full_month_names[now.month] + ' '  # month name
-        date_now = date_str
+        week = week_parent[end.weekday()]
+        date_now = format_date(now.date(), format='d', locale='ru') + ' '  # day number
+        date_now += full_month_names[now.month]  # month name
+        date_str = format_date(end.date(), format='d', locale='ru') + ' '
+        date_str += full_month_names[end.month]
+
         ret_text = msg["contest"]["start_contest"].format(num=num,
-                                                          theme='#'+theme[0],
+                                                          theme='#'+theme,
                                                           date_now=date_now,
                                                           date_str=date_str,
                                                           week=week)
         message_to_pin = await bot.send_message(chat_id=string["group"],
-                                                text=ret_text)
+                                                text=ret_text,
+                                                parse_mode="HTML")
         is_messaged_pinned = await bot.pin_chat_message(chat_id=string["group"],
                                                         message_id=message_to_pin.message_id)
         if not is_messaged_pinned:

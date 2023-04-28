@@ -696,3 +696,6 @@ async def test_select_next_contest_photo(create_user, group, db):
      _, next_id = await like.select_next_contest_photo(m_group.telegram_id,
                                                        int(next_id))
      assert next_id == all_photo_ids[4]
+
+async def test_is_contests_counted_correctly(create_user, group, db):
+   pass 

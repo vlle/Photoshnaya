@@ -13,6 +13,8 @@ from sqlalchemy import select, delete
 
 from sqlalchemy.sql import func
 
+NO_THEME = '-1'
+
 
 class ObjectFactory:
 
@@ -607,27 +609,6 @@ class RegisterDB(SelectDB):
 
         return "Зарегистрировал группу. ", True
 
-    #async def register_user(self, user: User, tg_group_id: int) -> str:
-    #    if (await self.find_user_in_group(user.telegram_id, tg_group_id)) is True:
-    #        return "User was already registered"
-    #    stmt = select(Group).where(Group.telegram_id == tg_group_id)
-    #    async with AsyncSession(self.engine) as session:
-    #        async with session.begin():
-    #            rs = (await session.scalars(select(User)
-    #                                         .where(User.telegram_id
-    #                                                == user.telegram_id))).one_or_none()
-    #            if rs is not None:
-    #                user = rs
-    #                search_result = await session.scalars(stmt)
-    #                group = search_result.one()
-    #                user.groups.append(group)
-    #            else:
-    #                search_result = await session.scalars(stmt)
-    #                group = search_result.one()
-    #                user.groups.append(group)
-    #                session.add(user)
-
-    #    return "User was added"
 
 
     async def register_user(self, user: User, tg_group_id: int) -> str:
@@ -825,6 +806,25 @@ class AdminDB(RegisterDB):
                     ret = res.vote_in_progress = False
 
         return ret
+
+    async def count_contests(self, telegram_group_id: int):
+        stmt = (
+                select(
+                    func.count(Contest.id))
+                .join(Group)
+                .where(and_(
+                    Group.telegram_id == telegram_group_id,
+                    Contest.contest_name != NO_THEME
+                    )
+                )
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                rs = (await session.scalars(stmt)).first()
+                if rs is None:
+                    return 0
+                return rs
+
 
     async def select_all_administrated_groups(self, telegram_user_id: int) -> list:
         ret: list = []
