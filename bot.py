@@ -31,7 +31,7 @@ from handlers.admin_handler import  callback_back,\
         view_submissions, view_votes
 from handlers.personal_vote_menu import cmd_start, callback_next, \
         callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
-from handlers.user_action import register_photo
+from handlers.user_action import register_photo, view_leaders, view_overall_participants
 
 
 async def main():
@@ -82,6 +82,8 @@ async def main():
 
     ## dp.errors register
     dp.message.register(cmd_choose_group, Command(commands=["admin"]))
+    dp.message.register(view_leaders, Command(commands=["leaderboards"]))
+    dp.message.register(view_overall_participants, Command(commands=["view_all"]))
     dp.callback_query.register(callback_back, CallbackManage.filter
                                (F.action == AdminActions.back))
     dp.callback_query.register(cmd_action_choose, CallbackManage.filter

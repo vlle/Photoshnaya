@@ -20,7 +20,6 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
     else:
         return
     ret_msg = await internal_register_photo(user, chat, register_unit, obj, msg)
-    await register_unit.register_participant(user.telegram_id, chat.telegram_id)
     await message.reply(ret_msg)
 
 
@@ -47,3 +46,27 @@ async def is_valid_input(caption: str | None,
         return False
     else:
         return True
+
+
+async def view_leaders(message: types.Message, register_unit: RegisterDB):
+    if message.chat.type == 'private':
+        return
+    leader_list = await register_unit.select_winner_leaderboard(message.chat.id)
+    txt = ''
+    i = 1
+    for leader in leader_list:
+        txt += f"<b>{i}:</b> {leader[1]}, {leader[0]}, количество побед: {leader[2]}\n"
+        i += 1
+    await message.reply(txt, parse_mode="HTML")
+
+
+async def view_overall_participants(message: types.Message, register_unit: RegisterDB):
+    if message.chat.type == 'private':
+        return
+    leader_list = await register_unit.select_participants_table(message.chat.id)
+    txt = ''
+    i = 1
+    for leader in leader_list:
+        txt += f"<b>{i}:</b> {leader[1]}, {leader[0]} и количество раз в челленджах: {leader[2]}\n"
+        i += 1
+    await message.reply(txt, parse_mode="HTML")

@@ -162,6 +162,7 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
         await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
+    await admin_unit.register_winner(user[-2], int(callback_data.group_id))
     file_id = await vote.select_file_id(id)
     likes = await vote.select_all_likes_file_id(int(callback_data.group_id), file_id)
     type_photo = await vote.select_file_type_by_file_id(file_id)
@@ -304,7 +305,7 @@ async def send_possible_caption(submissions: list,
             continue
         if likes is None:
             likes = 0
-        caption += f"{i}) Лайков = {likes}, @{user[0]}, {user[1]}, {user[2]}\n"
+        caption += f"{i}) Лайков - {likes}, @{user[0]}, {user[1]}\n"
         i += 1
     if caption:
         await bot.send_message(chat_id=chat_id, text=caption)
