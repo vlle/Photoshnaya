@@ -2,12 +2,11 @@ import asyncio
 import logging
 import os
 import tomllib
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import JOIN_TRANSITION
-from aiogram.filters import Command, ChatMemberUpdatedFilter
+from aiogram.filters import Command, ChatMemberUpdatedFilter, JOIN_TRANSITION
 
 from sqlalchemy.ext.asyncio import create_async_engine
 from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
@@ -124,7 +123,15 @@ async def main():
     dp.message.register(make_delete_decision, DeletePhoto.wait_for_confirmation)
     admin: BotCommand = BotCommand(command="/admin",
                                    description="Команда для вызова админской панели")
-    await bot.set_my_commands([admin])
+    view_leader: BotCommand = BotCommand(command="/leaderboards",
+                                         description="Посмотреть топ победителей")
+    view_all: BotCommand = BotCommand(command="/view_all",
+                                         description="Посмотреть топ по участию")
+    await bot.set_my_commands([admin],
+                              scope=BotCommandScopeAllPrivateChats()) # type: ignore
+    await bot.set_my_commands([view_leader, view_all], 
+                              scope=BotCommandScopeAllGroupChats()) # type: ignore
+    
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,
