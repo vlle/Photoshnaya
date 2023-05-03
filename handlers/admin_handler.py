@@ -132,26 +132,6 @@ async def cmd_check_if_sure_vote(query: types.CallbackQuery,
                                   reply_markup=keyboard.keyboard_are_you_sure_start)
 
 
-async def cmd_finish_contest(query: types.CallbackQuery, bot: Bot,
-                             callback_data: CallbackManage,
-                             admin_unit: AdminDB,
-                             msg: dict[str, dict[str, str]]):
-    if not query.message:
-        query.answer("Слишком старое сообщение, запусти новое")
-        return
-    keyboard = AdminKeyboard.fromcallback(callback_data)
-    bot_t = await bot.me()
-    if not bot_t.username:
-        await query.message.edit_text(text=msg["vote"]["no_username_bot"],
-                                  reply_markup=keyboard.keyboard_back)
-        return
-
-    bot_link = ObjectFactory.build_vote_link(bot_t.username, callback_data.group_id)
-    message = msg["vote"]["vote_started"] + f" {bot_link}"
-    await admin_unit.change_current_vote_status(int(callback_data.group_id))
-    await query.message.edit_text(text=message,
-                              reply_markup=keyboard.keyboard_back)
-
 
 async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
                           callback_data: CallbackManage, admin_unit: AdminDB,
@@ -208,7 +188,6 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
                                     bot, admin_unit, callback_data)
 
     if user[-1] is False:
-        #check if telegram bad request size etc
         try:
             await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
         except exceptions.TelegramBadRequest as e:

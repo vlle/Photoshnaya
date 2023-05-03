@@ -14,6 +14,7 @@ from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
 from handlers.admin_del_fsm import AdminDel, del_admin, del_admin_accept_message
 from handlers.delete_submission import delete_photo_r_u_sure, delete_submission,\
                         DeletePhoto, make_delete_decision, set_admin_delete_photo
+from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
 from utils.admin_keyboard import AdminActions, CallbackManage
 
 from utils.keyboard import Actions, CallbackVote
@@ -27,7 +28,7 @@ from handlers.on_join import on_user_join
 from handlers.admin_handler import  callback_back,\
         cmd_action_choose, cmd_check_if_sure,\
         cmd_check_if_sure_vote, cmd_choose_group,\
-        cmd_finish_contest, cmd_finish_vote,\
+        cmd_finish_vote,\
         view_submissions, view_votes
 from handlers.personal_vote_menu import cmd_start, callback_next, \
         callback_set_no_like, callback_set_like, callback_prev, callback_send_vote
@@ -88,14 +89,17 @@ async def main():
                                (F.action == AdminActions.chosen_group))
     dp.callback_query.register(cmd_check_if_sure_vote, CallbackManage.filter
                                (F.action == AdminActions.finish_contest_id))
-    dp.callback_query.register(cmd_finish_contest, CallbackManage.filter
+
+    dp.callback_query.register(set_vote, CallbackManage.filter
                                (F.action == AdminActions.sure_start_vote_id))
+
     dp.callback_query.register(view_submissions, CallbackManage.filter
                                (F.action == AdminActions.view_submissions_id))
     dp.callback_query.register(view_votes, CallbackManage.filter
                                (F.action == AdminActions.view_votes_id))
     dp.callback_query.register(cmd_check_if_sure, CallbackManage.filter
                                (F.action == AdminActions.finish_vote_id))
+
     dp.callback_query.register(cmd_finish_vote, CallbackManage.filter
                                (F.action == AdminActions.sure_finish_vote_id))
 
@@ -110,9 +114,11 @@ async def main():
 
     dp.message.register(set_theme_accept_message, ContestCreate.name_contest)
     dp.message.register(should_i_post_theme, ContestCreate.will_you_post)
+    dp.message.register(should_i_post_vote, VoteStart.will_you_post)
 
     dp.message.register(set_admin_accept_message, AdminAdd.send_admin)
     dp.message.register(del_admin_accept_message, AdminDel.send_admin)
+
     dp.message.register(set_admin_delete_photo, DeletePhoto.send_photo_owner)
     dp.message.register(delete_photo_r_u_sure, DeletePhoto.are_you_sure)
     dp.message.register(make_delete_decision, DeletePhoto.wait_for_confirmation)

@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types.keyboard_button import KeyboardButton
 from babel.dates import format_date
 from babel.dates import get_month_names
-from typing import Any, List
+from typing import Any
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram import types
