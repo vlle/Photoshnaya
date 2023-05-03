@@ -22,7 +22,7 @@ from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
 from db.db_classes import Base
 
 from handlers.contest_fsm import ContestCreate,\
-        set_theme, set_theme_accept_message 
+        set_theme, set_theme_accept_message, should_i_post_theme 
 from handlers.on_join import on_user_join
 from handlers.admin_handler import  callback_back,\
         cmd_action_choose, cmd_check_if_sure,\
@@ -109,6 +109,8 @@ async def main():
                                (F.action == AdminActions.delete_admin_id))
 
     dp.message.register(set_theme_accept_message, ContestCreate.name_contest)
+    dp.message.register(should_i_post_theme, ContestCreate.will_you_post)
+
     dp.message.register(set_admin_accept_message, AdminAdd.send_admin)
     dp.message.register(del_admin_accept_message, AdminDel.send_admin)
     dp.message.register(set_admin_delete_photo, DeletePhoto.send_photo_owner)
