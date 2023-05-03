@@ -11,11 +11,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import functions
 
 
-# declarative base class
-
-# create votecontest Table
-# create groupcontest Table
-# create contest Table
 
 class Base(DeclarativeBase):
     pass
@@ -64,6 +59,19 @@ contest_user = Table(
     Column("user_id", ForeignKey("user.id"), primary_key=True),
 )
 
+contest_winner = Table(
+    "contest_winner",
+    Base.metadata,
+    Column("contest_id", ForeignKey("contest.id"), primary_key=True),
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+)
+
+contest_participant = Table(
+    "contest_participant",
+    Base.metadata,
+    Column("contest_id", ForeignKey("contest.id"), primary_key=True),
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+)
 
 class User(Base):
     __tablename__ = "user"

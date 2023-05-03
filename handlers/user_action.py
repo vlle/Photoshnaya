@@ -6,7 +6,7 @@ from handlers.internal_logic.register import internal_register_photo
 
 
 async def register_photo(message: types.Message, register_unit: RegisterDB, msg: dict):
-    if message.from_user is None:
+    if message.from_user is None or message.chat.type =='private':
         return
     user, chat = TelegramDeserialize.unpack(message)
     valid_check = await is_valid_input(message.caption, register_unit, chat, user)
@@ -20,6 +20,7 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
     else:
         return
     ret_msg = await internal_register_photo(user, chat, register_unit, obj, msg)
+    await register_unit.register_participant(user.telegram_id, chat.telegram_id)
     await message.reply(ret_msg)
 
 

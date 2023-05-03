@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from db.db_classes import tmp_photo_like, User, Photo, Group,\
         group_user, group_photo, group_admin, Contest, \
-        photo_like, contest_user
+        photo_like, contest_user, contest_participant
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, delete
 
@@ -674,6 +674,28 @@ class RegisterDB(SelectDB):
                     else:
                         return "Failed to register user"
 
+    async def register_participant(self, user_id: int, group_id: int):
+        stmt_user = (
+                select(User.id)
+                .where(User.telegram_id == user_id)
+                )
+        stmt_contest = (
+                select(Contest.id)
+                .join(Group, Group.id == Contest.group_id)
+                .where(Group.telegram_id == group_id)
+                .order_by(Contest.id.desc())
+                .limit(1)
+                )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                contest_id = (await session.scalars(stmt_contest)).one()
+                user = (await session.scalars(stmt_user)).one()
+                stmt = contest_participant.insert().values(
+                        contest_id=contest_id,
+                        user_id=user
+                )
+                await session.execute(stmt)
+
     async def unregister_admin(self, adm_user_id: int, group_id: int):
         #todo: tests
         stmt_user = (
@@ -758,9 +780,9 @@ class RegisterDB(SelectDB):
                     g_search = await session.scalars(stmtg_sel)
                     group = g_search.one()
 
-                possible_register = await session.scalars(stmt_photo_sel)
-                if possible_register.one_or_none() is not None:
-                    return False
+                #possible_register = await session.scalars(stmt_photo_sel)
+                #if possible_register.one_or_none() is not None:
+                #    return False
 
 
                 if user and group:
