@@ -825,7 +825,9 @@ class RegisterDB(SelectDB):
                 select(Photo)
                 .join(group_photo)
                 .join(User)
-                .where(User.telegram_id == user_tg_id)
+                .join(Group, group_photo.c.group_id == Group.id)
+                .where(and_(User.telegram_id == user_tg_id,
+                            Group.telegram_id == grtg_id))
                 )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
