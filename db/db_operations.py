@@ -160,7 +160,7 @@ class SelectDB(BaseDB):
 
     async def select_participants_table(self, telegram_group_id: int):
         stmt = (
-                select(User.name, User.full_name,
+                select(User.name, 
                     func.count(contest_participant.c.contest_id))
                 .join(Contest, contest_participant.c.contest_id == Contest.id)
                 .join(User, contest_participant.c.user_id == User.id)
@@ -174,13 +174,13 @@ class SelectDB(BaseDB):
             async with session.begin():
                 rs = await session.execute(stmt)
                 leaderboard = []
-                for name, full_name, count in rs:
-                    leaderboard.append((name, full_name, count))
+                for name, count in rs:
+                    leaderboard.append((name, count))
                 return leaderboard
 
     async def select_winner_leaderboard(self, telegram_group_id: int):
         stmt = (
-                select(User.name, User.full_name,
+                select(User.name, 
                     func.count(contest_winner.c.contest_id))
                 .join(Contest, contest_winner.c.contest_id == Contest.id)
                 .join(User, contest_winner.c.user_id == User.id)
@@ -194,8 +194,8 @@ class SelectDB(BaseDB):
             async with session.begin():
                 rs = await session.execute(stmt)
                 leaderboard = []
-                for name, full_name, count in rs:
-                    leaderboard.append((name, full_name, count))
+                for name, count in rs:
+                    leaderboard.append((name, count))
                 return leaderboard
 
     async def find_photo_by_user_in_group(self, u_telegram_id: int,

@@ -55,8 +55,10 @@ async def view_leaders(message: types.Message, register_unit: RegisterDB):
     txt = ''
     i = 1
     for leader in leader_list:
-        txt += f"<b>{i}:</b> {leader[1]}, {leader[0]}, количество побед: {leader[2]}\n"
+        txt += f"<b>{i}:</b> @{leader[0]}, количество побед: {leader[1]}\n"
         i += 1
+    if i == 1:
+        txt = "Пока нет данных"
     await message.reply(txt, parse_mode="HTML")
 
 
@@ -67,6 +69,8 @@ async def view_overall_participants(message: types.Message, register_unit: Regis
     txt = ''
     i = 1
     for leader in leader_list:
-        txt += f"<b>{i}:</b> {leader[1]}, {leader[0]} и количество раз в челленджах: {leader[2]}\n"
+        txt += f"<b>{i}:</b> @{leader[0]} и количество участий в челлендже: {leader[1]}\n"
         i += 1
+    if i == 1:
+        txt = "Пока нет данных"
     await message.reply(txt, parse_mode="HTML")
