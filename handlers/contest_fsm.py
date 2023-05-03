@@ -42,7 +42,7 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
     data_theme_date = message.text.split()
     data: dict[str, Any] = await state.get_data()
     
-    if (len(data_theme_date) != 3 or data_theme_date[0].lower() == 'отмена' 
+    if (len(data_theme_date) != 1 or data_theme_date[0].lower() == 'отмена' 
             or data_theme_date[0].lower() == 'cancel'):
         text = msg["contest"]["cancel_contest"]
         keyboard: AdminKeyboard = data["keyboard"]
@@ -52,7 +52,8 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
                                     message_id=data["msg_id"],
                                     reply_markup=keyboard.keyboard_back)
     else:
-        time = data_theme_date[1] + data_theme_date[2]
+        #temporary turn-off time = data_theme_date[1] + data_theme_date[2]
+        time = '1неделя'
         theme = ObjectFactory.build_theme_fsm(data_theme_date[0])
         week_to_second: dict[str, int] ={
                 '1неделя': 604800,
