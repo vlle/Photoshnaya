@@ -188,28 +188,29 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     await internal_view_submissions(receiver, ids,
                                     bot, admin_unit, callback_data)
 
-    if user[-1] is False:
-        try:
-            await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
-        except exceptions.TelegramBadRequest as e:
-            await bot.send_message(chat_id=receiver,
-                                   text=msg["vote"]["err"])
-            logging.warning(e)
+    # turn-off feature: deletes photo history
+    # if user[-1] is False:
+    #     try:
+    #         await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
+    #     except exceptions.TelegramBadRequest as e:
+    #         await bot.send_message(chat_id=receiver,
+    #                                text=msg["vote"]["err"])
+    #         logging.warning(e)
     await vote.erase_all_photos(int(callback_data.group_id))
     await admin_unit.change_contest_to_none(int(callback_data.group_id))
 
 
-async def set_chat_photo(bot: Bot, file_id: str, group_id: int, 
-                         name: str):
-    file = await bot.get_file(file_id)
-    if not file.file_path:
-        return
-    result = await bot.download_file(file.file_path, io.BytesIO())
-    if not result:
-        return
-    photo = BufferedInputFile(result.read(), filename=name)
-    await bot.set_chat_photo(chat_id=group_id,
-                                     photo=photo)
+# async def set_chat_photo(bot: Bot, file_id: str, group_id: int, 
+#                          name: str):
+#     file = await bot.get_file(file_id)
+#     if not file.file_path:
+#         return
+#     result = await bot.download_file(file.file_path, io.BytesIO())
+#     if not result:
+#         return
+#     photo = BufferedInputFile(result.read(), filename=name)
+#     await bot.set_chat_photo(chat_id=group_id,
+#                                      photo=photo)
 
 
 async def view_votes(query: types.CallbackQuery, bot: Bot,
