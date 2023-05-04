@@ -23,6 +23,6 @@ To access the bot, use the @Photoshnaya_bot handle or go to How to Use section f
 
 ## Screenshots:
 
-- ![Admin menu](screenshots/admin_menu1.png "Admin menu")
-- ![Voting menu](screenshots/vote.png "Voting menu")
-- ![Contest registration via # tracking](screenshots/photo_accepted.png "Confirmation message")
+![Admin menu](screenshots/admin_menu1.png "Admin menu")
+![Voting menu](screenshots/vote.png "Voting menu")
+![Contest registration via # tracking](screenshots/photo_accepted.png "Confirmation message")
