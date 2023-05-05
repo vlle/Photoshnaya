@@ -112,12 +112,14 @@ async def set_theme_accept_message(message: types.Message, bot: Bot,
                                                           date_now=date_now,
                                                           date_str=date_str,
                                                           week=week) + link_msg
-        data["text"] = ret_text
-        bots_text = msg["contest"]["will_you_post"] + ret_text
-        await bot.edit_message_text(text=bots_text,
+        await bot.edit_message_text(text=msg["contest"]["will_you_post"],
                                     chat_id=data["user_id"],
                                     message_id=data["msg_id"],
                                     parse_mode="HTML")
+        data["send"] = await bot.send_message(text=ret_text,
+                                    chat_id=data["user_id"],
+                                    parse_mode="HTML")
+
         await state.set_data(data)
         await state.set_state(ContestCreate.will_you_post)
 
@@ -126,19 +128,13 @@ async def should_i_post_theme(message: types.Message,
                               state: FSMContext,
                               msg: dict):
         data: dict[str, Any] = await state.get_data()
-        ret_text = data["text"]
-        print(message.photo)
+
         if (message.text and
             (message.text.lower() == "ок" or message.text.lower() == "ok")):
-            if data["file_id"] is None:
-                message_to_pin = await bot.send_message(chat_id=data["group"],
-                                                        text=ret_text,
-                                                        parse_mode="HTML")
-            else:
-                message_to_pin = await bot.send_photo(caption=ret_text,
-                                                      photo=data["file_id"].file_id,
-                                                      chat_id=data["group"],
-                                                      parse_mode="HTML")
+            message_to_pin = await bot.copy_message(chat_id=data["group"],
+                                                from_chat_id=data["user_id"],
+                                                message_id=data["send"].message_id)
+
             try:
                 await bot.pin_chat_message(chat_id=data["group"],
                                                             message_id=message_to_pin.message_id)
@@ -146,24 +142,10 @@ async def should_i_post_theme(message: types.Message,
                 await bot.send_message(chat_id=data["group"],
                                        text=msg["contest"]["err"])
             await state.clear()
-        elif not message.photo:
-            data["text"] = message.html_text
-            data["file_id"] = None
-            await state.set_data(data)
-            bots_text = msg["contest"]["will_you_post"] + message.html_text
-            await bot.edit_message_text(text=bots_text,
-                                        chat_id=data["user_id"],
-                                        message_id=data["msg_id"],
-                                        parse_mode="HTML")
-            await state.set_state(ContestCreate.will_you_post)
+            return
         else:
-            data["text"] = message.html_text
-            data["file_id"] = message.photo[-1]
-            bots_text = msg["contest"]["will_you_post"] + message.html_text
-            message_sent = await bot.send_photo(caption=bots_text,
-                                                  photo=data["file_id"].file_id,
-                                                  chat_id=data["user_id"],
-                                                  parse_mode="HTML")
-            data["msg_id"] = (message_sent).message_id
+            data["send"] = await message.copy_to(chat_id=data["user_id"],
+                                   parse_mode="HTML")
+
             await state.set_data(data)
             await state.set_state(ContestCreate.will_you_post)

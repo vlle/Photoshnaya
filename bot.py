@@ -62,8 +62,10 @@ async def main():
     obj_factory = ObjectFactory()
     admin_unit = AdminDB(engine)
 
-    dp.message.register(register_photo, F.caption_entities)
-    dp.edited_message.register(register_photo, F.caption_entities)
+    dp.message.register(register_photo,F.caption_entities 
+                        & ~(F.chat.type == 'private'))
+    dp.edited_message.register(register_photo, F.caption_entities
+                               & ~(F.chat.type !='private'))
 
     dp.message.register(cmd_start, Command(commands=["start"]))
     dp.my_chat_member.register(on_user_join, ChatMemberUpdatedFilter
@@ -128,12 +130,12 @@ async def main():
     view_leader: BotCommand = BotCommand(command="/leaderboards",
                                          description="Посмотреть топ победителей")
     view_all: BotCommand = BotCommand(command="/view_all",
-                                         description="Посмотреть топ по участию")
+                                      description="Посмотреть топ по участию")
     await bot.set_my_commands([admin],
                               scope=BotCommandScopeAllPrivateChats()) # type: ignore
     await bot.set_my_commands([view_leader, view_all], 
                               scope=BotCommandScopeAllGroupChats()) # type: ignore
-    
+
 
     await asyncio.gather(dp.start_polling(bot, engine=engine,
                                           register_unit=register,
