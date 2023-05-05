@@ -31,6 +31,7 @@ async def set_theme(query: types.CallbackQuery,
     data["user_id"] = query.from_user.id
     data["msg_id"] = query.message.message_id
     data["keyboard"] = keyboard
+    data["file_id"] = None
     await state.set_data(data)
     await state.set_state(ContestCreate.name_contest)
 
@@ -126,11 +127,18 @@ async def should_i_post_theme(message: types.Message,
                               msg: dict):
         data: dict[str, Any] = await state.get_data()
         ret_text = data["text"]
+        print(message.photo)
         if (message.text and
             (message.text.lower() == "ок" or message.text.lower() == "ok")):
-            message_to_pin = await bot.send_message(chat_id=data["group"],
-                                                    text=ret_text,
-                                                    parse_mode="HTML")
+            if data["file_id"] is None:
+                message_to_pin = await bot.send_message(chat_id=data["group"],
+                                                        text=ret_text,
+                                                        parse_mode="HTML")
+            else:
+                message_to_pin = await bot.send_photo(caption=ret_text,
+                                                      photo=data["file_id"].file_id,
+                                                      chat_id=data["group"],
+                                                      parse_mode="HTML")
             try:
                 await bot.pin_chat_message(chat_id=data["group"],
                                                             message_id=message_to_pin.message_id)
@@ -138,12 +146,24 @@ async def should_i_post_theme(message: types.Message,
                 await bot.send_message(chat_id=data["group"],
                                        text=msg["contest"]["err"])
             await state.clear()
-        else:
+        elif not message.photo:
             data["text"] = message.html_text
+            data["file_id"] = None
             await state.set_data(data)
             bots_text = msg["contest"]["will_you_post"] + message.html_text
             await bot.edit_message_text(text=bots_text,
                                         chat_id=data["user_id"],
                                         message_id=data["msg_id"],
                                         parse_mode="HTML")
+            await state.set_state(ContestCreate.will_you_post)
+        else:
+            data["text"] = message.html_text
+            data["file_id"] = message.photo[-1]
+            bots_text = msg["contest"]["will_you_post"] + message.html_text
+            message_sent = await bot.send_photo(caption=bots_text,
+                                                  photo=data["file_id"].file_id,
+                                                  chat_id=data["user_id"],
+                                                  parse_mode="HTML")
+            data["msg_id"] = (message_sent).message_id
+            await state.set_data(data)
             await state.set_state(ContestCreate.will_you_post)
