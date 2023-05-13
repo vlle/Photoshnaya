@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from utils.TelegramUserClass import TelegramChat, TelegramUser, Photo, Document
 from db.db_operations import ObjectFactory, RegisterDB
 
@@ -24,8 +25,11 @@ async def internal_register_photo(user_object: TelegramUser,
             file_get_id=contest_material.file_id,
             user_p=user, group_p=group, type=type_object)
     if is_photo_registered is True:
-        await register.register_participant(
-                user_object.telegram_id, chat_object.telegram_id)
+        try:
+            await register.register_participant(
+                    user_object.telegram_id, chat_object.telegram_id)
+        except IntegrityError: #participant was already registered
+            pass
         return msg["register_photo"]["photo_registered"]
     else:
         return msg["register_photo"]["photo_not_registered"]
