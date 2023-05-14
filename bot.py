@@ -65,7 +65,7 @@ async def main():
     dp.message.register(register_photo,F.caption_entities 
                         & ~(F.chat.type == 'private'))
     dp.edited_message.register(register_photo, F.caption_entities
-                               & ~(F.chat.type !='private'))
+                               & ~(F.chat.type =='private'))
 
     dp.message.register(cmd_start, Command(commands=["start"]))
     dp.my_chat_member.register(on_user_join, ChatMemberUpdatedFilter

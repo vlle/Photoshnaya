@@ -33,7 +33,7 @@ async def is_valid_input(caption: str | None,
     if not theme:
         return False
 
-    message_search = caption.split()
+    message_search = caption.lower().split()
     message_contains_contest = False
     for word in message_search:
         if (word == theme):
