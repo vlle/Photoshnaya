@@ -1,7 +1,8 @@
 # Photoshnaya
 Telegram-based application for photo-contests in group chats. Allows for instant photo registration and tracks contest themes with #. Also includes an admin menu for easy management and a leaderboard for tracking results.  
 
-To access the bot, use the <a href="t.me/photoshnaya_bot" target="_blank">@photoshnaya_bot</a> handle or go to [How to Use](#how-to-use) section for self-host.
+To access the bot, use the [@photoshnaya_bot](t.me/photoshnaya_bot) handle or go to [How to Use](#how-to-use) section for self-host.
+
 
 ## Features
 
