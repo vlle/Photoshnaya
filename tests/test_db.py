@@ -713,7 +713,6 @@ async def test_select_next_contest_photo(create_user, group, db):
      all_photo_ids = await register_unit.select_contest_photos_primary_ids(
                     m_group.telegram_id
                     )
-     print(all_photo_ids)
      first_id = all_photo_ids[0]
      _, next_id = await like.select_next_contest_photo(m_group.telegram_id, first_id)
      assert next_id == all_photo_ids[1]
@@ -729,3 +728,68 @@ async def test_select_next_contest_photo(create_user, group, db):
 
 async def test_is_contests_counted_correctly(create_user, group, db):
    pass 
+
+
+async def test_is_vote_async_correct(create_user, group, db):
+     users: list[User] = []
+
+     for _ in range(0, 5):
+         users.append(await create_user())
+     register_unit = AdminDB(db)
+     like = LikeDB(db)
+     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+ 
+     for user in users:
+         file_id = random.randint(0, 100000)
+         await register_unit.register_photo_for_contest(
+                        user.telegram_id,
+                        m_group.telegram_id,
+                        file_get_id=str(file_id))
+     all_photo_ids = await register_unit.select_contest_photos_primary_ids(
+                    m_group.telegram_id
+                    )
+
+     id1 = await like.select_file_id(all_photo_ids[0])
+     id2 = await like.select_file_id(all_photo_ids[1])
+     id3 = await like.select_file_id(all_photo_ids[2])
+
+     await like.like_photo_with_file_id(users[0].telegram_id, id1)
+     await like.like_photo_with_file_id(users[0].telegram_id, id2)
+     await like.like_photo_with_file_id(users[0].telegram_id, id3)
+
+
+     await like.like_photo_with_file_id(users[1].telegram_id, id1)
+     await like.like_photo_with_file_id(users[1].telegram_id, id2)
+     await like.like_photo_with_file_id(users[1].telegram_id, id3)
+
+     await like.like_photo_with_file_id(users[2].telegram_id, id1)
+
+     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[0]) > 0
+     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[1]) > 0
+     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[2]) > 0
+
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[0]) > 0
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1]) > 0
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[2]) > 0
+
+     await like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
+     await like.delete_likes_from_tmp_vote(users[0].telegram_id, m_group.telegram_id)
+     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[0]) == 0
+     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[1]) == 0
+     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[2]) == 0
+
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[0]) > 0
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1]) > 0
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[2]) > 0
+
+     await like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
+     await like.delete_likes_from_tmp_vote(users[1].telegram_id, m_group.telegram_id)
+     await like.insert_all_likes(users[2].telegram_id, m_group.telegram_id)
+     await like.delete_likes_from_tmp_vote(users[2].telegram_id, m_group.telegram_id)
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[0]) == 0
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1]) == 0
+     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[2]) == 0
+
+     v = VoteDB(db)
+     t, s = await v.select_winner_from_contest(m_group.telegram_id)
+     assert t == all_photo_ids[0]

@@ -401,7 +401,7 @@ class LikeDB(SelectDB):
 
         return likes
 
-    async def like_photo_with_file_id(self, tg_id: int, p_id: int) -> int:
+    async def like_photo_with_file_id(self, tg_id: int, p_id: str) -> int:
         search_stmt_user = select(User).where(User.telegram_id == tg_id)
         search_stmt_photo = select(Photo).where(Photo.file_id == p_id)
         likes = 0
@@ -430,7 +430,7 @@ class LikeDB(SelectDB):
             async with session.begin():
                 await session.execute(stmt)
 
-    async def is_photo_liked(self, tg_id: int, ph_id: str) -> int:
+    async def is_photo_liked(self, tg_id: int, ph_id: int) -> int:
         stmt = (
                 select(tmp_photo_like)
                 .join(User, tmp_photo_like.c.user_id == User.id)
@@ -467,24 +467,35 @@ class LikeDB(SelectDB):
     async def delete_likes_from_tmp_vote(self, u_telegram_id: int,
                                    g_telegram_id: int):
         ret: list = []
-        stmt = (
-                delete(tmp_photo_like)
-                .where(tmp_photo_like.c.photo_id.in_(
-                    select(Photo.id)
-                    .join(group_photo)
-                    .join(Group)
-                    .where((Group.telegram_id == g_telegram_id)
-                           & (User.telegram_id == u_telegram_id))
-                    ))
+        select_stmt = (
+                select(tmp_photo_like.c.user_id,
+                       tmp_photo_like.c.photo_id)
+                .join(User, User.id == tmp_photo_like.c.user_id)
+                .join(group_photo, tmp_photo_like.c.photo_id ==
+                      group_photo.c.photo_id)
+                .join(Photo, Photo.id == tmp_photo_like.c.photo_id)
+                .join(Group, Group.id == group_photo.c.group_id)
+                .where((Group.telegram_id == g_telegram_id)
+                       & (User.telegram_id == u_telegram_id))
                 )
+        delete_stmt = (
+                delete(tmp_photo_like)
+                .where(
+                    and_(
+                        tmp_photo_like.c.user_id == select_stmt.subquery().c.user_id,
+                        tmp_photo_like.c.photo_id == select_stmt.subquery().c.photo_id
+                    )
+                )
+            )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                await session.execute(stmt)
+                await session.execute(delete_stmt)
         return ret
 
     async def insert_all_likes(self, u_telegram_id: int, g_telegram_id: int):
         select_stmt = (
-                select(tmp_photo_like)
+                select(tmp_photo_like.c.user_id,
+                       tmp_photo_like.c.photo_id)
                 .join(User, User.id == tmp_photo_like.c.user_id)
                 .join(group_photo, tmp_photo_like.c.photo_id ==
                       group_photo.c.photo_id)
@@ -559,7 +570,7 @@ class VoteDB(LikeDB):
                     .group_by(photo_like.c.photo_id)
                     .order_by(func.count(photo_like.c.user_id).desc())
                     .limit(1)
-                    )
+                    ).scalar_subquery()
                         )
                 )
 
