@@ -112,7 +112,7 @@ async def callback_prev(query: CallbackQuery,
         obj = InputMediaPhoto(type='photo', media=photo_file_id)
     else:
         obj = InputMediaDocument(type='document', media=photo_file_id)
-    is_liked_photo = await like_engine.is_photo_liked(query.from_user.id, photo_id)
+    is_liked_photo = await like_engine.is_photo_liked(query.from_user.id, int(photo_id))
 
     keyboard = await choose_keyboard(is_liked_photo,
                                      int(cb.current_photo_count),
