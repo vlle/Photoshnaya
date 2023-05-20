@@ -1,9 +1,7 @@
-import io
-import logging
 from typing import Tuple
 from asyncio import sleep as async_sleep
-from aiogram import types, Bot, exceptions
-from aiogram.types import BufferedInputFile, ChatMemberOwner, InlineKeyboardMarkup, \
+from aiogram import types, Bot
+from aiogram.types import  ChatMemberOwner, InlineKeyboardMarkup, \
         InputMediaDocument, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.TelegramUserClass import TelegramDeserialize
@@ -333,8 +331,6 @@ async def choose_action_board(vote_in_progress: bool, theme: str, is_owner,
     keyboard_options: dict[Tuple[bool, bool, bool], InlineKeyboardMarkup] = {
         (False, False, False): keyboard.keyboard_no_contest,
         (False, False, True): keyboard.keyboard_no_contest_own,
-        # (True, NO_THEME, False): keyboard.keyboard_no_contest,
-        # (True, NO_THEME, True): keyboard.keyboard_no_contest_own,
         (False, True, False): keyboard.keyboard_no_vote,
         (True,  True, False): keyboard.keyboard_vote_in_progress,
         (False, True, True): keyboard.keyboard_no_vote_own,
