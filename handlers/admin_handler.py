@@ -166,7 +166,8 @@ async def cmd_finish_vote(query: types.CallbackQuery, bot: Bot,
     type_photo = await vote.select_file_type_by_file_id(file_id)
     await query.message.edit_text(text=msg["admin"]["vote_end"],
                           reply_markup=keyboard.keyboard_back)
-    user_info = msg["vote"]["user_info"].format(username=user[0],
+    user_info = msg["vote"]["user_info"].format(theme=theme,
+                                                username=user[0],
                                                 full_name=user[1],
                                                 likes=likes)
     receiver = int(callback_data.group_id)
