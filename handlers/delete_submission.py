@@ -9,14 +9,6 @@ from utils.admin_keyboard import AdminKeyboard, CallbackManage
 from db.db_operations import AdminDB
 
 
-# [delete_photo]
-# create_greet_del = "Перешли сюда сообщение от человека, фото которого ты хочешь удалить.\n У него должен быть открыт профиль для пересылки.\nДля отмены отправь слово отмена"
-# are_you_sure = "Посмотри, ты хочешь удалить эту фотку?"
-# del_photo = "Удалил фото."
-# cancel_del = "Отменил удаление фото."
-# err = "Произошла какая-то ошибка."
-
-
 class DeletePhoto(StatesGroup):
     send_photo_owner = State()
     are_you_sure = State()
@@ -60,6 +52,18 @@ async def set_admin_delete_photo(
             message_id=data["msg_id"],
             reply_markup=keyboard.keyboard_back,
         )
+    elif message.text.startswith("@") and not message.forward_from:
+        possible_username = message.text[1:]
+        user = TelegramUser(
+            possible_username,
+            "unknown",
+            -1,
+            message_id=message.message_id,
+            chat_id=int(data["group"]),
+        )
+        data["forward"] = user
+        await state.set_data(data)
+        await delete_photo_r_u_sure(bot, state, admin_unit, msg)
     elif not message.forward_from:
         text = msg["delete_photo"]["no_user"]
         await bot.edit_message_text(
@@ -87,9 +91,14 @@ async def delete_photo_r_u_sure(
     data: dict[str, Any] = await state.get_data()
     user = data["forward"]
     keyboard = data["keyboard"]
-    photo_data = await admin_unit.find_photo_by_user_in_group(
-        user.telegram_id, int(data["group"])
-    )
+    if user.telegram_id == -1:
+        photo_data = await admin_unit.find_photo_by_username_in_group(
+            user.username, int(data["group"])
+        )
+    else:
+        photo_data = await admin_unit.find_photo_by_user_in_group(
+            user.telegram_id, int(data["group"])
+        )
     if photo_data is None:
         text = "Не нашел фото от пользователя.\n" + msg["add_admin"]["cancel_adm"]
         await bot.edit_message_text(

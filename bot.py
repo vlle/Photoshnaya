@@ -183,11 +183,11 @@ async def main():
         command="/view_all", description="Посмотреть топ по участию"
     )
     await bot.set_my_commands(
-        [admin], scope=BotCommandScopeAllPrivateChats()
-    )  # type: ignore
+        [admin], scope=BotCommandScopeAllPrivateChats()  # type: ignore
+    )
     await bot.set_my_commands(
-        [view_leader, view_all], scope=BotCommandScopeAllGroupChats()
-    )  # type: ignore
+        [view_leader, view_all], scope=BotCommandScopeAllGroupChats()  # type: ignore
+    )
 
     await asyncio.gather(
         dp.start_polling(

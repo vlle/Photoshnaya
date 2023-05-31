@@ -209,6 +209,22 @@ class SelectDB(BaseDB):
                     return None
                 return [res.id, res.file_id, res.telegram_type]
 
+    async def find_photo_by_username_in_group(self, name: str, g_telegram_id: int):
+        stmt = (
+            select(Photo)
+            .join(User)
+            .join(group_photo, (Photo.id == group_photo.c.photo_id))
+            .join(Group)
+            .where(User.name == name)
+            .where(Group.telegram_id == g_telegram_id)
+        )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one_or_none()
+                if res is None:
+                    return None
+                return [res.id, res.file_id, res.telegram_type]
+
     async def find_group(self, telegram_id: int) -> bool:
         stmt = select(Group).where(Group.telegram_id == telegram_id)
         async with AsyncSession(self.engine) as session:

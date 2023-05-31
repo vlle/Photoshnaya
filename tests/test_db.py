@@ -3,7 +3,14 @@ import random
 from dotenv import load_dotenv
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from db.db_operations import AdminDB, RegisterDB, ObjectFactory, LikeDB, VoteDB
+from db.db_operations import (
+    AdminDB,
+    RegisterDB,
+    ObjectFactory,
+    LikeDB,
+    SelectDB,
+    VoteDB,
+)
 from db.db_classes import Base, User
 import pytest
 
@@ -79,6 +86,26 @@ async def create_user(user, group, registered_group):
     async def c_u(*args, **kwargs):
         us = TUser(
             name="User №" + str(random.randint(1, 10000)),
+            i_id=100 + random.randint(1, 2000),
+        )
+
+        m_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
+        m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+        register_unit = registered_group
+        await register_unit.register_user(m_user, m_group.telegram_id)
+
+        add_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
+        return add_user
+
+    yield c_u
+
+
+@pytest.fixture()
+async def create_user_fix_nick(user, group, registered_group):
+    async def c_u(*args, **kwargs):
+        us = TUser(
+            name="User_Fix",
             i_id=100 + random.randint(1, 2000),
         )
 
@@ -774,3 +801,38 @@ async def test_is_vote_async_correct(create_user, group, db):
     v = VoteDB(db)
     t, s = await v.select_winner_from_contest(m_group.telegram_id)
     assert t == all_photo_ids[0]
+
+
+async def test_is_user_deletion_by_nick_works(create_user_fix_nick, group, db):
+    users: list[User] = []
+
+    users.append(await create_user_fix_nick())
+    register_unit = AdminDB(db)
+    select = SelectDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    for user in users:
+        file_id = random.randint(0, 100000)
+        await register_unit.register_photo_for_contest(
+            user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
+        )
+    all_photo_ids = await register_unit.select_contest_photos_primary_ids(
+        m_group.telegram_id
+    )
+    assert len(all_photo_ids) == 1
+
+    photo_data = await select.find_photo_by_username_in_group(
+        "User_Fix", m_group.telegram_id
+    )
+    assert photo_data is not None
+    photo_file_id = photo_data[1]
+    await register_unit.remove_photo(photo_file_id)
+    assert (
+        await select.find_photo_by_username_in_group("User_Fix", m_group.telegram_id)
+        is None
+    )
+
+    all_photo_ids = await register_unit.select_contest_photos_primary_ids(
+        m_group.telegram_id
+    )
+    assert len(all_photo_ids) == 0
