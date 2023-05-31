@@ -4,15 +4,15 @@ from utils.TelegramUserClass import TelegramChat, TelegramUser
 import tomllib
 
 
-async def internal_start(chat: TelegramChat, user: TelegramUser,
-                         text: str, like_engine: LikeDB) -> tuple:
-
+async def internal_start(
+    chat: TelegramChat, user: TelegramUser, text: str, like_engine: LikeDB
+) -> tuple:
     with open("handlers/handlers_text/text.toml", "rb") as f:
         msg = tomllib.load(f)
-    start_data = text.replace('_', ' ').split()
+    start_data = text.replace("_", " ").split()
     if len(start_data) != 3:
         return msg["vote"]["wrong_link"], True, None
-    if chat.chat_type != 'private':
+    if chat.chat_type != "private":
         return msg["vote"]["not_private_chat"], True, None
     group_id = int(start_data[1])
     try:

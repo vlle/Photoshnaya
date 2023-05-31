@@ -11,7 +11,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import functions
 
 
-
 class Base(DeclarativeBase):
     pass
 
@@ -72,6 +71,7 @@ contest_participant = Table(
     Column("contest_id", ForeignKey("contest.id"), primary_key=True),
     Column("user_id", ForeignKey("user.id"), primary_key=True),
 )
+
 
 class User(Base):
     __tablename__ = "user"
