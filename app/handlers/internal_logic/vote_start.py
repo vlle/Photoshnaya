@@ -7,7 +7,7 @@ import tomllib
 async def internal_start(
     chat: TelegramChat, user: TelegramUser, text: str, like_engine: LikeDB
 ) -> tuple:
-    with open("handlers/handlers_text/text.toml", "rb") as f:
+    with open("app/handlers/handlers_text/text.toml", "rb") as f:
         msg = tomllib.load(f)
     start_data = text.replace("_", " ").split()
     if len(start_data) != 3:

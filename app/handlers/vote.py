@@ -1,5 +1,4 @@
-from aiogram import types
-from aiogram import Bot
+from aiogram import types, Bot
 from db.db_operations import AdminDB
 from utils.TelegramUserClass import TelegramDeserialize
 

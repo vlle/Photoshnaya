@@ -73,7 +73,7 @@ async def main():
     logging.basicConfig(level=logging.INFO)
     bot = Bot(token=token)
     dp = Dispatcher()
-    with open("handlers/handlers_text/text.toml", "rb") as f:
+    with open("app/handlers/handlers_text/text.toml", "rb") as f:
         msg = tomllib.load(f)
 
     engine = create_async_engine(ps_url, echo=True)

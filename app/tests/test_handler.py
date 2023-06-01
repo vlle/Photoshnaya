@@ -3,8 +3,8 @@ import random
 from dotenv import load_dotenv
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from db.db_operations import AdminDB, RegisterDB, ObjectFactory, LikeDB, VoteDB
-from db.db_classes import Base, User
+from db.db_operations import RegisterDB, ObjectFactory
+from db.db_classes import Base
 import pytest
 
 from handlers.internal_logic.on_join import i_on_user_join

@@ -1,5 +1,4 @@
-from aiogram import types
-from aiogram import Bot
+from aiogram import types, Bot
 from aiogram.types import CallbackQuery, InputMediaDocument, InputMediaPhoto
 from handlers.internal_logic.vote_start import internal_start
 from utils.TelegramUserClass import TelegramDeserialize

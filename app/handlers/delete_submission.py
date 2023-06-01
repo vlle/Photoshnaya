@@ -54,16 +54,30 @@ async def set_admin_delete_photo(
         )
     elif message.text.startswith("@") and not message.forward_from:
         possible_username = message.text[1:]
-        user = TelegramUser(
-            possible_username,
-            "unknown",
-            -1,
-            message_id=message.message_id,
-            chat_id=int(data["group"]),
+        user_data = await admin_unit.find_user_by_username_in_group(
+            possible_username, int(data["group"])
         )
-        data["forward"] = user
-        await state.set_data(data)
-        await delete_photo_r_u_sure(bot, state, admin_unit, msg)
+        if user_data:
+            username, full_name, id = user_data[0], user_data[1], user_data[2]
+            user = TelegramUser(
+                username,
+                full_name,
+                id,
+                message_id=message.message_id,
+                chat_id=int(data["group"]),
+            )
+            data["forward"] = user
+            await state.set_data(data)
+            await delete_photo_r_u_sure(bot, state, admin_unit, msg)
+        else:
+            text = msg["delete_photo"]["no_user"]
+            await bot.edit_message_text(
+                text=text,
+                chat_id=data["user_id"],
+                message_id=data["msg_id"],
+                reply_markup=keyboard.keyboard_back,
+            )
+            await state.clear()
     elif not message.forward_from:
         text = msg["delete_photo"]["no_user"]
         await bot.edit_message_text(
@@ -72,6 +86,7 @@ async def set_admin_delete_photo(
             message_id=data["msg_id"],
             reply_markup=keyboard.keyboard_back,
         )
+        await state.clear()
     else:
         user = TelegramUser(
             message.forward_from.username,
@@ -86,19 +101,16 @@ async def set_admin_delete_photo(
 
 
 async def delete_photo_r_u_sure(
-    bot: Bot, state: FSMContext, admin_unit: AdminDB, msg: dict
+    bot: Bot, state: FSMContext, admin_unit: AdminDB, msg: dict[str, dict[str, str]]
 ):
     data: dict[str, Any] = await state.get_data()
-    user = data["forward"]
+    user: TelegramUser = data["forward"]
+    author = f"{user.username}, {user.full_name}"
+    text = msg["delete_photo"]["are_you_sure"].format(author=author)
     keyboard = data["keyboard"]
-    if user.telegram_id == -1:
-        photo_data = await admin_unit.find_photo_by_username_in_group(
-            user.username, int(data["group"])
-        )
-    else:
-        photo_data = await admin_unit.find_photo_by_user_in_group(
-            user.telegram_id, int(data["group"])
-        )
+    photo_data = await admin_unit.find_photo_by_user_in_group(
+        user.telegram_id, int(data["group"])
+    )
     if photo_data is None:
         text = "Не нашел фото от пользователя.\n" + msg["add_admin"]["cancel_adm"]
         await bot.edit_message_text(
@@ -120,14 +132,14 @@ async def delete_photo_r_u_sure(
     if photo_type == "photo":
         await bot.send_photo(
             data["user_id"],
-            caption=msg["delete_photo"]["are_you_sure"],
+            caption=text,
             photo=photo_file_id,
             reply_markup=reply_board,
         )
     else:
         await bot.send_document(
             data["user_id"],
-            caption=msg["delete_photo"]["are_you_sure"],
+            caption=text,
             document=photo_file_id,
             reply_markup=reply_board,
         )

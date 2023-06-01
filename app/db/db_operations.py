@@ -225,6 +225,21 @@ class SelectDB(BaseDB):
                     return None
                 return [res.id, res.file_id, res.telegram_type]
 
+    async def find_user_by_username_in_group(self, name: str, g_telegram_id: int):
+        stmt = (
+            select(User)
+            .join(group_user, (User.id == group_user.c.user_id))
+            .join(Group, (Group.id == group_user.c.group_id))
+            .where(User.name == name)
+            .where(Group.telegram_id == g_telegram_id)
+        )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                res = (await session.scalars(stmt)).one_or_none()
+                if res is None:
+                    return None
+                return [res.name, res.full_name, res.telegram_id]
+
     async def find_group(self, telegram_id: int) -> bool:
         stmt = select(Group).where(Group.telegram_id == telegram_id)
         async with AsyncSession(self.engine) as session:

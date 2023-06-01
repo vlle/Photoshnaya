@@ -821,8 +821,13 @@ async def test_is_user_deletion_by_nick_works(create_user_fix_nick, group, db):
     )
     assert len(all_photo_ids) == 1
 
-    photo_data = await select.find_photo_by_username_in_group(
+    user_data = await select.find_user_by_username_in_group(
         "User_Fix", m_group.telegram_id
+    )
+    if not user_data:
+        return pytest.fail
+    photo_data = await select.find_photo_by_user_in_group(
+        user_data[-1], m_group.telegram_id
     )
     assert photo_data is not None
     photo_file_id = photo_data[1]

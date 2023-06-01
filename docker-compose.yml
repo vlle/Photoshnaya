@@ -2,5 +2,6 @@ version: "3.10"
 services:
   web:
     build: .
+    image: aapq/photoshnaya_bot:latest
     restart: always
     network_mode: "host"
