@@ -70,7 +70,7 @@ async def main():
         logging.critical("No postgre_url")
         return
 
-    logging.basicConfig(level=logging.WARN)
+    logging.basicConfig(level=logging.INFO)
     bot = Bot(token=token)
     dp = Dispatcher()
     with open("app/handlers/handlers_text/text.toml", "rb") as f:
