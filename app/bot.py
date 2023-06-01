@@ -70,13 +70,13 @@ async def main():
         logging.critical("No postgre_url")
         return
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARN)
     bot = Bot(token=token)
     dp = Dispatcher()
     with open("app/handlers/handlers_text/text.toml", "rb") as f:
         msg = tomllib.load(f)
 
-    engine = create_async_engine(ps_url, echo=True)
+    engine = create_async_engine(ps_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
