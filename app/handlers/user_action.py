@@ -40,6 +40,10 @@ async def is_valid_input(
     if not theme:
         return False
 
+    vote_in_progress = await register.get_current_vote_status(chat_object.telegram_id)
+    if vote_in_progress:
+        return False
+
     message_search = caption.lower().split()
     message_contains_contest = False
     for word in message_search:
