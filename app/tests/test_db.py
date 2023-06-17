@@ -841,3 +841,25 @@ async def test_is_user_deletion_by_nick_works(create_user_fix_nick, group, db):
         m_group.telegram_id
     )
     assert len(all_photo_ids) == 0
+
+
+async def test_is_register_in_vote_correct(create_user, group, db):
+    users: list[User] = []
+
+    for _ in range(0, 5):
+        users.append(await create_user())
+    register_unit = AdminDB(db)
+    like = LikeDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+
+    for user in users:
+        file_id = random.randint(0, 100000)
+        await register_unit.register_photo_for_contest(
+            user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
+        )
+
+    users.append(await create_user())
+    await register_unit.change_current_vote_status(m_group.telegram_id)
+
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    assert len(all_photo_ids) == 5

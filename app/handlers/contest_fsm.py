@@ -65,7 +65,8 @@ async def set_theme_accept_message(
         )
     else:
         # temporary turn-off time = data_theme_date[1] + data_theme_date[2]
-        time = "1неделя"
+        # time = "1неделя"
+        time = "2неделя"
         theme = ObjectFactory.build_theme_fsm(data_theme_date[0])
         week_to_second: dict[str, int] = {
             "1неделя": 604800,
