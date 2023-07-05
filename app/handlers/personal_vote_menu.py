@@ -6,6 +6,13 @@ from handlers.internal_logic.vote_start import internal_start
 from utils.keyboard import CallbackVote, Keyboard
 from utils.TelegramUserClass import TelegramDeserialize
 
+PLACEHOLDER = "AgACAgIAAxkBAAIER2Sle-ANks_kaqcMyLloRpsTPWdzAAK8zDEbuiUwSeOmaBNTRBHdAQADAgADeQADLwQ"
+
+
+async def get_file_id(message: types.Message):
+    file_id = message.photo[-1].file_id
+    await message.answer(file_id)
+
 
 async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     if not message.text or not message.from_user:
@@ -176,7 +183,7 @@ async def callback_send_vote(
     await like_engine.insert_all_likes(query.from_user.id, int(cb.group_id))
     await like_engine.delete_likes_from_tmp_vote(query.from_user.id, int(cb.group_id))
     await vote_db.mark_user_voted(int(cb.group_id), query.from_user.id)
-    obj = InputMediaPhoto(type="photo", media="https://i.imgur.com/ES0ajHo.png")
+    obj = InputMediaPhoto(type="photo", media=PLACEHOLDER)
     await query.message.edit_media(media=obj, reply_markup=None)
     await query.message.edit_caption(caption=msg["vote"]["thanks_for_vote"])
 

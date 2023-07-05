@@ -48,6 +48,7 @@ from handlers.personal_vote_menu import (
     callback_set_like,
     callback_set_no_like,
     cmd_start,
+    get_file_id,
 )
 from handlers.user_action import register_photo, view_leaders, view_overall_participants
 from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
@@ -94,6 +95,7 @@ async def main():
         register_photo, F.caption_entities & ~(F.chat.type == "private")
     )
 
+    dp.message.register(get_file_id, Command(commands=["get_file_id"]))
     dp.message.register(cmd_start, Command(commands=["start"]))
     dp.my_chat_member.register(
         on_user_join, ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION)
