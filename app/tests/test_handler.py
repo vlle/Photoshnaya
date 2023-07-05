@@ -2,10 +2,11 @@ import os
 import random
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
 from db.db_classes import Base
 from db.db_operations import ObjectFactory, RegisterDB
 from handlers.internal_logic.on_join import i_on_user_join
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from utils.TelegramUserClass import TelegramChat, TelegramUser
 
 

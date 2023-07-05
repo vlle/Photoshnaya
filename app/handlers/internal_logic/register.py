@@ -1,5 +1,6 @@
-from db.db_operations import ObjectFactory, RegisterDB
 from sqlalchemy.exc import IntegrityError
+
+from db.db_operations import ObjectFactory, RegisterDB
 from utils.TelegramUserClass import Document, Photo, TelegramChat, TelegramUser
 
 

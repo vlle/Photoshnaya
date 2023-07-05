@@ -1,5 +1,11 @@
 from typing import Any
 
+from sqlalchemy import and_, delete, exc, select
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlalchemy.sql import func
+
 from db.db_classes import (
     Contest,
     Group,
@@ -14,11 +20,6 @@ from db.db_classes import (
     photo_like,
     tmp_photo_like,
 )
-from sqlalchemy import and_, delete, exc, select
-from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import func
 
 NO_THEME = "-1"
 

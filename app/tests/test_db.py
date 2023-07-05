@@ -2,6 +2,8 @@ import os
 import random
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
 from db.db_classes import Base, User
 from db.db_operations import (
     AdminDB,
@@ -11,7 +13,6 @@ from db.db_operations import (
     SelectDB,
     VoteDB,
 )
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 
 class TGroup:
