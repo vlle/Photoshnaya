@@ -1,0 +1,18 @@
+version: "3.10"
+services:
+  web:
+    build: .
+    image: aapq/photoshnaya_bot:latest
+    environment:
+      testps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
+    command: bash -c "cd app && pytest tests -v"
+    depends_on:
+      - db
+  db:
+    image: postgres:15.3-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432"

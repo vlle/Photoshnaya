@@ -1,6 +1,5 @@
 import os
 import random
-from dotenv import load_dotenv
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from db.db_operations import (
@@ -30,7 +29,6 @@ class TUser:
 
 @pytest.fixture
 async def db():
-    load_dotenv()
     ps_url = os.environ.get("testps_url")
     if not ps_url:
         return
