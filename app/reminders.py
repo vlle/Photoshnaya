@@ -17,7 +17,7 @@ async def add_reminder(time: int | str, group_id: str) -> None:
 async def send_reminders(bot: Bot, message: str) -> None:
     r = aioredis.Redis(port=6379, db=0)
     while True:
-        await asyncio.sleep(5)
+        await asyncio.sleep(60)
         current_time_epoch, _ = await r.time()
         current_time = int(current_time_epoch)
         reminders = await r.zrangebyscore(REMINDERS_CHANNEL, 0, current_time)
