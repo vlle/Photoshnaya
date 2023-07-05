@@ -34,4 +34,4 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run tests
-      run: docker-compose -f docker-compose.test.yml up & sleep 180 && docker-compose down
+      run: docker-compose -f docker-compose.test.yml up --remove-orphans & sleep 180 && docker-compose down -v
