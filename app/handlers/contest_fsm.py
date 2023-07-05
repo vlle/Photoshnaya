@@ -9,6 +9,7 @@ from babel.dates import format_date, get_month_names
 
 from db.db_operations import AdminDB, ObjectFactory
 from handlers.internal_logic.admin import i_set_theme
+from reminders import add_reminder
 from utils.admin_keyboard import AdminKeyboard, CallbackManage
 
 
@@ -77,7 +78,16 @@ async def set_theme_accept_message(
             "3недели": 1814400,
         }
         try:
-            time = week_to_second[time]
+            date_without_hms = datetime.utcnow().replace(
+                hour=6, minute=0, second=0, microsecond=0
+            )
+            one_day = timedelta(days=1).total_seconds()
+            time = int(week_to_second[time] + date_without_hms.timestamp() - one_day)
+            try:
+                await add_reminder(time, data["group"])
+            except Exception as e:
+                await message.reply("Не удалось установить напоминание")
+                print(e)
         except KeyError:
             await message.reply(msg["admin"]["wrong_time"])
             await state.clear()

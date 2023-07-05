@@ -52,6 +52,7 @@ from handlers.personal_vote_menu import (
 )
 from handlers.user_action import register_photo, view_leaders, view_overall_participants
 from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
+from reminders import send_reminders
 from utils.admin_keyboard import AdminActions, CallbackManage
 from utils.keyboard import Actions, CallbackVote
 
@@ -202,7 +203,8 @@ async def main():
             admin_unit=admin_unit,
             like_engine=like_engine,
             msg=msg,
-        )
+        ),
+        send_reminders(bot, msg["contest"]["reminder"]),
     )
     await engine.dispose()
 
