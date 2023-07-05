@@ -176,6 +176,8 @@ async def callback_send_vote(
     await like_engine.insert_all_likes(query.from_user.id, int(cb.group_id))
     await like_engine.delete_likes_from_tmp_vote(query.from_user.id, int(cb.group_id))
     await vote_db.mark_user_voted(int(cb.group_id), query.from_user.id)
+    obj = InputMediaPhoto(type="photo", media="https://i.imgur.com/ES0ajHo.png")
+    await query.message.edit_media(media=obj, reply_markup=None)
     await query.message.edit_caption(caption=msg["vote"]["thanks_for_vote"])
 
 
