@@ -7,7 +7,7 @@ from handlers.internal_logic.vote_start import internal_start
 from utils.keyboard import CallbackVote, Keyboard
 from utils.TelegramUserClass import TelegramDeserialize
 
-PLACEHOLDER = "AgACAgIAAxkBAAIbh2SlfPFqPwPxKD8PzkRFxSKvNr2xAAJiyjEbMIUoSUqWZDbBgFD1AQADAgADbQADLwQ"
+PLACEHOLDER = "AgACAgIAAxkBAAIbk2SlfwGmaPoK776SSq0OYGaZwi6wAAJtyjEbMIUoSXnXybpELj9PAQADAgADeAADLwQ"
 
 
 # debug function
