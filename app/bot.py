@@ -2,41 +2,19 @@ import asyncio
 import logging
 import os
 import tomllib
+
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import JOIN_TRANSITION, ChatMemberUpdatedFilter, Command
 from aiogram.types import (
     BotCommand,
     BotCommandScopeAllGroupChats,
     BotCommandScopeAllPrivateChats,
 )
+from db.db_classes import Base
+from db.db_operations import AdminDB, LikeDB, ObjectFactory, RegisterDB
 from dotenv import load_dotenv
-
-from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command, ChatMemberUpdatedFilter, JOIN_TRANSITION
-
-from sqlalchemy.ext.asyncio import create_async_engine
 from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
 from handlers.admin_del_fsm import AdminDel, del_admin, del_admin_accept_message
-from handlers.delete_submission import (
-    delete_photo_r_u_sure,
-    delete_submission,
-    DeletePhoto,
-    make_delete_decision,
-    set_admin_delete_photo,
-)
-from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
-from utils.admin_keyboard import AdminActions, CallbackManage
-
-from utils.keyboard import Actions, CallbackVote
-
-from db.db_operations import LikeDB, ObjectFactory, RegisterDB, AdminDB
-from db.db_classes import Base
-
-from handlers.contest_fsm import (
-    ContestCreate,
-    set_theme,
-    set_theme_accept_message,
-    should_i_post_theme,
-)
-from handlers.on_join import on_user_join
 from handlers.admin_handler import (
     callback_back,
     cmd_action_choose,
@@ -47,15 +25,33 @@ from handlers.admin_handler import (
     view_submissions,
     view_votes,
 )
+from handlers.contest_fsm import (
+    ContestCreate,
+    set_theme,
+    set_theme_accept_message,
+    should_i_post_theme,
+)
+from handlers.delete_submission import (
+    DeletePhoto,
+    delete_photo_r_u_sure,
+    delete_submission,
+    make_delete_decision,
+    set_admin_delete_photo,
+)
+from handlers.on_join import on_user_join
 from handlers.personal_vote_menu import (
-    cmd_start,
     callback_next,
-    callback_set_no_like,
-    callback_set_like,
     callback_prev,
     callback_send_vote,
+    callback_set_like,
+    callback_set_no_like,
+    cmd_start,
 )
 from handlers.user_action import register_photo, view_leaders, view_overall_participants
+from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
+from sqlalchemy.ext.asyncio import create_async_engine
+from utils.admin_keyboard import AdminActions, CallbackManage
+from utils.keyboard import Actions, CallbackVote
 
 
 async def main():

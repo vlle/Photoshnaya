@@ -1,7 +1,8 @@
-import pytest
 import random
-from app.handlers.user_action import is_valid_input
 
+import pytest
+
+from app.handlers.user_action import is_valid_input
 from app.utils.TelegramUserClass import TelegramChat, TelegramUser
 
 

@@ -1,6 +1,6 @@
-from sqlalchemy.exc import IntegrityError
-from utils.TelegramUserClass import TelegramChat, TelegramUser, Photo, Document
 from db.db_operations import ObjectFactory, RegisterDB
+from sqlalchemy.exc import IntegrityError
+from utils.TelegramUserClass import Document, Photo, TelegramChat, TelegramUser
 
 
 async def internal_register_photo(

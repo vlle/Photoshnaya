@@ -1,13 +1,10 @@
 from __future__ import annotations
-from typing import List
-from typing import Optional
-import datetime
-from sqlalchemy.orm import Mapped
-from sqlalchemy import BigInteger, Boolean, String, ForeignKey, Table, Column, DateTime
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
 
+import datetime
+from typing import List, Optional
+
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, String, Table
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import functions
 
 

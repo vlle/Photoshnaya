@@ -1,13 +1,13 @@
 from aiogram import types
 from db.db_operations import RegisterDB
+from handlers.internal_logic.register import internal_register_photo
 from utils.TelegramUserClass import (
+    Document,
     Photo,
     TelegramChat,
     TelegramDeserialize,
     TelegramUser,
-    Document,
 )
-from handlers.internal_logic.register import internal_register_photo
 
 
 async def register_photo(message: types.Message, register_unit: RegisterDB, msg: dict):

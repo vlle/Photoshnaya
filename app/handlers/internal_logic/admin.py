@@ -1,4 +1,4 @@
-from db.db_operations import ObjectFactory, AdminDB
+from db.db_operations import AdminDB, ObjectFactory
 
 
 async def i_set_theme(

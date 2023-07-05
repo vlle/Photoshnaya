@@ -1,7 +1,8 @@
-from sqlalchemy.exc import SQLAlchemyError
-from db.db_operations import LikeDB, VoteDB
-from utils.TelegramUserClass import TelegramChat, TelegramUser
 import tomllib
+
+from db.db_operations import LikeDB, VoteDB
+from sqlalchemy.exc import SQLAlchemyError
+from utils.TelegramUserClass import TelegramChat, TelegramUser
 
 
 async def internal_start(

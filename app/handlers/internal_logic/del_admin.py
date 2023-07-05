@@ -1,5 +1,5 @@
-from sqlalchemy.exc import IntegrityError
 from db.db_operations import RegisterDB
+from sqlalchemy.exc import IntegrityError
 from utils.TelegramUserClass import TelegramUser
 
 

@@ -1,6 +1,7 @@
-from typing import Tuple
 from asyncio import sleep as async_sleep
-from aiogram import types, Bot
+from typing import Tuple
+
+from aiogram import Bot, types
 from aiogram.types import (
     ChatMemberOwner,
     InlineKeyboardMarkup,
@@ -8,9 +9,9 @@ from aiogram.types import (
     InputMediaPhoto,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from db.db_operations import AdminDB, ObjectFactory, VoteDB
+from utils.admin_keyboard import AdminActions, AdminKeyboard, CallbackManage
 from utils.TelegramUserClass import TelegramDeserialize
-from db.db_operations import ObjectFactory, AdminDB, VoteDB
-from utils.admin_keyboard import AdminKeyboard, CallbackManage, AdminActions
 
 NO_THEME = "-1"
 

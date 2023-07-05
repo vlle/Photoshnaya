@@ -1,17 +1,17 @@
 import os
 import random
 
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+import pytest
+from db.db_classes import Base, User
 from db.db_operations import (
     AdminDB,
-    RegisterDB,
-    ObjectFactory,
     LikeDB,
+    ObjectFactory,
+    RegisterDB,
     SelectDB,
     VoteDB,
 )
-from db.db_classes import Base, User
-import pytest
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 
 class TGroup:

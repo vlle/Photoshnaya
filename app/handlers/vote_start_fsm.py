@@ -1,11 +1,11 @@
-from aiogram.exceptions import TelegramBadRequest
 from typing import Any
+
+from aiogram import Bot, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram import types
-from aiogram import Bot
-from utils.admin_keyboard import AdminKeyboard, CallbackManage
 from db.db_operations import AdminDB, ObjectFactory
+from utils.admin_keyboard import AdminKeyboard, CallbackManage
 
 
 class VoteStart(StatesGroup):

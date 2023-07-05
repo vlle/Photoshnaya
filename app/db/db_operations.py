@@ -1,27 +1,23 @@
 from typing import Any
 
-from sqlalchemy import exc
-from sqlalchemy import and_
+from db.db_classes import (
+    Contest,
+    Group,
+    Photo,
+    User,
+    contest_participant,
+    contest_user,
+    contest_winner,
+    group_admin,
+    group_photo,
+    group_user,
+    photo_like,
+    tmp_photo_like,
+)
+from sqlalchemy import and_, delete, exc, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-
-from db.db_classes import (
-    tmp_photo_like,
-    User,
-    Photo,
-    Group,
-    group_user,
-    group_photo,
-    group_admin,
-    Contest,
-    photo_like,
-    contest_user,
-    contest_participant,
-    contest_winner,
-)
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, delete
-
 from sqlalchemy.sql import func
 
 NO_THEME = "-1"

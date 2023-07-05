@@ -1,15 +1,14 @@
 from datetime import datetime, timedelta
-from aiogram.exceptions import TelegramBadRequest
-from babel.dates import format_date
-from babel.dates import get_month_names
 from typing import Any
+
+from aiogram import Bot, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram import types
-from aiogram import Bot
-from utils.admin_keyboard import AdminKeyboard, CallbackManage
+from babel.dates import format_date, get_month_names
 from db.db_operations import AdminDB, ObjectFactory
 from handlers.internal_logic.admin import i_set_theme
+from utils.admin_keyboard import AdminKeyboard, CallbackManage
 
 
 class ContestCreate(StatesGroup):
