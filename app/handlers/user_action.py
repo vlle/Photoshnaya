@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 from aiogram import types
 from aiogram.utils.markdown import hlink
 from db.db_operations import RegisterDB
@@ -74,7 +76,7 @@ async def is_valid_input(
         return True
 
 
-def generate_board_message(template, user_list):
+def generate_board_message(template: str, user_list: List[Tuple[str, int]]):
     txt = ''
     if not user_list:
         txt = "Пока нет данных."
