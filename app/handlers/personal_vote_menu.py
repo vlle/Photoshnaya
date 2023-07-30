@@ -199,10 +199,10 @@ async def choose_keyboard(
     build_keyboard: Keyboard,
 ):
     if is_liked_photo <= 0:
-        if current_photo_count == 1:
-            keyboard = build_keyboard.keyboard_start
-        elif current_photo_count >= int(amount_photo):
+        if current_photo_count >= int(amount_photo):
             keyboard = build_keyboard.keyboard_end
+        elif current_photo_count == 1:
+            keyboard = build_keyboard.keyboard_start
         else:
             keyboard = build_keyboard.keyboard_vote
     else:
