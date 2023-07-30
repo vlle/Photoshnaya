@@ -1,5 +1,5 @@
 from aiogram import types
-
+from aiogram.utils.markdown import link, hlink
 from db.db_operations import RegisterDB
 from handlers.internal_logic.register import internal_register_photo
 from utils.TelegramUserClass import (
@@ -78,14 +78,13 @@ async def view_leaders(message: types.Message, register_unit: RegisterDB):
     if message.chat.type == "private":
         return
     leader_list = await register_unit.select_winner_leaderboard(message.chat.id)
-    txt = ""
-    i = 1
-    for leader in leader_list:
-        txt += f"<b>{i}:</b> @{leader[0]}, количество побед: {leader[1]}\n"
-        i += 1
-    if i == 1:
+    txt = ''
+    if not leader_list:
         txt = "Пока нет данных"
-    await message.reply(txt, parse_mode="HTML")
+    for place, leader_data in enumerate(leader_list, start=1):
+        leader, total_wins = leader_data
+        txt += f"<b>{place}</b>: {hlink(leader, f'https://t.me/{leader}')}, количество побед: {total_wins}\n"
+    await message.reply(txt, parse_mode="HTML", disable_web_page_preview=True)
 
 
 async def view_overall_participants(message: types.Message, register_unit: RegisterDB):
@@ -96,7 +95,7 @@ async def view_overall_participants(message: types.Message, register_unit: Regis
     i = 1
     for leader in leader_list:
         txt += (
-            f"<b>{i}:</b> @{leader[0]} и количество участий в челлендже: {leader[1]}\n"
+            "<b>{i}:</b> @{leader[0]} и количество участий в челлендже: {leader[1]}\n".format()
         )
         i += 1
     if i == 1:
