@@ -38,22 +38,19 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     register_unit = RegisterDB(like_engine.engine)
     await register_unit.register_user(user_obj, group_id)
     photo_file_id, photo_id = await like_engine.select_next_contest_photo(group_id, 0)
-
-    amount_photo = len(photo_ids)
-
     build_keyboard = Keyboard(
-        amount_photos=str(amount_photo),
+        amount_photos=str(len(photo_ids)),
         current_photo_id=photo_id,
         current_photo_count="1",
         group_id=str(group_id),
     )
-
     is_liked_photo = await like_engine.is_photo_liked(user.telegram_id, photo_id)
-    if is_liked_photo > 0:
-        keyboard = build_keyboard.keyboard_start_liked
-    else:
-        keyboard = build_keyboard.keyboard_start
-
+    keyboard = await choose_keyboard(
+        is_liked_photo,
+        1,
+        len(photo_ids),
+        build_keyboard,
+    )
     file_type = await like_engine.select_file_type(int(photo_id))
     if file_type == "photo":
         await bot.send_photo(
@@ -202,17 +199,17 @@ async def choose_keyboard(
     build_keyboard: Keyboard,
 ):
     if is_liked_photo <= 0:
-        if current_photo_count == 1:
-            keyboard = build_keyboard.keyboard_start
-        elif current_photo_count >= int(amount_photo):
+        if current_photo_count >= int(amount_photo):
             keyboard = build_keyboard.keyboard_end
+        elif current_photo_count == 1:
+            keyboard = build_keyboard.keyboard_start
         else:
             keyboard = build_keyboard.keyboard_vote
     else:
-        if current_photo_count == 1:
-            keyboard = build_keyboard.keyboard_start_liked
-        elif current_photo_count >= int(amount_photo):
+        if current_photo_count >= int(amount_photo):
             keyboard = build_keyboard.keyboard_end_liked
+        elif current_photo_count == 1:
+            keyboard = build_keyboard.keyboard_start_liked
         else:
             keyboard = build_keyboard.keyboard_vote_liked
     return keyboard

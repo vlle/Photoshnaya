@@ -6,6 +6,7 @@ services:
     environment:
       ps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
       testps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
+      token: $token
     depends_on:
       db:
         condition: service_healthy
@@ -27,9 +28,7 @@ services:
     restart: always
     ports:
       - "6379:6379"
-
     volumes:
      - $PWD/redis-data:/var/lib/redis
-
     environment:
      - REDIS_REPLICATION_MODE=master

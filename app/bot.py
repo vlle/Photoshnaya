@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import pathlib
 import tomllib
 
 from aiogram import Bot, Dispatcher, F
@@ -77,7 +78,8 @@ async def main():
 
     bot = Bot(token=token)
     dp = Dispatcher()
-    with open("app/handlers/handlers_text/text.toml", "rb") as f:
+    text_toml = pathlib.Path(__file__).absolute().parent / 'handlers' / 'handlers_text' / 'text.toml'
+    with open(text_toml, "rb") as f:
         msg = tomllib.load(f)
 
     engine = create_async_engine(ps_url)

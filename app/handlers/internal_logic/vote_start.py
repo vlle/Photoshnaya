@@ -1,3 +1,4 @@
+import pathlib
 import tomllib
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,7 +10,8 @@ from utils.TelegramUserClass import TelegramChat, TelegramUser
 async def internal_start(
     chat: TelegramChat, user: TelegramUser, text: str, like_engine: LikeDB
 ) -> tuple:
-    with open("app/handlers/handlers_text/text.toml", "rb") as f:
+    text_toml = pathlib.Path(__file__).absolute().parent.parent / 'handlers_text' / 'text.toml'
+    with open(text_toml, "rb") as f:
         msg = tomllib.load(f)
     start_data = text.replace("_", " ").split()
     if len(start_data) != 3:

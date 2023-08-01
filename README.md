@@ -22,7 +22,9 @@ To access the bot, use the [@photoshnaya_bot](t.me/photoshnaya_bot) handle or go
    1) Clone the repository and rename env.example to .env.
    2) Fill in the bot token and postgre_url in the .env file.
    3) Start the application by using docker-compose up --build -d.
-   4) Shutdown the application with docker-compose down.
+   4) Switch off Group Privacy for the bot via BotFather menu.
+   5) Add bot to the needed group and grant administration rights.
+   6) Shutdown the application with docker-compose down.
 
 ## System Requirements:
 
