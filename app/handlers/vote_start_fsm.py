@@ -7,7 +7,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 from db.db_operations import AdminDB, ObjectFactory
 from utils.admin_keyboard import AdminKeyboard, CallbackManage
-from utils.logger import logger
+
+# from utils.logger import logger | not working correctly
 
 
 class VoteStart(StatesGroup):
@@ -74,7 +75,7 @@ async def should_i_post_vote(
                 chat_id=data["group"], message_id=message_to_pin.message_id
             )
         except TelegramBadRequest:
-            logger.error(msg["contest"]["err"], exc_info=True)
+            # logger.error(msg["contest"]["err"], exc_info=True)
             await bot.send_message(chat_id=data["group"], text=msg["contest"]["err"])
         await state.clear()
     else:
