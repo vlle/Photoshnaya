@@ -42,7 +42,9 @@ from handlers.delete_submission import (
     set_admin_delete_photo,
 )
 from handlers.on_join import on_user_join
+from handlers.personal_vote_menu import callback_back as callback_back_vote
 from handlers.personal_vote_menu import (
+    callback_choose_photo,
     callback_next,
     callback_prev,
     callback_send_vote,
@@ -78,7 +80,12 @@ async def main():
 
     bot = Bot(token=token)
     dp = Dispatcher()
-    text_toml = pathlib.Path(__file__).absolute().parent / 'handlers' / 'handlers_text' / 'text.toml'
+    text_toml = (
+        pathlib.Path(__file__).absolute().parent
+        / "handlers"
+        / "handlers_text"
+        / "text.toml"
+    )
     with open(text_toml, "rb") as f:
         msg = tomllib.load(f)
 
@@ -115,6 +122,12 @@ async def main():
     )
     dp.callback_query.register(
         callback_set_no_like, CallbackVote.filter(F.action == Actions.like_text)
+    )
+    dp.callback_query.register(
+        callback_choose_photo, CallbackVote.filter(F.action == Actions.count)
+    )
+    dp.callback_query.register(
+        callback_back_vote, CallbackVote.filter(F.action == Actions.back_text)
     )
     dp.callback_query.register(
         callback_send_vote, CallbackVote.filter(F.action == Actions.finish_text)

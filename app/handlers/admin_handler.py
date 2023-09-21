@@ -162,15 +162,22 @@ async def cmd_finish_vote(
         query.answer("Слишком старое сообщение, запусти новое")
         return
 
+    # code to refactor:
+
+    # get theme and change status to vote_closed
     theme = await admin_unit.get_contest_theme(int(callback_data.group_id))
     if not theme:
         return
     await admin_unit.change_current_vote_status(int(callback_data.group_id))
     keyboard = AdminKeyboard.fromcallback(callback_data)
     vote = VoteDB(admin_unit.engine)
+
+    # retrieve all contest_photo_and_ids and choose winner
     ids = await admin_unit.select_contest_photos_ids_and_types(
         int(callback_data.group_id)
     )
+
+    # if no ids, then no photos were submitted
     if len(ids) == 0:
         await query.message.edit_text(
             text=msg["admin"]["no_photos_at_end"], reply_markup=keyboard.keyboard_back
@@ -179,6 +186,7 @@ async def cmd_finish_vote(
         return
 
     id, user = await vote.select_winner_from_contest(int(callback_data.group_id))
+    # if no votes, then no winner
     if not user:
         await query.message.edit_text(
             text=msg["vote"]["no_winner"], reply_markup=keyboard.keyboard_back
@@ -187,6 +195,7 @@ async def cmd_finish_vote(
         await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
+    # save winner to db and send message to group
     await admin_unit.register_winner(user[-2], int(callback_data.group_id))
     file_id = await vote.select_file_id(id)
     likes = await vote.select_all_likes_file_id(int(callback_data.group_id), file_id)
@@ -214,6 +223,8 @@ async def cmd_finish_vote(
     win_link = win_msg.get_url()
     if win_link:
         await vote.update_link_to_results(receiver, win_link)
+
+    # send photos
     await internal_view_submissions(receiver, ids, bot, admin_unit, callback_data)
 
     # turn-off feature: deletes photo history
@@ -224,6 +235,8 @@ async def cmd_finish_vote(
     #         await bot.send_message(chat_id=receiver,
     #                                text=msg["vote"]["err"])
     #         logging.warning(e)
+
+    # delete photos and change status to none
     await vote.erase_all_photos(int(callback_data.group_id))
     await admin_unit.change_contest_to_none(int(callback_data.group_id))
 

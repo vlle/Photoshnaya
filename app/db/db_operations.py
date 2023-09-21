@@ -299,6 +299,31 @@ class SelectDB(BaseDB):
                     ret.append(photos.id)
         return ret
 
+    async def select_nth_contest_photo(self, group_id: int, n: int) -> list[Any]:
+        ret: list[Any] = []
+        stmt_g = (
+            select(Photo)
+            .join(group_photo, (Photo.id == group_photo.c.photo_id))
+            .where(
+                group_photo.c.group_id
+                == (
+                    select(Group.id)
+                    .where(Group.telegram_id == group_id)
+                    .scalar_subquery()
+                )
+            )
+            .order_by(Photo.id.asc())
+            .offset(n)
+            .limit(1)
+        )
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                photos = (await session.scalars(stmt_g)).first()
+                if photos:
+                    ret.append(photos.file_id)
+                    ret.append(photos.id)
+        return ret
+
     async def select_prev_contest_photo(
         self, group_id: int, current_photo: int
     ) -> list[str]:

@@ -1,10 +1,15 @@
+import logging
+
 from aiogram import Bot, types
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, InputMediaDocument, InputMediaPhoto
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from db.db_operations import LikeDB, ObjectFactory, RegisterDB, VoteDB
 from handlers.internal_logic.vote_start import internal_start
-from utils.keyboard import CallbackVote, Keyboard
+
+# to delete ?
+from utils.keyboard import Actions, CallbackVote, Keyboard
 from utils.TelegramUserClass import TelegramDeserialize
 
 PLACEHOLDER = "AgACAgIAAxkBAAIbk2SlfwGmaPoK776SSq0OYGaZwi6wAAJtyjEbMIUoSXnXybpELj9PAQADAgADeAADLwQ"
@@ -150,10 +155,53 @@ async def callback_set_like(
     await query.message.edit_reply_markup(reply_markup=keyboard)
 
 
+async def callback_choose_photo(
+    query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB
+):
+    _ = callback_data
+    _ = like_engine
+    if not query.message or not query.message.from_user:
+        return
+    builder = InlineKeyboardBuilder()
+
+    for index in range(1, 32):
+        builder.button(text=f"{index}", callback_data=f"set:{index}")
+    back = callback_data
+    back.action = Actions.back_text
+
+    # stupid code to add back button as last row
+    b = InlineKeyboardBuilder()
+    b.button(text="Назад", callback_data=back)
+    button = b.export()[0][0]
+    builder.row(button)
+
+    await query.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+async def callback_back(
+    query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB
+):
+    if not query.message or not query.message.from_user:
+        return
+    cb = callback_data
+    bk = Keyboard.fromcallback(cb)
+    photo_id = cb.current_photo_id
+    is_liked_photo = await like_engine.is_photo_liked(query.from_user.id, int(photo_id))
+    if is_liked_photo > 0:
+        is_liked_photo = 1
+    keyboard = await choose_keyboard(
+        is_liked_photo, int(cb.current_photo_count), int(cb.amount_photos), bk
+    )
+    await query.message.edit_reply_markup(reply_markup=keyboard)
+
+
 async def callback_set_no_like(
     query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB
 ):
     cb = callback_data
+    logger = logging.getLogger()
+    logger.info(cb)
+    # logger.info(123)
     if not query.message or not query.message.from_user:
         return
 

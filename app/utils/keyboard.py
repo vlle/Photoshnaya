@@ -23,6 +23,8 @@ class Actions:
     count = "-"
     finish = "Отправить голос 🏁"
     finish_text = "f"
+    back = "Назад!"
+    back_text = "b"
 
 
 class KeyboardButtons:
