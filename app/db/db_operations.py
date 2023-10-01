@@ -398,7 +398,6 @@ class SelectDB(BaseDB):
             async with session.begin():
                 srch = await session.scalars(stmt)
                 res = srch.one()
-                print(res)
                 if res.vote_in_progress == 0:
                     ret = False
                 elif res:
