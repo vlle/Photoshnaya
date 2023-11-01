@@ -272,21 +272,25 @@ class SelectDB(BaseDB):
                 return search_result.first() is not None
 
     async def select_next_contest_photo(
-        self, group_id: int, current_photo: int
+        self, group_id: int, current_photo: int, user_id: int,
     ) -> list[Any]:
         ret: list[Any] = []
         stmt_g = (
             select(Photo)
             .join(group_photo, (Photo.id == group_photo.c.photo_id))
+            .join(User, (Photo.user_id == User.id))
             .where(
                 and_(
-                    group_photo.c.group_id
-                    == (
-                        select(Group.id)
-                        .where(Group.telegram_id == group_id)
-                        .scalar_subquery()
+                    and_(
+                        group_photo.c.group_id
+                        == (
+                            select(Group.id)
+                            .where(Group.telegram_id == group_id)
+                            .scalar_subquery()
+                        ),
+                        Photo.id > current_photo,
                     ),
-                    Photo.id > current_photo,
+                    User.telegram_id != user_id
                 )
             )
             .order_by(Photo.id.asc())
@@ -327,17 +331,21 @@ class SelectDB(BaseDB):
                     ret.append(photos.id)
         return ret
 
-    async def select_contest_photos_ids(self, group_id: int) -> list:
+    async def select_contest_photos_ids(self, group_id: int, user_tg_id: int) -> list:
         ret = []
         stmt_g = (
             select(Photo)
             .join(group_photo, (Photo.id == group_photo.c.photo_id))
+            .join(User, (Photo.user_id == User.id))
             .where(
-                group_photo.c.group_id
-                == (
-                    select(Group.id)
-                    .where(Group.telegram_id == group_id)
-                    .scalar_subquery()
+                and_(
+                    group_photo.c.group_id
+                    == (
+                        select(Group.id)
+                        .where(Group.telegram_id == group_id)
+                        .scalar_subquery()
+                    ),
+                    User.telegram_id != user_tg_id
                 )
             )
         )

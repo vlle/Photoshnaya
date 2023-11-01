@@ -274,7 +274,7 @@ async def test_is_photo_registered(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     assert len(all_photo_ids) == 5
 
 
@@ -289,7 +289,7 @@ async def test_is_photo_registered_count(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     assert len(all_photo_ids) == 3
     assert len(all_photo_ids) == 3
 
@@ -310,7 +310,7 @@ async def test_is_photo_registered_without_duplicating_submissions(
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     assert len(all_photo_ids) == 5
 
 
@@ -354,7 +354,7 @@ async def test_is_vote_finished_correctly(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -383,7 +383,7 @@ async def test_is_vote_finished_correctly_second(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -412,7 +412,7 @@ async def test_is_vote_finished_correctly_multiple_winners(create_user, group, d
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[1])
@@ -441,7 +441,7 @@ async def test_is_likes_correctly_counted(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -479,7 +479,7 @@ async def test_is_likes_correctly_counted_file_id(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -514,7 +514,7 @@ async def test_is_likes_correctly_counted_with_user(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -552,10 +552,10 @@ async def test_is_photos_deleted_correctly(create_user, group, db):
         await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id, file_get_id=str(file_id)
         )
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     first_val = len(all_photo_ids)
     await vote.erase_all_photos(m_group.telegram_id)
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     second_val = len(all_photo_ids)
     assert first_val == 5
     assert first_val != second_val
@@ -601,23 +601,23 @@ async def test_is_multi_groups_ok(
             user.telegram_id, m_group2.telegram_id, file_get_id=str(file_id)
         )
 
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group1.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group1.telegram_id, -1)
     first_val = len(all_photo_ids)
     await vote.erase_all_photos(m_group1.telegram_id)
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group1.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group1.telegram_id,-1)
     second_val = len(all_photo_ids)
     assert first_val == 5
     assert first_val != second_val
     assert second_val == 0
 
     all_photo_ids_second = await register_unit.select_contest_photos_ids(
-        m_group2.telegram_id
+        m_group2.telegram_id, -1
     )
 
     second_group_val = len(all_photo_ids_second)
     await vote.erase_all_photos(m_group2.telegram_id)
     all_photo_ids_second = await register_unit.select_contest_photos_ids(
-        m_group2.telegram_id
+        m_group2.telegram_id, -1
     )
     second_group_val2 = len(all_photo_ids_second)
 
@@ -725,13 +725,13 @@ async def test_select_next_contest_photo(create_user, group, db):
         m_group.telegram_id
     )
     first_id = all_photo_ids[0]
-    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, first_id)
+    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, first_id, -1)
     assert next_id == all_photo_ids[1]
-    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, int(next_id))
+    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, int(next_id), -1)
     assert next_id == all_photo_ids[2]
-    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, int(next_id))
+    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, int(next_id), -1)
     assert next_id == all_photo_ids[3]
-    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, int(next_id))
+    _, next_id = await like.select_next_contest_photo(m_group.telegram_id, int(next_id), -1)
     assert next_id == all_photo_ids[4]
 
 
@@ -860,5 +860,5 @@ async def test_is_register_in_vote_correct(create_user, group, db):
     users.append(await create_user())
     await register_unit.change_current_vote_status(m_group.telegram_id)
 
-    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
+    all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id, -1)
     assert len(all_photo_ids) == 5

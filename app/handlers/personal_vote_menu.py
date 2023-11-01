@@ -37,7 +37,7 @@ async def cmd_start(message: types.Message, bot: Bot, like_engine: LikeDB):
     group_id = int(start_data[1])
     register_unit = RegisterDB(like_engine.engine)
     await register_unit.register_user(user_obj, group_id)
-    photo_file_id, photo_id = await like_engine.select_next_contest_photo(group_id, 0)
+    photo_file_id, photo_id = await like_engine.select_next_contest_photo(group_id, 0, user.telegram_id)
     build_keyboard = Keyboard(
         amount_photos=str(len(photo_ids)),
         current_photo_id=photo_id,
@@ -78,7 +78,7 @@ async def callback_next(
         return
 
     photo_file_id, photo_id = await like_engine.select_next_contest_photo(
-        int(cb.group_id), int(cb.current_photo_id)
+        int(cb.group_id), int(cb.current_photo_id), int(query.from_user.id)
     )
 
     cb.current_photo_count = str(int(cb.current_photo_count) + 1)

@@ -39,7 +39,7 @@ async def set_vote(
 
     bot_link = ObjectFactory.build_vote_link(bot_t.username, callback_data.group_id)
     theme = await admin_unit.get_contest_theme(int(callback_data.group_id))
-    photos = await admin_unit.select_contest_photos_ids(int(callback_data.group_id))
+    photos = await admin_unit.select_contest_photos_ids_and_types(int(callback_data.group_id))
     amount_photo = len(photos)
     vote_announce = msg["vote"]["start_vote"].format(
         theme=theme,
