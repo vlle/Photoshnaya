@@ -104,7 +104,7 @@ async def set_theme_accept_message(
 
         # Get the current date
         now = datetime.now()
-        end = timedelta(seconds=time) + now
+        end = datetime.utcfromtimestamp(time)
 
         week_parent: dict[int, str] = {
             0: "понедельника",
