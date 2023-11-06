@@ -106,7 +106,7 @@ async def delete_photo_r_u_sure(
 ):
     data: dict[str, Any] = await state.get_data()
     user: TelegramUser = data["forward"]
-    author = f"{user.username}, {user.full_name}"
+    author = f"[{user.username}, {user.full_name}](tg://user?id={user.telegram_id})"
     text = msg["delete_photo"]["are_you_sure"].format(author=author)
     keyboard = data["keyboard"]
     photo_data = await admin_unit.find_photo_by_user_in_group(
@@ -136,6 +136,7 @@ async def delete_photo_r_u_sure(
             caption=text,
             photo=photo_file_id,
             reply_markup=reply_board,
+            parse_mode="Markdown",
         )
     else:
         await bot.send_document(
