@@ -135,13 +135,16 @@ async def callback_prev(
 
 
 async def callback_set_like(
-    query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB
+    query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB, msg: dict
 ):
     cb = callback_data
     if not query.message or not query.message.from_user:
         return
 
-    await like_engine.like_photo(query.from_user.id, int(cb.current_photo_id))
+    vote_result = await like_engine.like_photo(query.from_user.id, int(cb.current_photo_id))
+    if (vote_result == -1):
+        await query.answer(text=msg["vote"]["vote_self"], show_alert=True)
+        return
 
     bk = Keyboard.fromcallback(cb)
     keyboard = await choose_keyboard(

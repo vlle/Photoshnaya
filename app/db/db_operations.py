@@ -418,6 +418,12 @@ class LikeDB(SelectDB):
             async with session.begin():
                 user = (await session.scalars(search_stmt_user)).one()
                 photo = (await session.scalars(search_stmt_photo)).one()
+
+                search_stmt_photo_user = select(User).where(User.id == photo.user_id)
+                photo_user = (await session.scalars(search_stmt_photo_user)).one()
+                if (photo_user.telegram_id == tg_id):
+                    return -1
+
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
                 await session.execute(stmt)
 
