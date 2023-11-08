@@ -153,6 +153,15 @@ async def callback_set_like(
     await query.message.edit_reply_markup(reply_markup=keyboard)
 
 
+async def callback_vote_self(
+    query: CallbackQuery, msg: dict
+):
+    if not query.message or not query.message.from_user:
+        return
+
+    await query.answer(text=msg["vote"]["vote_self"], show_alert=True)
+
+
 async def callback_set_no_like(
     query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB
 ):
@@ -201,7 +210,14 @@ async def choose_keyboard(
     amount_photo: int,
     build_keyboard: Keyboard,
 ):
-    if is_liked_photo <= 0:
+    if is_liked_photo == -1:
+        if current_photo_count >= int(amount_photo):
+            keyboard = build_keyboard.keyboard_end_self
+        elif current_photo_count == 1:
+            keyboard = build_keyboard.keyboard_start_self
+        else:
+            keyboard = build_keyboard.keyboard_vote_self
+    elif is_liked_photo == 0:
         if current_photo_count >= int(amount_photo):
             keyboard = build_keyboard.keyboard_end
         elif current_photo_count == 1:

@@ -48,6 +48,7 @@ from handlers.personal_vote_menu import (
     callback_send_vote,
     callback_set_like,
     callback_set_no_like,
+    callback_vote_self,
     cmd_start,
     get_file_id,
 )
@@ -119,6 +120,9 @@ async def main():
     )
     dp.callback_query.register(
         callback_set_no_like, CallbackVote.filter(F.action == Actions.like_text)
+    )
+    dp.callback_query.register(
+        callback_vote_self, CallbackVote.filter(F.action == Actions.like_self)
     )
     dp.callback_query.register(
         callback_send_vote, CallbackVote.filter(F.action == Actions.finish_text)
