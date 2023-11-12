@@ -14,6 +14,7 @@ from db.db_operations import (
     VoteDB,
 )
 
+SELF_LIKE_RESULT = -1
 
 class TGroup:
     def __init__(self, group_name, group_id):
@@ -271,9 +272,9 @@ async def test_is_photo_registered(create_user, group, db):
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
     for user in users:
-        await register_unit.register_photo_for_contest(
+        assert await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id
-        )
+        ) == True
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
 
