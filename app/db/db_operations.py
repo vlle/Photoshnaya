@@ -418,6 +418,12 @@ class LikeDB(SelectDB):
             async with session.begin():
                 user = (await session.scalars(search_stmt_user)).one()
                 photo = (await session.scalars(search_stmt_photo)).one()
+
+                search_stmt_photo_user = select(User).where(User.id == photo.user_id)
+                photo_user = (await session.scalars(search_stmt_photo_user)).one()
+                if (photo_user.telegram_id == tg_id):
+                    return -1
+
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
                 await session.execute(stmt)
 
@@ -433,6 +439,12 @@ class LikeDB(SelectDB):
                 photo_srch = await session.scalars(search_stmt_photo)
                 user = user_srch.one()
                 photo = photo_srch.one()
+
+                search_stmt_photo_user = select(User).where(User.id == photo.user_id)
+                photo_user = (await session.scalars(search_stmt_photo_user)).one()
+                if (photo_user.telegram_id == tg_id):
+                    return -1
+
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
                 await session.execute(stmt)
 
@@ -465,6 +477,11 @@ class LikeDB(SelectDB):
                 like = (await session.scalars(stmt)).fetchall()
                 for _ in like:
                     likes += 1
+
+                search_stmt_photo_user = select(User).join(Photo, User.id == Photo.user_id).where(Photo.id == ph_id)
+                photo_user = (await session.scalars(search_stmt_photo_user)).one()
+                if (photo_user.telegram_id == tg_id):
+                    return -1
 
         return likes
 

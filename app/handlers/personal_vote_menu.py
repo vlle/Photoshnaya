@@ -135,19 +135,31 @@ async def callback_prev(
 
 
 async def callback_set_like(
-    query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB
+    query: CallbackQuery, callback_data: CallbackVote, like_engine: LikeDB, msg: dict
 ):
     cb = callback_data
     if not query.message or not query.message.from_user:
         return
 
-    await like_engine.like_photo(query.from_user.id, int(cb.current_photo_id))
+    vote_result = await like_engine.like_photo(query.from_user.id, int(cb.current_photo_id))
+    if (vote_result == -1):
+        await query.answer(text=msg["vote"]["vote_self"], show_alert=True)
+        return
 
     bk = Keyboard.fromcallback(cb)
     keyboard = await choose_keyboard(
         1, int(cb.current_photo_count), int(cb.amount_photos), bk
     )
     await query.message.edit_reply_markup(reply_markup=keyboard)
+
+
+async def callback_vote_self(
+    query: CallbackQuery, msg: dict
+):
+    if not query.message or not query.message.from_user:
+        return
+
+    await query.answer(text=msg["vote"]["vote_self"], show_alert=True)
 
 
 async def callback_set_no_like(
@@ -198,7 +210,14 @@ async def choose_keyboard(
     amount_photo: int,
     build_keyboard: Keyboard,
 ):
-    if is_liked_photo <= 0:
+    if is_liked_photo == -1:
+        if current_photo_count >= int(amount_photo):
+            keyboard = build_keyboard.keyboard_end_self
+        elif current_photo_count == 1:
+            keyboard = build_keyboard.keyboard_start_self
+        else:
+            keyboard = build_keyboard.keyboard_vote_self
+    elif is_liked_photo == 0:
         if current_photo_count >= int(amount_photo):
             keyboard = build_keyboard.keyboard_end
         elif current_photo_count == 1:
