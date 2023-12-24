@@ -180,7 +180,6 @@ class SelectDB(BaseDB):
             .where(Group.telegram_id == telegram_group_id)
             .group_by(User.id)
             .order_by(func.count(contest_winner.c.contest_id).desc())
-            .limit(20)
         )
         async with AsyncSession(self.engine) as session:
             async with session.begin():
@@ -421,7 +420,7 @@ class LikeDB(SelectDB):
 
                 search_stmt_photo_user = select(User).where(User.id == photo.user_id)
                 photo_user = (await session.scalars(search_stmt_photo_user)).one()
-                if (photo_user.telegram_id == tg_id):
+                if photo_user.telegram_id == tg_id:
                     return -1
 
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
@@ -442,7 +441,7 @@ class LikeDB(SelectDB):
 
                 search_stmt_photo_user = select(User).where(User.id == photo.user_id)
                 photo_user = (await session.scalars(search_stmt_photo_user)).one()
-                if (photo_user.telegram_id == tg_id):
+                if photo_user.telegram_id == tg_id:
                     return -1
 
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
@@ -478,9 +477,13 @@ class LikeDB(SelectDB):
                 for _ in like:
                     likes += 1
 
-                search_stmt_photo_user = select(User).join(Photo, User.id == Photo.user_id).where(Photo.id == ph_id)
+                search_stmt_photo_user = (
+                    select(User)
+                    .join(Photo, User.id == Photo.user_id)
+                    .where(Photo.id == ph_id)
+                )
                 photo_user = (await session.scalars(search_stmt_photo_user)).one()
-                if (photo_user.telegram_id == tg_id):
+                if photo_user.telegram_id == tg_id:
                     return -1
 
         return likes
@@ -585,46 +588,99 @@ class VoteDB(LikeDB):
                 await session.execute(stmt_del)
         return
 
+    # async def select_winner_from_contest(self, telegram_group_id: int):
+    #    stmt = (
+    #        select(photo_like.c.photo_id, func.count(photo_like.c.user_id))
+    #        .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+    #        .join(Group, group_photo.c.group_id == Group.id)
+    #        .where(Group.telegram_id == telegram_group_id)
+    #        .group_by(photo_like.c.photo_id)
+    #        .having(
+    #            func.count(photo_like.c.user_id)
+    #            == (
+    #                select(func.count(photo_like.c.user_id))
+    #                .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
+    #                .join(Group, group_photo.c.group_id == Group.id)
+    #                .where(Group.telegram_id == telegram_group_id)
+    #                .group_by(photo_like.c.photo_id)
+    #                .order_by(func.count(photo_like.c.user_id).desc())
+    #                .limit(1)
+    #            ).scalar_subquery()
+    #        )
+    #    )
+
+    #    multiple = False
+    #    async with AsyncSession(self.engine) as session:
+    #        async with session.begin():
+    #            res = (await session.scalars(stmt)).all()
+    #            if not res:
+    #                return -1, None
+    #            if len(res) > 1:
+    #                multiple = True
+    #            stmt_user = await session.scalars(
+    #                select(User).join(Photo).where(Photo.id == res[0])
+    #            )
+    #            stmt_user = stmt_user.one()
+    #            user = [
+    #                stmt_user.name,
+    #                stmt_user.full_name,
+    #                stmt_user.telegram_id,
+    #                multiple,
+    #            ]
+    #            return res[0], user
+
     async def select_winner_from_contest(self, telegram_group_id: int):
-        stmt = (
-            select(photo_like.c.photo_id, func.count(photo_like.c.user_id))
+        # First, get the maximum number of likes for any photo in the group
+        count_likes_subq = (
+            select(
+                photo_like.c.photo_id,
+                func.count(photo_like.c.user_id).label("like_count"),
+            )
             .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
             .join(Group, group_photo.c.group_id == Group.id)
             .where(Group.telegram_id == telegram_group_id)
             .group_by(photo_like.c.photo_id)
-            .having(
-                func.count(photo_like.c.user_id)
-                == (
-                    select(func.count(photo_like.c.user_id))
+            .alias()
+        )
+
+        # Create the main query to find the maximum like count
+        max_likes_stmt = select(func.max(count_likes_subq.c.like_count))
+
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                # Execute the query to get the maximum number of likes
+                max_likes_value = (await session.scalars(max_likes_stmt)).one()
+
+                # Now, query to select all photos with the maximum number of likes
+                stmt = (
+                    select(photo_like.c.photo_id)
                     .join(group_photo, photo_like.c.photo_id == group_photo.c.photo_id)
                     .join(Group, group_photo.c.group_id == Group.id)
                     .where(Group.telegram_id == telegram_group_id)
                     .group_by(photo_like.c.photo_id)
-                    .order_by(func.count(photo_like.c.user_id).desc())
-                    .limit(1)
-                ).scalar_subquery()
-            )
-        )
-
-        multiple = False
-        async with AsyncSession(self.engine) as session:
-            async with session.begin():
-                res = (await session.scalars(stmt)).all()
-                if not res:
-                    return -1, None
-                if len(res) > 1:
-                    multiple = True
-                stmt_user = await session.scalars(
-                    select(User).join(Photo).where(Photo.id == res[0])
+                    .having(func.count(photo_like.c.user_id) == max_likes_value)
                 )
-                stmt_user = stmt_user.one()
-                user = [
-                    stmt_user.name,
-                    stmt_user.full_name,
-                    stmt_user.telegram_id,
-                    multiple,
-                ]
-                return res[0], user
+
+                # Get all winning photos
+                winning_photos = (await session.scalars(stmt)).all()
+                if not winning_photos:
+                    return [], []
+
+                # Retrieve users for each winning photo
+                winners = []
+                for photo, id in winning_photos:
+                    stmt_user = await session.scalars(
+                        select(User).join(Photo).where(Photo.id == photo)
+                    )
+                    stmt_user = stmt_user.one()
+                    user = [
+                        stmt_user.name,
+                        stmt_user.full_name,
+                        stmt_user.telegram_id,
+                    ]
+                    winners.append(user)
+
+                return winning_photos, winners
 
     async def update_link_to_results(self, telegram_group_id: int, results: str):
         stmt = (

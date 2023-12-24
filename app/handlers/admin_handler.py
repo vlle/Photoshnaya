@@ -178,8 +178,10 @@ async def cmd_finish_vote(
         await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
-    id, user = await vote.select_winner_from_contest(int(callback_data.group_id))
-    if not user:
+    winner_ids, users = await vote.select_winner_from_contest(
+        int(callback_data.group_id)
+    )
+    if len(users) == 0:
         await query.message.edit_text(
             text=msg["vote"]["no_winner"], reply_markup=keyboard.keyboard_back
         )
@@ -187,18 +189,23 @@ async def cmd_finish_vote(
         await admin_unit.change_contest_to_none(int(callback_data.group_id))
         return
 
-    await admin_unit.register_winner(user[-2], int(callback_data.group_id))
-    file_id = await vote.select_file_id(id)
-    likes = await vote.select_all_likes_file_id(int(callback_data.group_id), file_id)
-    type_photo = await vote.select_file_type_by_file_id(file_id)
+    win_msg = ""
+    receiver = 0
     await query.message.edit_text(
         text=msg["admin"]["vote_end"], reply_markup=keyboard.keyboard_back
     )
-    user_info = msg["vote"]["user_info"].format(
-        theme=theme, username=user[0], full_name=user[1], likes=likes
-    )
-    receiver = int(callback_data.group_id)
-    if user[-1] is False:
+    for i in range(len(users)):
+        await admin_unit.register_winner(users[i][-1], int(callback_data.group_id))
+        file_id = await vote.select_file_id(winner_ids[i])
+        likes = await vote.select_all_likes_file_id(
+            int(callback_data.group_id), file_id
+        )
+        type_photo = await vote.select_file_type_by_file_id(file_id)
+        user_info = msg["vote"]["user_info"].format(
+            theme=theme, username=users[i][0], full_name=users[i][1], likes=likes
+        )
+        receiver = int(callback_data.group_id)
+        # if users[i][-1] is False:
         if type_photo == "photo":
             win_msg = await bot.send_photo(
                 chat_id=receiver, photo=file_id, caption=user_info
@@ -207,38 +214,18 @@ async def cmd_finish_vote(
             win_msg = await bot.send_document(
                 chat_id=receiver, document=file_id, caption=user_info
             )
-    else:
-        win_msg = await bot.send_message(
-            chat_id=receiver, text=msg["vote"]["many_winners"]
-        )
-    win_link = win_msg.get_url()
-    if win_link:
-        await vote.update_link_to_results(receiver, win_link)
+        # else:
+        #    win_msg = await bot.send_message(
+        #        chat_id=receiver, text=msg["vote"]["many_winners"]
+        #    )
+    if win_msg:
+        win_link = win_msg.get_url()
+        if win_link:
+            await vote.update_link_to_results(receiver, win_link)
     await internal_view_submissions(receiver, ids, bot, admin_unit, callback_data)
 
-    # turn-off feature: deletes photo history
-    # if user[-1] is False:
-    #     try:
-    #         await set_chat_photo(bot, file_id, int(callback_data.group_id), theme)
-    #     except exceptions.TelegramBadRequest as e:
-    #         await bot.send_message(chat_id=receiver,
-    #                                text=msg["vote"]["err"])
-    #         logging.warning(e)
     await vote.erase_all_photos(int(callback_data.group_id))
     await admin_unit.change_contest_to_none(int(callback_data.group_id))
-
-
-# async def set_chat_photo(bot: Bot, file_id: str, group_id: int,
-#                          name: str):
-#     file = await bot.get_file(file_id)
-#     if not file.file_path:
-#         return
-#     result = await bot.download_file(file.file_path, io.BytesIO())
-#     if not result:
-#         return
-#     photo = BufferedInputFile(result.read(), filename=name)
-#     await bot.set_chat_photo(chat_id=group_id,
-#                                      photo=photo)
 
 
 async def view_votes(

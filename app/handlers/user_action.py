@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 from aiogram import types
 from aiogram.utils.markdown import hlink
+
 from db.db_operations import RegisterDB
 from handlers.internal_logic.register import internal_register_photo
 from utils.TelegramUserClass import (
@@ -77,13 +78,23 @@ async def is_valid_input(
 
 
 def generate_board_message(template: str, user_list: List[Tuple[str, int]]):
-    txt = ''
+    txt = ""
+    stars = "☆"
     if not user_list:
         txt = "Пока нет данных."
     for place, user_data in enumerate(user_list, start=1):
         user, total = user_data
+        if total == 3 or total == 4:
+            stars = "★"
+        elif total == 5 or total == 6:
+            stars = "★★"
+        elif total >= 7:
+            stars = "★★★"
         txt += template.format(
-            place=place, link=hlink(user, f'https://t.me/{user}'), total=total,
+            place=place,
+            link=hlink(user, f"https://t.me/{user}"),
+            total=total,
+            stars=stars,
         )
     return txt
 
@@ -92,7 +103,7 @@ async def view_leaders(message: types.Message, register_unit: RegisterDB):
     if message.chat.type == "private":
         return
     leader_list = await register_unit.select_winner_leaderboard(message.chat.id)
-    template = "<b>{place}</b>: {link}, количество побед: {total}\n"
+    template = "<b>{place}</b>: {link}, количество побед: {total} || {stars}\n"
     await message.reply(
         generate_board_message(template, leader_list),
         parse_mode="HTML",
