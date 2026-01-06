@@ -1,6 +1,6 @@
 from sqlalchemy.exc import IntegrityError
 
-from db.db_operations import ObjectFactory, RegisterDB
+from db.db_operations import ObjectFactory, PhotoRegistrationStatus, RegisterDB
 from utils.TelegramUserClass import Document, Photo, TelegramChat, TelegramUser
 
 
@@ -21,7 +21,7 @@ async def internal_register_photo(
     )
     group = ObjectFactory.build_group(chat_object.full_name, chat_object.telegram_id)
     await register.register_user(user, chat_object.telegram_id)
-    is_photo_registered = await register.register_photo_for_contest(
+    registration_result = await register.register_photo_for_contest(
         user_object.telegram_id,
         chat_object.telegram_id,
         file_get_id=contest_material.file_id,
@@ -29,7 +29,7 @@ async def internal_register_photo(
         group_p=group,
         type=type_object,
     )
-    if is_photo_registered is True:
+    if registration_result == PhotoRegistrationStatus.NEW:
         try:
             await register.register_participant(
                 user_object.telegram_id, chat_object.telegram_id
@@ -37,5 +37,7 @@ async def internal_register_photo(
         except IntegrityError:  # participant was already registered
             pass
         return msg["register_photo"]["photo_registered"]
+    elif registration_result == PhotoRegistrationStatus.CHANGED:
+        return msg["register_photo"]["photo_changed"]
     else:
         return msg["register_photo"]["photo_not_registered"]

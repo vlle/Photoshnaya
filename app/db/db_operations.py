@@ -1,10 +1,5 @@
+from enum import Enum
 from typing import Any
-
-from sqlalchemy import and_, delete, exc, select
-from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import func
 
 from db.db_classes import (
     Contest,
@@ -20,8 +15,21 @@ from db.db_classes import (
     photo_like,
     tmp_photo_like,
 )
+from sqlalchemy import and_, delete, exc, select
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlalchemy.sql import func
 
 NO_THEME = "-1"
+
+
+class PhotoRegistrationStatus(Enum):
+    """Return status for photo registration operations"""
+
+    FAILED = 0
+    NEW = 1
+    CHANGED = 2
 
 
 class ObjectFactory:
@@ -421,7 +429,7 @@ class LikeDB(SelectDB):
 
                 search_stmt_photo_user = select(User).where(User.id == photo.user_id)
                 photo_user = (await session.scalars(search_stmt_photo_user)).one()
-                if (photo_user.telegram_id == tg_id):
+                if photo_user.telegram_id == tg_id:
                     return -1
 
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
@@ -442,7 +450,7 @@ class LikeDB(SelectDB):
 
                 search_stmt_photo_user = select(User).where(User.id == photo.user_id)
                 photo_user = (await session.scalars(search_stmt_photo_user)).one()
-                if (photo_user.telegram_id == tg_id):
+                if photo_user.telegram_id == tg_id:
                     return -1
 
                 stmt = insert(tmp_photo_like).values(user_id=user.id, photo_id=photo.id)
@@ -478,9 +486,13 @@ class LikeDB(SelectDB):
                 for _ in like:
                     likes += 1
 
-                search_stmt_photo_user = select(User).join(Photo, User.id == Photo.user_id).where(Photo.id == ph_id)
+                search_stmt_photo_user = (
+                    select(User)
+                    .join(Photo, User.id == Photo.user_id)
+                    .where(Photo.id == ph_id)
+                )
                 photo_user = (await session.scalars(search_stmt_photo_user)).one()
-                if (photo_user.telegram_id == tg_id):
+                if photo_user.telegram_id == tg_id:
                     return -1
 
         return likes
@@ -843,7 +855,7 @@ class RegisterDB(SelectDB):
         user_p=None,
         group_p=None,
         type="photo",
-    ) -> bool:
+    ) -> PhotoRegistrationStatus:
         stmt_sel = (
             select(User)
             .options(selectinload(User.photos))
@@ -877,8 +889,13 @@ class RegisterDB(SelectDB):
                     group = g_search.one()
 
                 possible_register = await session.scalars(stmt_photo_sel)
-                if possible_register.one_or_none() is not None:
-                    return False
+                existing_photo = possible_register.one_or_none()
+
+                if existing_photo is not None:
+                    # UPDATE: Replace file_id and telegram_type
+                    existing_photo.file_id = file_get_id
+                    existing_photo.telegram_type = type
+                    return PhotoRegistrationStatus.CHANGED
 
                 if user and group:
                     photo = Photo(
@@ -887,7 +904,7 @@ class RegisterDB(SelectDB):
                     user.photos.append(photo)
                     group.photos.append(photo)
                     session.add(photo)
-        return True
+        return PhotoRegistrationStatus.NEW
 
 
 class AdminDB(RegisterDB):

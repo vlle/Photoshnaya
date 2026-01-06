@@ -9,6 +9,7 @@ from db.db_operations import (
     AdminDB,
     LikeDB,
     ObjectFactory,
+    PhotoRegistrationStatus,
     RegisterDB,
     SelectDB,
     VoteDB,
@@ -274,7 +275,7 @@ async def test_is_photo_registered(create_user, group, db):
     for user in users:
         assert await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id
-        ) == True
+        ) == PhotoRegistrationStatus.NEW
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
 
@@ -305,12 +306,16 @@ async def test_is_photo_registered_without_duplicating_submissions(
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
     for user in users:
-        await register_unit.register_photo_for_contest(
-            user.telegram_id, m_group.telegram_id
+        result1 = await register_unit.register_photo_for_contest(
+            user.telegram_id, m_group.telegram_id, file_get_id="first_file_id"
         )
-        await register_unit.register_photo_for_contest(
-            user.telegram_id, m_group.telegram_id
+        assert result1 == PhotoRegistrationStatus.NEW
+
+        result2 = await register_unit.register_photo_for_contest(
+            user.telegram_id, m_group.telegram_id, file_get_id="second_file_id"
         )
+        assert result2 == PhotoRegistrationStatus.CHANGED
+
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
 
