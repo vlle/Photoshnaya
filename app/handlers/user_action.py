@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 
 from aiogram import types
@@ -20,6 +21,11 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
         or not message.caption
     ):
         return
+
+    message_time = datetime.fromtimestamp(message.date, tz=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if now - message_time > timedelta(hours=24):
+        return  # Silently ignore stale tg updates
 
     user, chat = TelegramDeserialize.unpack(message)
     theme = await register_unit.get_contest_theme(chat.telegram_id)
@@ -57,7 +63,6 @@ async def is_valid_input(
     chat_object: TelegramChat,
     user_object: TelegramUser,
 ) -> bool:
-
     message_search = caption.lower().split()
     message_contains_contest = False
     for word in message_search:
@@ -77,13 +82,15 @@ async def is_valid_input(
 
 
 def generate_board_message(template: str, user_list: List[Tuple[str, int]]):
-    txt = ''
+    txt = ""
     if not user_list:
         txt = "Пока нет данных."
     for place, user_data in enumerate(user_list, start=1):
         user, total = user_data
         txt += template.format(
-            place=place, link=hlink(user, f'https://t.me/{user}'), total=total,
+            place=place,
+            link=hlink(user, f"https://t.me/{user}"),
+            total=total,
         )
     return txt
 

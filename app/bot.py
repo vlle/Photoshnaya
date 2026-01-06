@@ -2,8 +2,8 @@ import asyncio
 import logging
 import os
 import pathlib
-import tomllib
 
+import tomllib
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import JOIN_TRANSITION, ChatMemberUpdatedFilter, Command
 from aiogram.types import (
@@ -11,11 +11,9 @@ from aiogram.types import (
     BotCommandScopeAllGroupChats,
     BotCommandScopeAllPrivateChats,
 )
-from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import create_async_engine
-
 from db.db_classes import Base
 from db.db_operations import AdminDB, LikeDB, ObjectFactory, RegisterDB
+from dotenv import load_dotenv
 from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
 from handlers.admin_del_fsm import AdminDel, del_admin, del_admin_accept_message
 from handlers.admin_handler import (
@@ -54,6 +52,7 @@ from handlers.personal_vote_menu import (
 )
 from handlers.user_action import register_photo, view_leaders, view_overall_participants
 from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
+from sqlalchemy.ext.asyncio import create_async_engine
 from utils.admin_keyboard import AdminActions, CallbackManage
 from utils.keyboard import Actions, CallbackVote
 
@@ -97,9 +96,6 @@ async def main():
     admin_unit = AdminDB(engine)
 
     dp.message.register(
-        register_photo, F.caption_entities & ~(F.chat.type == "private")
-    )
-    dp.edited_message.register(
         register_photo, F.caption_entities & ~(F.chat.type == "private")
     )
 
@@ -198,10 +194,12 @@ async def main():
         command="/view_all", description="Посмотреть топ по участию"
     )
     await bot.set_my_commands(
-        [admin], scope=BotCommandScopeAllPrivateChats()  # type: ignore
+        [admin],
+        scope=BotCommandScopeAllPrivateChats(),  # type: ignore
     )
     await bot.set_my_commands(
-        [view_leader, view_all], scope=BotCommandScopeAllGroupChats()  # type: ignore
+        [view_leader, view_all],
+        scope=BotCommandScopeAllGroupChats(),  # type: ignore
     )
 
     await asyncio.gather(

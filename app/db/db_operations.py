@@ -892,7 +892,6 @@ class RegisterDB(SelectDB):
                 existing_photo = possible_register.one_or_none()
 
                 if existing_photo is not None:
-                    # UPDATE: Replace file_id and telegram_type
                     existing_photo.file_id = file_get_id
                     existing_photo.telegram_type = type
                     return PhotoRegistrationStatus.CHANGED
