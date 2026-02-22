@@ -1,11 +1,13 @@
 __pycache__/
 venv/
+.uv-cache/
 *.db
 *.pyc
 __pycache__
 *__pycache__*
 *config*
 *.env*
+!.env.example
 /playground.sql
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -58,3 +60,5 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 .idea/
+*_BL.md
+*_ARCH.md

@@ -1,7 +1,13 @@
-version: "3.10"
 services:
   web:
-    build: .
-    image: aapq/photoshnaya_bot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: photoshnaya_bot:prod
     restart: always
     network_mode: "host"
+    env_file:
+      - .env
+    environment:
+      token: ${token}
+      ps_url: ${ps_url}

@@ -1,11 +1,14 @@
-version: "3.10"
 services:
   web:
-    build: .
-    image: aapq/photoshnaya_bot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: photoshnaya_bot:test
+    env_file:
+      - .env
     environment:
-      testps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
-    command: bash -c "cd app && pytest tests -v"
+      testps_url: ${testps_url:-postgresql+psycopg://postgres:postgres@db:5432/postgres}
+    command: ["sh", "-c", "cd app && uv run --no-sync pytest tests -v"]
     depends_on:
       db:
         condition: service_healthy
