@@ -5,3 +5,24 @@ services:
     image: aapq/photoshnaya_bot:latest
     restart: always
     network_mode: "host"
+    environment:
+      token: ${token}
+      ps_url: ${ps_url}
+      FEATURE_GO_LEADERBOARDS: ${FEATURE_GO_LEADERBOARDS:-false}
+      FEATURE_GO_VOTE_FLOW: ${FEATURE_GO_VOTE_FLOW:-false}
+      GO_BRIDGE_BASE_URL: ${GO_BRIDGE_BASE_URL:-http://127.0.0.1:8080}
+      GO_BRIDGE_TIMEOUT_MS: ${GO_BRIDGE_TIMEOUT_MS:-800}
+    depends_on:
+      - go-bot
+  go-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    image: aapq/photoshnaya_go_bridge:latest
+    restart: always
+    network_mode: "host"
+    environment:
+      ps_url: ${ps_url}
+      MIGRATIONS_ENV: ${MIGRATIONS_ENV:-prod}
+      GO_BRIDGE_HTTP_ADDR: ${GO_BRIDGE_HTTP_ADDR:-:8080}
+      GO_BRIDGE_HTTP_TIMEOUT_MS: ${GO_BRIDGE_HTTP_TIMEOUT_MS:-2000}

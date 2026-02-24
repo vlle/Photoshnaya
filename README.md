@@ -21,10 +21,26 @@ To access the bot, use the [@photoshnaya_bot](t.me/photoshnaya_bot) handle or go
 
    1) Clone the repository and rename env.example to .env.
    2) Fill in the bot token and postgre_url in the .env file.
-   3) Start the application by using docker-compose up --build -d.
-   4) Switch off Group Privacy for the bot via BotFather menu.
-   5) Add bot to the needed group and grant administration rights.
-   6) Shutdown the application with docker-compose down.
+   3) Install Task (https://taskfile.dev/installation/).
+   4) Start the application by using `task up:dev`.
+   5) For Go vote-flow delegation set `FEATURE_GO_VOTE_FLOW=true` in `.env` (or keep `false` to stay on legacy Python flow).
+   6) Switch off Group Privacy for the bot via BotFather menu.
+   7) Add bot to the needed group and grant administration rights.
+   8) Shutdown the application with `task down:dev`.
+
+## Deployment (VPS)
+
+1) Put `.env` on server with at least `token` and `ps_url`.
+2) Deploy/update: `task deploy:prod`
+3) Check status: `task ps:prod`
+4) Tail logs: `task logs:prod`
+5) Rollback/stop: `task down:prod`
+
+Useful targets:
+- `task` (list all tasks)
+- `task up:dev` / `task down:dev`
+- `task up:prod` / `task down:prod`
+- `task test`
 
 ## System Requirements:
 

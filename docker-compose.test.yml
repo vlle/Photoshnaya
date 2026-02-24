@@ -5,6 +5,10 @@ services:
     image: aapq/photoshnaya_bot:latest
     environment:
       testps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
+      FEATURE_GO_LEADERBOARDS: "false"
+      FEATURE_GO_VOTE_FLOW: "false"
+      GO_BRIDGE_BASE_URL: "http://go-bot:8080"
+      GO_BRIDGE_TIMEOUT_MS: "800"
     command: bash -c "cd app && pytest tests -v"
     depends_on:
       db:

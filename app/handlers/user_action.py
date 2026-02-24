@@ -1,7 +1,10 @@
-from typing import List, Tuple
+import logging
+import os
+from typing import Any, List, Tuple
 
 from aiogram import types
 from aiogram.utils.markdown import hlink
+from aiohttp import ClientError, ClientSession, ClientTimeout
 from db.db_operations import RegisterDB
 from handlers.internal_logic.register import internal_register_photo
 from utils.TelegramUserClass import (
@@ -11,6 +14,10 @@ from utils.TelegramUserClass import (
     TelegramDeserialize,
     TelegramUser,
 )
+
+FEATURE_GO_LEADERBOARDS = "FEATURE_GO_LEADERBOARDS"
+GO_BRIDGE_BASE_URL = "GO_BRIDGE_BASE_URL"
+GO_BRIDGE_TIMEOUT_MS = "GO_BRIDGE_TIMEOUT_MS"
 
 
 async def register_photo(message: types.Message, register_unit: RegisterDB, msg: dict):
@@ -88,8 +95,84 @@ def generate_board_message(template: str, user_list: List[Tuple[str, int]]):
     return txt
 
 
+def _is_true_env(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _get_bridge_timeout() -> float:
+    raw = os.environ.get(GO_BRIDGE_TIMEOUT_MS, "800")
+    try:
+        timeout_ms = int(raw)
+    except ValueError:
+        timeout_ms = 800
+    if timeout_ms <= 0:
+        timeout_ms = 800
+    return timeout_ms / 1000
+
+
+async def _delegate_winners_board(group_id: int) -> dict[str, Any] | None:
+    if not _is_true_env(FEATURE_GO_LEADERBOARDS):
+        return None
+
+    bridge_base = os.environ.get(GO_BRIDGE_BASE_URL, "http://go-bot:8080").rstrip("/")
+    request_url = f"{bridge_base}/internal/v1/leaderboards/winners"
+    timeout = ClientTimeout(total=_get_bridge_timeout())
+
+    try:
+        async with ClientSession(timeout=timeout) as session:
+            async with session.get(
+                request_url, params={"group_telegram_id": str(group_id)}
+            ) as response:
+                if response.status != 200:
+                    logging.warning(
+                        "go leaderboard bridge returned non-200",
+                        extra={"status": response.status, "group_id": group_id},
+                    )
+                    return None
+                payload = await response.json()
+    except (ClientError, TimeoutError, ValueError) as err:
+        logging.warning(
+            "go leaderboard bridge request failed",
+            exc_info=err,
+            extra={"group_id": group_id},
+        )
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    text = payload.get("text")
+    if not isinstance(text, str):
+        return None
+
+    parse_mode = payload.get("parse_mode")
+    if not isinstance(parse_mode, str):
+        parse_mode = "HTML"
+
+    disable_preview = payload.get("disable_web_page_preview")
+    if not isinstance(disable_preview, bool):
+        disable_preview = True
+
+    return {
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": disable_preview,
+    }
+
+
 async def view_leaders(message: types.Message, register_unit: RegisterDB):
     if message.chat.type == "private":
+        return
+    delegated_payload = await _delegate_winners_board(message.chat.id)
+    if delegated_payload is not None:
+        await message.reply(
+            delegated_payload["text"],
+            parse_mode=delegated_payload["parse_mode"],
+            disable_web_page_preview=delegated_payload["disable_web_page_preview"],
+        )
         return
     leader_list = await register_unit.select_winner_leaderboard(message.chat.id)
     template = "<b>{place}</b>: {link}, количество побед: {total}\n"

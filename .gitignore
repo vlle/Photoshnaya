@@ -58,3 +58,6 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 .idea/
+*_BL.md
+*_ARCH.md
+.task/
