@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "internal/store/postgres/query"
+    schema: "migrations/postgres/stage/0001_init.sql"
+    gen:
+      go:
+        package: "sqlcdb"
+        out: "internal/store/postgres/sqlcdb"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_interface: true

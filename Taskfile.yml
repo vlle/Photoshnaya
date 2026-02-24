@@ -1,0 +1,99 @@
+version: "3"
+
+vars:
+  COMPOSE: docker compose
+  DEV_COMPOSE: docker-compose.dev.yml
+  PROD_COMPOSE: docker-compose.yml
+  TEST_COMPOSE: docker-compose.test.yml
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list-all
+
+  config:dev:
+    desc: Validate dev compose file
+    cmds:
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} config >/dev/null"
+
+  config:prod:
+    desc: Validate prod compose file
+    cmds:
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} config >/dev/null"
+
+  config:test:
+    desc: Validate test compose file
+    cmds:
+      - "{{.COMPOSE}} -f {{.TEST_COMPOSE}} config >/dev/null"
+
+  up:dev:
+    desc: Start dev stack in background (web + go-bot + db + redis)
+    deps: [config:dev]
+    cmds:
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} up --build -d"
+
+  down:dev:
+    desc: Stop dev stack
+    cmds:
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} down"
+
+  restart:dev:
+    desc: Restart dev stack
+    cmds:
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} down"
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} up --build -d"
+
+  logs:dev:
+    desc: Tail dev logs
+    cmds:
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} logs -f --tail=200"
+
+  ps:dev:
+    desc: Show dev services status
+    cmds:
+      - "{{.COMPOSE}} -f {{.DEV_COMPOSE}} ps"
+
+  up:prod:
+    desc: Start prod stack in background (web + go-bot)
+    deps: [config:prod]
+    cmds:
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} up --build -d"
+
+  down:prod:
+    desc: Stop prod stack
+    cmds:
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} down"
+
+  restart:prod:
+    desc: Restart prod stack
+    cmds:
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} down"
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} up --build -d"
+
+  logs:prod:
+    desc: Tail prod logs
+    cmds:
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} logs -f --tail=200"
+
+  ps:prod:
+    desc: Show prod services status
+    cmds:
+      - "{{.COMPOSE}} -f {{.PROD_COMPOSE}} ps"
+
+  deploy:prod:
+    desc: Deploy/redeploy on VPS and show status
+    cmds:
+      - task: up:prod
+      - task: ps:prod
+
+  test:
+    desc: Run test stack and always cleanup containers/volumes
+    deps: [config:test]
+    cmds:
+      - |
+        set +e
+        {{.COMPOSE}} -f {{.TEST_COMPOSE}} up --build --abort-on-container-exit --exit-code-from web
+        rc=$?
+        {{.COMPOSE}} -f {{.TEST_COMPOSE}} down -v --remove-orphans
+        exit $rc
