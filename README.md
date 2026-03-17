@@ -22,6 +22,33 @@ To access the bot, use the [@photoshnaya_bot](t.me/photoshnaya_bot) handle or go
    1) Clone the repository and rename env.example to .env.
    2) Fill in the bot token and postgre_url in the .env file.
    3) Start the application by using docker-compose up --build -d.
+
+## CI Deploy
+
+GitHub Actions can build, push, and deploy the bot to a remote host over SSH after tests pass on `main`.
+
+Required GitHub secrets:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_KNOWN_HOSTS`
+- `DEPLOY_PATH`
+- `DEPLOY_PORT` (optional, defaults to `22`)
+
+Remote host requirements:
+
+- Docker with `docker compose` or `docker-compose`
+- checked-out project directory at `DEPLOY_PATH`
+- production env already present on the server
+
+Deployment flow:
+
+1. CI runs flake8 and `docker compose -f docker-compose.test.yml up`.
+2. On push to `main`, CI builds and pushes `${DOCKERHUB_USERNAME}/photoshnaya_bot` with `latest` and `${GITHUB_SHA}` tags.
+3. CI SSHes to the remote host, exports `IMAGE_REPOSITORY` and `IMAGE_TAG`, then runs `docker compose pull web && docker compose up -d web`.
    4) Switch off Group Privacy for the bot via BotFather menu.
    5) Add bot to the needed group and grant administration rights.
    6) Shutdown the application with docker-compose down.

@@ -2,6 +2,6 @@ version: "3.10"
 services:
   web:
     build: .
-    image: aapq/photoshnaya_bot:latest
+    image: ${IMAGE_REPOSITORY:-aapq/photoshnaya_bot}:${IMAGE_TAG:-latest}
     restart: always
     network_mode: "host"
