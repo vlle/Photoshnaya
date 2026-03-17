@@ -4,9 +4,19 @@ services:
     build: .
     image: aapq/photoshnaya_bot:latest
     environment:
+      GO_API_URL: "http://go-api:8080"
       ps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
       testps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
       token: $token
+    depends_on:
+      db:
+        condition: service_healthy
+      go-api:
+        condition: service_started
+  go-api:
+    build: ./go-api
+    environment:
+      PS_URL: "postgresql://postgres:postgres@db:5432/postgres"
     depends_on:
       db:
         condition: service_healthy

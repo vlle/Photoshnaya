@@ -1,13 +1,12 @@
-from sqlalchemy.exc import IntegrityError
-
-from db.db_operations import ObjectFactory, RegisterDB
+from db.db_operations import PhotoRegistrationStatus
+from services.vote_backend import VoteBackend
 from utils.TelegramUserClass import Document, Photo, TelegramChat, TelegramUser
 
 
 async def internal_register_photo(
     user_object: TelegramUser,
     chat_object: TelegramChat,
-    register: RegisterDB,
+    register_backend: VoteBackend,
     contest_material: Photo | Document,
     msg: dict,
 ) -> str:
@@ -16,26 +15,17 @@ async def internal_register_photo(
     else:
         type_object = "photo"
 
-    user = ObjectFactory.build_user(
-        user_object.username, user_object.full_name, user_object.telegram_id
-    )
-    group = ObjectFactory.build_group(chat_object.full_name, chat_object.telegram_id)
-    await register.register_user(user, chat_object.telegram_id)
-    is_photo_registered = await register.register_photo_for_contest(
-        user_object.telegram_id,
+    registration_result = await register_backend.register_contest_submission(
         chat_object.telegram_id,
-        file_get_id=contest_material.file_id,
-        user_p=user,
-        group_p=group,
-        type=type_object,
+        user_object.telegram_id,
+        user_object.username,
+        user_object.full_name,
+        contest_material.file_id,
+        type_object,
     )
-    if is_photo_registered is True:
-        try:
-            await register.register_participant(
-                user_object.telegram_id, chat_object.telegram_id
-            )
-        except IntegrityError:  # participant was already registered
-            pass
+
+    if registration_result == PhotoRegistrationStatus.NEW:
         return msg["register_photo"]["photo_registered"]
-    else:
-        return msg["register_photo"]["photo_not_registered"]
+    if registration_result == PhotoRegistrationStatus.CHANGED:
+        return msg["register_photo"]["photo_changed"]
+    return msg["register_photo"]["photo_not_registered"]

@@ -58,3 +58,7 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 .idea/
+*_BL.md
+*_ARCH.md
+CLAUDE.local.md
+code-style.md

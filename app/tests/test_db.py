@@ -9,6 +9,7 @@ from db.db_operations import (
     AdminDB,
     LikeDB,
     ObjectFactory,
+    PhotoRegistrationStatus,
     RegisterDB,
     SelectDB,
     VoteDB,
@@ -274,7 +275,7 @@ async def test_is_photo_registered(create_user, group, db):
     for user in users:
         assert await register_unit.register_photo_for_contest(
             user.telegram_id, m_group.telegram_id
-        ) == True
+        ) == PhotoRegistrationStatus.NEW
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
 
@@ -313,6 +314,43 @@ async def test_is_photo_registered_without_duplicating_submissions(
         )
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
+
+
+async def test_is_photo_changed_instead_of_duplicated_submission(create_user, group, db):
+    register_unit = RegisterDB(db)
+    select_unit = SelectDB(db)
+    m_group = ObjectFactory.build_group(group.group_name, group.group_id)
+    user = await create_user()
+
+    assert (
+        await register_unit.register_photo_for_contest(
+            user.telegram_id,
+            m_group.telegram_id,
+            file_get_id="first-file",
+        )
+        == PhotoRegistrationStatus.NEW
+    )
+    assert (
+        await register_unit.register_photo_for_contest(
+            user.telegram_id,
+            m_group.telegram_id,
+            file_get_id="second-file",
+            type="document",
+        )
+        == PhotoRegistrationStatus.CHANGED
+    )
+
+    all_photo_ids = await register_unit.select_contest_photos_primary_ids(
+        m_group.telegram_id
+    )
+    assert len(all_photo_ids) == 1
+
+    photo_data = await select_unit.find_photo_by_user_in_group(
+        user.telegram_id, m_group.telegram_id
+    )
+    assert photo_data is not None
+    assert photo_data[1] == "second-file"
+    assert photo_data[2] == "document"
 
 
 async def test_is_vote_not_started(create_user, group, db):

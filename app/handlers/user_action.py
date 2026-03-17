@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 
 from aiogram import types
 from aiogram.utils.markdown import hlink
 from db.db_operations import RegisterDB
 from handlers.internal_logic.register import internal_register_photo
+from services.vote_backend import VoteBackend
 from utils.TelegramUserClass import (
     Document,
     Photo,
@@ -13,12 +15,31 @@ from utils.TelegramUserClass import (
 )
 
 
-async def register_photo(message: types.Message, register_unit: RegisterDB, msg: dict):
+def is_stale_message(message_date: datetime | int | float) -> bool:
+    if isinstance(message_date, datetime):
+        if message_date.tzinfo is None:
+            msg_datetime = message_date.replace(tzinfo=timezone.utc)
+        else:
+            msg_datetime = message_date.astimezone(timezone.utc)
+    else:
+        msg_datetime = datetime.fromtimestamp(message_date, tz=timezone.utc)
+
+    return datetime.now(timezone.utc) - msg_datetime > timedelta(hours=24)
+
+
+async def register_photo(
+    message: types.Message,
+    register_unit: RegisterDB,
+    like_engine: VoteBackend,
+    msg: dict,
+):
     if (
         message.from_user is None
         or message.chat.type == "private"
         or not message.caption
     ):
+        return
+    if is_stale_message(message.date):
         return
 
     user, chat = TelegramDeserialize.unpack(message)
@@ -39,7 +60,7 @@ async def register_photo(message: types.Message, register_unit: RegisterDB, msg:
         obj = Document(message.document.file_id)
     else:
         return
-    ret_msg = await internal_register_photo(user, chat, register_unit, obj, msg)
+    ret_msg = await internal_register_photo(user, chat, like_engine, obj, msg)
     await message.reply(ret_msg)
 
 
