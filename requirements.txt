@@ -54,6 +54,7 @@ ruff==0.0.262
 six==1.16.0
 SQLAlchemy==2.0.4
 typing_extensions==4.5.0
+tomli==2.0.1; python_version < "3.11"
 tzdata==2023.3
 vine==5.0.0
 virtualenv==20.23.1
