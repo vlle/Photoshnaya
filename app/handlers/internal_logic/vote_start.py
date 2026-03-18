@@ -1,5 +1,10 @@
 import pathlib
-import tomllib
+import sys
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from services.vote_backend import VoteBackend, VoteBackendBusinessError
 from utils.TelegramUserClass import TelegramChat, TelegramUser
