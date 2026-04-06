@@ -4,7 +4,10 @@ venv/
 *.pyc
 __pycache__
 *__pycache__*
-*config*
+config.yaml
+config.json
+config.toml
+config.ini
 *.env*
 /playground.sql
 # Byte-compiled / optimized / DLL files
