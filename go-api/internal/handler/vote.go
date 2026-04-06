@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -118,7 +119,11 @@ func (h *VoteHandler) handleVoteLikes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req model.LikeRequest
-	if err := decodeJSON(r.Body, &req); err != nil {
+	if err := decodeJSON(w, r.Body, &req); err != nil {
+		if isMaxBytesError(err) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request_too_large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid_request")
 		return
 	}
@@ -144,7 +149,11 @@ func (h *VoteHandler) handleVoteSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req model.SubmitVoteRequest
-	if err := decodeJSON(r.Body, &req); err != nil {
+	if err := decodeJSON(w, r.Body, &req); err != nil {
+		if isMaxBytesError(err) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request_too_large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid_request")
 		return
 	}
@@ -192,14 +201,27 @@ func parseIntQuery(r *http.Request, key string) (int64, error) {
 	return strconv.ParseInt(value, 10, 64)
 }
 
-func decodeJSON(body io.ReadCloser, dest any) error {
+const maxBodySize = 1 << 20 // 1 MB
+
+func decodeJSON(w http.ResponseWriter, body io.ReadCloser, dest any) error {
+	limited := http.MaxBytesReader(w, body, maxBodySize)
 	defer func() {
-		_ = body.Close()
+		_ = limited.Close()
 	}()
 
-	decoder := json.NewDecoder(body)
+	data, err := io.ReadAll(limited)
+	if err != nil {
+		return err // MaxBytesError propagates cleanly
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(dest)
+}
+
+func isMaxBytesError(err error) bool {
+	var maxBytesErr *http.MaxBytesError
+	return errors.As(err, &maxBytesErr)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

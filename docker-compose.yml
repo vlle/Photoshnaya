@@ -1,7 +1,17 @@
-version: "3.10"
 services:
   web:
-    build: .
     image: ${IMAGE_REPOSITORY:-aapq/photoshnaya_bot}:${IMAGE_TAG:-latest}
     restart: always
     network_mode: "host"
+    environment:
+      token: ${token:-}
+      ps_url: ${ps_url:-}
+      GO_API_URL: ${GO_API_URL:-}
+  go-api:
+    image: ${GO_API_IMAGE_REPOSITORY:-aapq/photoshnaya_go_api}:${GO_API_IMAGE_TAG:-latest}
+    restart: always
+    network_mode: "host"
+    environment:
+      PS_URL: ${PS_URL:-}
+      ps_url: ${ps_url:-}
+      PORT: ${GO_API_PORT:-8080}

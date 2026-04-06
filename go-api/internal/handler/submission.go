@@ -36,7 +36,11 @@ func (h *SubmissionHandler) handleContestSubmission(w http.ResponseWriter, r *ht
 	}
 
 	var req model.ContestSubmissionRequest
-	if err := decodeJSON(r.Body, &req); err != nil {
+	if err := decodeJSON(w, r.Body, &req); err != nil {
+		if isMaxBytesError(err) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request_too_large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid_request")
 		return
 	}

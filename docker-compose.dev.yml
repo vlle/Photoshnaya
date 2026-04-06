@@ -10,7 +10,7 @@ services:
       db:
         condition: service_healthy
       go-api:
-        condition: service_started
+        condition: service_healthy
   go-api:
     build: ./go-api
     environment:

@@ -17,6 +17,20 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+        - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v3
@@ -24,10 +38,32 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
     - name: Install flake8
       run: |
         python -m pip install --upgrade pip
         pip install flake8
+    - name: Lint go-api
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.63
+        working-directory: go-api
+    - name: Lint deploy-helper
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.63
+        working-directory: deploy-helper
+    - name: Run Go API tests
+      working-directory: go-api
+      env:
+        PS_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      run: go test ./...
+    - name: Run deploy-helper tests
+      working-directory: deploy-helper
+      run: go test ./...
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -46,6 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IMAGE_REPOSITORY: ${{ secrets.DOCKERHUB_USERNAME }}/photoshnaya_bot
+      GO_API_IMAGE_REPOSITORY: ${{ secrets.DOCKERHUB_USERNAME }}/photoshnaya_go_api
 
     steps:
     - uses: actions/checkout@v3
@@ -56,7 +93,7 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push image
+    - name: Build and push web image
       uses: docker/build-push-action@v6
       with:
         context: .
@@ -64,8 +101,19 @@ jobs:
         tags: |
           ${{ env.IMAGE_REPOSITORY }}:latest
           ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=web
+        cache-to: type=gha,scope=web,mode=max
+    - name: Build and push go-api image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./go-api
+        file: ./go-api/Dockerfile
+        push: true
+        tags: |
+          ${{ env.GO_API_IMAGE_REPOSITORY }}:latest
+          ${{ env.GO_API_IMAGE_REPOSITORY }}:${{ github.sha }}
+        cache-from: type=gha,scope=go-api
+        cache-to: type=gha,scope=go-api,mode=max
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -78,7 +126,9 @@ jobs:
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       IMAGE_REPOSITORY: ${{ secrets.DOCKERHUB_USERNAME }}/photoshnaya_bot
+      GO_API_IMAGE_REPOSITORY: ${{ secrets.DOCKERHUB_USERNAME }}/photoshnaya_go_api
       IMAGE_TAG: ${{ github.sha }}
+      GO_API_IMAGE_TAG: ${{ github.sha }}
 
     steps:
     - uses: actions/checkout@v3
@@ -98,5 +148,5 @@ jobs:
         test -n "$DEPLOY_USER"
         test -n "$DEPLOY_PATH"
         ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-          "DEPLOY_PATH='$DEPLOY_PATH' IMAGE_REPOSITORY='$IMAGE_REPOSITORY' IMAGE_TAG='$IMAGE_TAG' bash -s" \
+          "DEPLOY_PATH='$DEPLOY_PATH' IMAGE_REPOSITORY='$IMAGE_REPOSITORY' IMAGE_TAG='$IMAGE_TAG' GO_API_IMAGE_REPOSITORY='$GO_API_IMAGE_REPOSITORY' GO_API_IMAGE_TAG='$GO_API_IMAGE_TAG' bash -s" \
           < scripts/deploy_remote.sh

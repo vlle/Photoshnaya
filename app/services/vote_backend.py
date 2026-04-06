@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from dataclasses import dataclass
+from enum import Enum as _Enum
 from typing import Any
 
 import aiohttp
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy import and_, delete, exc as sa_exc, select
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from db.db_classes import Contest, Group, Photo, User, contest_user, group_photo, photo_like, tmp_photo_like
 from db.db_operations import (
     LikeDB,
     ObjectFactory,
@@ -16,9 +21,32 @@ from db.db_operations import (
     VoteDB,
 )
 
+logger = logging.getLogger(__name__)
+
+KNOWN_BUSINESS_ERROR_CODES = frozenset(
+    {
+        "no_photos",
+        "no_vote_yet",
+        "already_voted",
+        "self_like",
+        "photo_not_found",
+        "group_not_found",
+        "user_not_found",
+    }
+)
+
 
 class VoteBackendError(Exception):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int | None = None,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
 
 
 class VoteBackendBusinessError(VoteBackendError):
@@ -39,18 +67,30 @@ class VotePhotoState:
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "VotePhotoState":
-        return cls(
-            group_id=int(payload["group_id"]),
-            photo_id=int(payload["photo_id"]),
-            file_id=str(payload["file_id"]),
-            file_type=str(payload["file_type"]),
-            current_index=int(payload["current_index"]),
-            total_photos=int(payload["total_photos"]),
-            liked_state=int(payload["liked_state"]),
-        )
+        try:
+            return cls(
+                group_id=int(payload["group_id"]),
+                photo_id=int(payload["photo_id"]),
+                file_id=str(payload["file_id"]),
+                file_type=str(payload["file_type"]),
+                current_index=int(payload["current_index"]),
+                total_photos=int(payload["total_photos"]),
+                liked_state=int(payload["liked_state"]),
+            )
+        except (KeyError, TypeError, ValueError) as err:
+            raise VoteBackendError("invalid vote photo state payload") from err
+
+
+class _CircuitState(_Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
 
 
 class VoteBackend(LikeDB):
+    CIRCUIT_FAILURE_THRESHOLD = 3
+    CIRCUIT_COOLDOWN_SEC = 15.0
+
     def __init__(
         self,
         engine: AsyncEngine,
@@ -63,6 +103,13 @@ class VoteBackend(LikeDB):
         self._timeout = aiohttp.ClientTimeout(total=timeout_sec)
         self._session = session
         self._owns_session = session is None
+        self._circuit_state = _CircuitState.CLOSED
+        self._circuit_failures = 0
+        self._circuit_opened_at = 0.0
+
+    async def start(self) -> None:
+        if self._api_url and self._owns_session and (self._session is None or self._session.closed):
+            self._session = aiohttp.ClientSession(timeout=self._timeout)
 
     async def close(self) -> None:
         if self._owns_session and self._session and not self._session.closed:
@@ -79,8 +126,8 @@ class VoteBackend(LikeDB):
                 return VotePhotoState.from_payload(payload)
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("get_vote_session", err)
         return await self._fallback_get_vote_session(group_id, user_id)
 
     async def get_next_vote_photo(
@@ -100,8 +147,8 @@ class VoteBackend(LikeDB):
                 return VotePhotoState.from_payload(payload)
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("get_next_vote_photo", err)
         return await self._fallback_get_relative_photo(
             group_id, user_id, current_photo_id, "next"
         )
@@ -123,8 +170,8 @@ class VoteBackend(LikeDB):
                 return VotePhotoState.from_payload(payload)
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("get_prev_vote_photo", err)
         return await self._fallback_get_relative_photo(
             group_id, user_id, current_photo_id, "prev"
         )
@@ -144,8 +191,8 @@ class VoteBackend(LikeDB):
                 return 1
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("set_like", err)
         return await self._fallback_set_like(user_id, photo_id)
 
     async def unset_like(self, group_id: int, user_id: int, photo_id: int) -> None:
@@ -163,8 +210,8 @@ class VoteBackend(LikeDB):
                 return
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("unset_like", err)
         await self.remove_like_photo(user_id, photo_id)
 
     async def submit_vote(self, group_id: int, user_id: int) -> None:
@@ -178,8 +225,8 @@ class VoteBackend(LikeDB):
                 return
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("submit_vote", err)
         await self._fallback_submit_vote(group_id, user_id)
 
     async def register_contest_submission(
@@ -213,8 +260,8 @@ class VoteBackend(LikeDB):
                 raise VoteBackendError("unexpected submission status")
             except VoteBackendBusinessError:
                 raise
-            except VoteBackendError:
-                pass
+            except VoteBackendError as err:
+                self._log_fallback("register_contest_submission", err)
         return await self._fallback_register_contest_submission(
             group_id, user_id, username, full_name, file_id, file_type
         )
@@ -291,10 +338,39 @@ class VoteBackend(LikeDB):
         if await vote_db.is_user_not_allowed_to_vote(group_id, user_id) is True:
             raise VoteBackendBusinessError("already_voted")
 
+        contest_id = await vote_db.get_contest_id(group_id)
+        db_user_id = await vote_db.get_user_id(user_id)
+
+        likes_select = (
+            select(tmp_photo_like.c.user_id, tmp_photo_like.c.photo_id)
+            .join(User, User.id == tmp_photo_like.c.user_id)
+            .join(group_photo, tmp_photo_like.c.photo_id == group_photo.c.photo_id)
+            .join(Photo, Photo.id == tmp_photo_like.c.photo_id)
+            .join(Group, Group.id == group_photo.c.group_id)
+            .where(
+                (Group.telegram_id == group_id)
+                & (User.telegram_id == user_id)
+            )
+        )
+        insert_likes = insert(photo_like).from_select(
+            ["user_id", "photo_id"], likes_select
+        )
+        delete_tmp = delete(tmp_photo_like).where(
+            and_(
+                tmp_photo_like.c.user_id == likes_select.subquery().c.user_id,
+                tmp_photo_like.c.photo_id == likes_select.subquery().c.photo_id,
+            )
+        )
+        mark_voted = insert(contest_user).values(
+            contest_id=contest_id, user_id=db_user_id
+        )
+
         try:
-            await self.insert_all_likes(user_id, group_id)
-            await self.delete_likes_from_tmp_vote(user_id, group_id)
-            await vote_db.mark_user_voted(group_id, user_id)
+            async with AsyncSession(self.engine) as session:
+                async with session.begin():
+                    await session.execute(insert_likes)
+                    await session.execute(delete_tmp)
+                    await session.execute(mark_voted)
         except sa_exc.IntegrityError as err:
             raise VoteBackendBusinessError("already_voted") from err
 
@@ -333,6 +409,8 @@ class VoteBackend(LikeDB):
         if not self._api_url:
             raise VoteBackendError("sidecar disabled")
 
+        self._check_circuit()
+
         session = await self._get_session()
         url = f"{self._api_url}{path}"
         try:
@@ -349,19 +427,68 @@ class VoteBackend(LikeDB):
 
                 if response.status >= 400:
                     code = payload.get("code") if isinstance(payload, dict) else None
-                    if isinstance(code, str):
+                    if response.status < 500 and code in KNOWN_BUSINESS_ERROR_CODES:
+                        self._circuit_record_success()
                         raise VoteBackendBusinessError(code)
-                    raise VoteBackendError(f"unexpected sidecar status: {response.status}")
+                    self._circuit_record_failure()
+                    raise VoteBackendError(
+                        "unexpected sidecar status",
+                        status=response.status,
+                        code=code if isinstance(code, str) else None,
+                    )
 
                 if not isinstance(payload, dict):
+                    self._circuit_record_failure()
                     raise VoteBackendError("sidecar payload must be an object")
+                self._circuit_record_success()
                 return payload
         except VoteBackendBusinessError:
             raise
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            self._circuit_record_failure()
             raise VoteBackendError("sidecar request failed") from err
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(timeout=self._timeout)
+            raise RuntimeError(
+                "VoteBackend session not initialized — call start() first"
+            )
         return self._session
+
+    def _check_circuit(self) -> None:
+        if self._circuit_state is _CircuitState.CLOSED:
+            return
+        if self._circuit_state is _CircuitState.OPEN:
+            elapsed = time.monotonic() - self._circuit_opened_at
+            if elapsed >= self.CIRCUIT_COOLDOWN_SEC:
+                self._circuit_state = _CircuitState.HALF_OPEN
+                logger.info("Circuit breaker half-open, allowing probe request")
+                return
+            raise VoteBackendError("circuit breaker open", status=None, code="circuit_open")
+        # HALF_OPEN — allow one probe request through
+
+    def _circuit_record_success(self) -> None:
+        if self._circuit_state is not _CircuitState.CLOSED:
+            logger.info("Circuit breaker closed after successful probe")
+        self._circuit_state = _CircuitState.CLOSED
+        self._circuit_failures = 0
+
+    def _circuit_record_failure(self) -> None:
+        self._circuit_failures += 1
+        if self._circuit_failures >= self.CIRCUIT_FAILURE_THRESHOLD:
+            self._circuit_state = _CircuitState.OPEN
+            self._circuit_opened_at = time.monotonic()
+            logger.warning(
+                "Circuit breaker opened after %d consecutive failures",
+                self._circuit_failures,
+            )
+
+    def _log_fallback(self, operation: str, err: VoteBackendError) -> None:
+        logger.warning(
+            "Go sidecar failed for %s; falling back to Python DB path "
+            "(status=%s, code=%s): %s",
+            operation,
+            err.status,
+            err.code,
+            err,
+        )

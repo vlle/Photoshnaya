@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"go-api/internal/model"
@@ -157,5 +158,68 @@ func TestUnexpectedErrorReturnsInternalServerError(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+}
+
+func TestLikeRequestBodyTooLarge(t *testing.T) {
+	t.Parallel()
+
+	handler := NewVoteHandler(fakeVoteService{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	largeBody := strings.NewReader(strings.Repeat("x", 2<<20))
+	req := httptest.NewRequest(http.MethodPost, "/vote/likes", largeBody)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d", rec.Code)
+	}
+}
+
+func TestSubmitVoteRequestBodyTooLarge(t *testing.T) {
+	t.Parallel()
+
+	handler := NewVoteHandler(fakeVoteService{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	largeBody := strings.NewReader(strings.Repeat("x", 2<<20))
+	req := httptest.NewRequest(http.MethodPost, "/vote/submit", largeBody)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d", rec.Code)
+	}
+}
+
+func TestLikeMalformedJSONReturns400(t *testing.T) {
+	t.Parallel()
+
+	handler := NewVoteHandler(fakeVoteService{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	body := bytes.NewBufferString(`{not json}`)
+	req := httptest.NewRequest(http.MethodPost, "/vote/likes", body)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+}
+
+func TestLikeEmptyBodyReturns400(t *testing.T) {
+	t.Parallel()
+
+	handler := NewVoteHandler(fakeVoteService{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	req := httptest.NewRequest(http.MethodPost, "/vote/likes", http.NoBody)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
 	}
 }

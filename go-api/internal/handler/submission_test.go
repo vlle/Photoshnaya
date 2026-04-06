@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"go-api/internal/model"
@@ -107,5 +108,24 @@ func TestContestSubmissionInternalError(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+}
+
+func TestSubmissionRequestBodyTooLarge(t *testing.T) {
+	t.Parallel()
+
+	handler := NewSubmissionHandler(
+		fakeSubmissionService{status: model.ContestSubmissionStatusNew},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+
+	largeBody := strings.NewReader(strings.Repeat("x", 2<<20))
+	req := httptest.NewRequest(http.MethodPost, "/contest/submissions", largeBody)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d", rec.Code)
 	}
 }

@@ -203,6 +203,7 @@ async def main():
         [view_leader, view_all], scope=BotCommandScopeAllGroupChats()  # type: ignore
     )
 
+    await like_engine.start()
     try:
         await asyncio.gather(
             dp.start_polling(
