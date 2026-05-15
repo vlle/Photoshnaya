@@ -1,3 +1,4 @@
+import itertools
 import os
 import random
 
@@ -16,6 +17,16 @@ from db.db_operations import (
 )
 
 SELF_LIKE_RESULT = -1
+
+# Monotonic counter so user telegram_ids in the same test never collide.
+# random.randint had a real collision rate on small ranges and made
+# test_is_likes_correctly_counted_with_user flake when two users got the same id.
+_user_id_counter = itertools.count(start=1000)
+
+
+def _unique_user_id() -> int:
+    return next(_user_id_counter)
+
 
 class TGroup:
     def __init__(self, group_name, group_id):
@@ -60,7 +71,7 @@ def group_another():
 def user():
     return TUser(
         name="User №" + str(random.randint(-100, 10000)),
-        i_id=100 + random.randint(1, 2000),
+        i_id=_unique_user_id(),
     )
 
 
@@ -87,7 +98,7 @@ async def create_user(user, group, registered_group):
     async def c_u(*args, **kwargs):
         us = TUser(
             name="User №" + str(random.randint(1, 10000)),
-            i_id=100 + random.randint(1, 2000),
+            i_id=_unique_user_id(),
         )
 
         m_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
@@ -107,7 +118,7 @@ async def create_user_fix_nick(user, group, registered_group):
     async def c_u(*args, **kwargs):
         us = TUser(
             name="User_Fix",
-            i_id=100 + random.randint(1, 2000),
+            i_id=_unique_user_id(),
         )
 
         m_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
@@ -137,7 +148,7 @@ async def create_user_another(user, group_another, registered_group_another):
     async def c_u(*args, **kwargs):
         us = TUser(
             name="User №" + str(random.randint(1, 10000)),
-            i_id=100 + random.randint(1, 2000),
+            i_id=_unique_user_id(),
         )
 
         m_user = ObjectFactory.build_user(us.name, us.full_name, us.id)
@@ -273,9 +284,12 @@ async def test_is_photo_registered(create_user, group, db):
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
 
     for user in users:
-        assert await register_unit.register_photo_for_contest(
-            user.telegram_id, m_group.telegram_id
-        ) == PhotoRegistrationStatus.NEW
+        assert (
+            await register_unit.register_photo_for_contest(
+                user.telegram_id, m_group.telegram_id
+            )
+            == PhotoRegistrationStatus.NEW
+        )
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
     assert len(all_photo_ids) == 5
 
@@ -316,7 +330,9 @@ async def test_is_photo_registered_without_duplicating_submissions(
     assert len(all_photo_ids) == 5
 
 
-async def test_is_photo_changed_instead_of_duplicated_submission(create_user, group, db):
+async def test_is_photo_changed_instead_of_duplicated_submission(
+    create_user, group, db
+):
     register_unit = RegisterDB(db)
     select_unit = SelectDB(db)
     m_group = ObjectFactory.build_group(group.group_name, group.group_id)
@@ -395,7 +411,10 @@ async def test_is_vote_finished_correctly(create_user, group, db):
         )
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
 
-    assert await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
 
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -426,8 +445,14 @@ async def test_is_vote_finished_correctly_second(create_user, group, db):
         )
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
 
-    assert await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
-    assert await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
 
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -457,8 +482,14 @@ async def test_is_vote_finished_correctly_multiple_winners(create_user, group, d
         )
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
 
-    assert await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
-    assert await like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[1]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[1])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
 
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
@@ -488,8 +519,14 @@ async def test_is_likes_correctly_counted(create_user, group, db):
         )
     all_photo_ids = await register_unit.select_contest_photos_ids(m_group.telegram_id)
 
-    assert await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
-    assert await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[0])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
 
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[1])
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[2])
@@ -532,7 +569,10 @@ async def test_is_likes_correctly_counted_file_id(create_user, group, db):
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[3])
     await like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[2])
 
-    assert await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
 
     await like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
     await like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
@@ -569,7 +609,10 @@ async def test_is_likes_correctly_counted_with_user(create_user, group, db):
     await like.like_photo_with_file_id(users[0].telegram_id, all_photo_ids[4])
     await like.like_photo_with_file_id(users[1].telegram_id, all_photo_ids[2])
 
-    assert await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[2].telegram_id, all_photo_ids[2])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
 
     await like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
     await like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
@@ -812,31 +855,49 @@ async def test_is_vote_async_correct(create_user, group, db):
     id2 = await like.select_file_id(all_photo_ids[1])
     id3 = await like.select_file_id(all_photo_ids[2])
 
-    assert await like.like_photo_with_file_id(users[0].telegram_id, id1) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[0].telegram_id, id1)
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     await like.like_photo_with_file_id(users[0].telegram_id, id2)
 
     await like.like_photo_with_file_id(users[1].telegram_id, id1)
-    assert await like.like_photo_with_file_id(users[1].telegram_id, id2) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.like_photo_with_file_id(users[1].telegram_id, id2)
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     await like.like_photo_with_file_id(users[1].telegram_id, id3)
 
     await like.like_photo_with_file_id(users[2].telegram_id, id2)
 
-    assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[0]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.is_photo_liked(users[0].telegram_id, all_photo_ids[0])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[1]) > 0
     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[2]) == 0
 
     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[0]) > 0
-    assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1]) == SELF_LIKE_RESULT   #doesn't count as it's a like for own photo
+    assert (
+        await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[2]) > 0
 
     await like.insert_all_likes(users[0].telegram_id, m_group.telegram_id)
     await like.delete_likes_from_tmp_vote(users[0].telegram_id, m_group.telegram_id)
-    assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[0]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.is_photo_liked(users[0].telegram_id, all_photo_ids[0])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[1]) == 0
     assert await like.is_photo_liked(users[0].telegram_id, all_photo_ids[2]) == 0
 
     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[0]) > 0
-    assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[2]) > 0
 
     await like.insert_all_likes(users[1].telegram_id, m_group.telegram_id)
@@ -844,7 +905,10 @@ async def test_is_vote_async_correct(create_user, group, db):
     await like.insert_all_likes(users[2].telegram_id, m_group.telegram_id)
     await like.delete_likes_from_tmp_vote(users[2].telegram_id, m_group.telegram_id)
     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[0]) == 0
-    assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1]) == SELF_LIKE_RESULT  #doesn't count as it's a like for own photo
+    assert (
+        await like.is_photo_liked(users[1].telegram_id, all_photo_ids[1])
+        == SELF_LIKE_RESULT
+    )  # doesn't count as it's a like for own photo
     assert await like.is_photo_liked(users[1].telegram_id, all_photo_ids[2]) == 0
 
     v = VoteDB(db)
