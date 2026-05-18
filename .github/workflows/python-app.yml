@@ -77,6 +77,36 @@ jobs:
       if: always()
       run: docker compose -f docker-compose.test.yml down -v --remove-orphans
 
+  deploy-preflight:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Load SSH key
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+    - name: Configure known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
+    - name: Verify SSH connectivity and DEPLOY_PATH
+      run: |
+        test -n "$DEPLOY_HOST"  || { echo "DEPLOY_HOST empty"; exit 1; }
+        test -n "$DEPLOY_USER"  || { echo "DEPLOY_USER empty"; exit 1; }
+        test -n "$DEPLOY_PATH"  || { echo "DEPLOY_PATH empty"; exit 1; }
+        ssh -p "${DEPLOY_PORT:-22}" -o BatchMode=yes "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          "set -eu; cd '$DEPLOY_PATH'; test -f compose.yaml -o -f docker-compose.yml || { echo missing compose; exit 2; }; test -f ./app/.env || { echo missing app/.env; exit 3; }; test -f ./postgres.env || { echo missing postgres.env; exit 4; }; docker compose version >/dev/null; echo preflight_ok"
+
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
