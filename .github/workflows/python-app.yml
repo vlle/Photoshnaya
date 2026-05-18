@@ -78,7 +78,7 @@ jobs:
       run: docker compose -f docker-compose.test.yml down -v --remove-orphans
 
   deploy-preflight:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     env:
