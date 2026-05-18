@@ -16,7 +16,7 @@ services:
       retries: 10
 
   go-api:
-    image: ${GO_API_IMAGE_REPOSITORY:-aapq/photoshnaya_go_api}:${GO_API_IMAGE_TAG:-latest}
+    image: ${GO_API_IMAGE_REPOSITORY:-ghcr.io/vlle/photoshnaya_go_api}:${GO_API_IMAGE_TAG:-latest}
     container_name: photoshnaya-go-api
     restart: unless-stopped
     network_mode: host
@@ -27,7 +27,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${IMAGE_REPOSITORY:-aapq/photoshnaya_bot}:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPOSITORY:-ghcr.io/vlle/photoshnaya_bot}:${IMAGE_TAG:-latest}
     container_name: photoshnaya-web
     restart: unless-stopped
     network_mode: host

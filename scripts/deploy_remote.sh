@@ -45,6 +45,10 @@ export IMAGE_TAG
 export GO_API_IMAGE_REPOSITORY
 export GO_API_IMAGE_TAG
 
+if [[ -n "${GHCR_TOKEN:-}" && -n "${GHCR_USER:-}" ]]; then
+  printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+fi
+
 "${COMPOSE_CMD[@]}" pull go-api web
 "${COMPOSE_CMD[@]}" up -d go-api
 wait_for_service_health go-api
