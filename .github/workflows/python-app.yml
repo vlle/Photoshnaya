@@ -105,7 +105,7 @@ jobs:
         test -n "$DEPLOY_USER"  || { echo "DEPLOY_USER empty"; exit 1; }
         test -n "$DEPLOY_PATH"  || { echo "DEPLOY_PATH empty"; exit 1; }
         ssh -p "${DEPLOY_PORT:-22}" -o BatchMode=yes "${DEPLOY_USER}@${DEPLOY_HOST}" \
-          "set -u; echo whoami=\$(whoami); echo pwd_before=\$(pwd); cd '$DEPLOY_PATH'; echo pwd_after=\$(pwd); echo ---; ls -la; echo ---; ls -la app 2>&1 | head -5; echo ---; ls -la app/.env postgres.env compose.yaml docker-compose.yml 2>&1; docker compose version | head -1"
+          "set -eu; cd '$DEPLOY_PATH'; test -f compose.yaml -o -f docker-compose.yml || { echo missing compose; exit 2; }; test -f ./app/.env || { echo missing app/.env; exit 3; }; test -f ./postgres.env || { echo missing postgres.env; exit 4; }; docker compose version >/dev/null; echo preflight_ok"
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
