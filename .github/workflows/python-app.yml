@@ -142,9 +142,9 @@ jobs:
         chmod 700 ~/.ssh
         printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
         chmod 644 ~/.ssh/known_hosts
-    - name: Copy docker-compose.yml to remote
+    - name: Copy compose.yaml to remote
       run: |
-        scp -P "${DEPLOY_PORT:-22}" docker-compose.yml "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/docker-compose.yml"
+        scp -P "${DEPLOY_PORT:-22}" docker-compose.yml "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/compose.yaml"
     - name: Deploy on remote host
       run: |
         test -n "$DEPLOY_HOST"
