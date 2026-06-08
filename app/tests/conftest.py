@@ -20,7 +20,17 @@ from aiogram.filters import (
     ChatMemberUpdatedFilter,
     Command,
 )
-from aiogram.types import CallbackQuery, Chat, Message, Update, User
+from aiogram.types import (
+    CallbackQuery,
+    Chat,
+    ChatMemberLeft,
+    ChatMemberMember,
+    ChatMemberUpdated,
+    Message,
+    MessageEntity,
+    Update,
+    User,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -190,6 +200,11 @@ class _Seq:
 next_id = _Seq()
 
 
+def hashtag_entity(offset: int = 0, length: int = 5) -> MessageEntity:
+    """Хэштег-сущность, чтобы апдейт проходил фильтр register_photo (F.caption_entities)."""
+    return MessageEntity(type="hashtag", offset=offset, length=length)
+
+
 def make_message(
     text: str | None = None,
     *,
@@ -199,7 +214,10 @@ def make_message(
     username: str | None = "voter",
     first_name: str = "V",
     caption: str | None = None,
+    caption_entities: list[MessageEntity] | None = None,
     photo_file_id: str | None = None,
+    forward_from: User | None = None,
+    date: datetime | None = None,
 ) -> Message:
     from aiogram.types import PhotoSize
 
@@ -208,12 +226,46 @@ def make_message(
         photo = [PhotoSize(file_id=photo_file_id, file_unique_id=photo_file_id, width=1, height=1)]
     return Message(
         message_id=next_id(),
-        date=datetime.now(timezone.utc),  # свежая дата: is_stale_message режет >24h
+        date=date if date is not None else datetime.now(timezone.utc),  # is_stale_message режет >24h
         chat=Chat(id=chat_id if chat_id is not None else user_id, type=chat_type),
         from_user=User(id=user_id, is_bot=False, first_name=first_name, username=username),
         text=text,
         caption=caption,
+        caption_entities=caption_entities,
         photo=photo,
+        forward_from=forward_from,
+    )
+
+
+def make_admin_callback(
+    action: str, group_id: int | str, *, user_id: int, on_message: Message | None = None
+) -> CallbackQuery:
+    """CallbackQuery с CallbackManage (prefix adm) — для админского меню."""
+    return make_callback(
+        CallbackManage(action=action, group_id=str(group_id)),
+        user_id=user_id,
+        on_message=on_message,
+    )
+
+
+def make_chat_member_updated(
+    *,
+    actor_id: int,
+    chat_id: int,
+    actor_username: str | None = "adder",
+    actor_full_name: str = "Adder",
+    chat_title: str = "Some Group",
+) -> ChatMemberUpdated:
+    """my_chat_member: бот вступил в группу (left -> member). actor — кто добавил."""
+    bot_user = User(id=42, is_bot=True, first_name="bot", username="testbot")
+    return ChatMemberUpdated(
+        chat=Chat(id=chat_id, type="supergroup", title=chat_title),
+        from_user=User(
+            id=actor_id, is_bot=False, first_name=actor_full_name, username=actor_username
+        ),
+        date=datetime.now(timezone.utc),
+        old_chat_member=ChatMemberLeft(user=bot_user),
+        new_chat_member=ChatMemberMember(user=bot_user),
     )
 
 
@@ -241,6 +293,10 @@ async def feed_message(dp: Dispatcher, bot: Bot, message: Message, **wf) -> Any:
 
 async def feed_callback(dp: Dispatcher, bot: Bot, query: CallbackQuery, **wf) -> Any:
     return await dp.feed_update(bot, Update(update_id=next_id(), callback_query=query), **wf)
+
+
+async def feed_chat_member(dp: Dispatcher, bot: Bot, event: ChatMemberUpdated, **wf) -> Any:
+    return await dp.feed_update(bot, Update(update_id=next_id(), my_chat_member=event), **wf)
 
 
 async def count_rows(engine: AsyncEngine, table) -> int:
