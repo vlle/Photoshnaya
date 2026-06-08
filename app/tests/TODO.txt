@@ -1,0 +1,163 @@
+==============================================================================
+ E2E TESTING — HANDOFF / TODO  (для будущей сессии Claude, работающей над e2e)
+==============================================================================
+Дата создания: 2026-06-02. Ветка: feat/go-migration.
+Полный roadmap с обоснованиями: ~/research_claude/Photoshnaya/e2e_testing_strategy_2026-06-02/research.html
+
+ЭТОТ ФАЙЛ — про e2e-тесты бота. Общий TODO проекта лежит в корне (../../TODO.txt),
+его НЕ трогать.
+
+------------------------------------------------------------------------------
+0. ЧТО УЖЕ ЕСТЬ (точка старта — не переписывать, расширять)
+------------------------------------------------------------------------------
+Граница e2e: реальный Postgres + реальный aiogram Dispatcher со ВСЕМИ хендлерами
++ FSM; подделан только транспорт Telegram. Вход — dp.feed_update(bot, Update(...)).
+
+Файлы:
+  app/tests/mocked_bot.py      — MockedBot на кастомной BaseSession. Не ходит в сеть,
+                                 копит исходящие Telegram-методы. API: bot.sent("SendPhoto"),
+                                 bot.sent_names(), bot.clear(), bot.requests.
+  app/tests/conftest.py        — фикстуры + билдеры апдейтов:
+                                   - engine        (testps_url, drop_all/create_all на каждый тест)
+                                   - msg           (text.toml)
+                                   - like_engine   (VoteBackend, api_url=GO_API_URL или None)
+                                   - dispatcher    (register_handlers() — ЗЕРКАЛО bot.py:101-189)
+                                   - bot           (MockedBot)
+                                   - workflow_kwargs (DI = то, что bot.py кидает в start_polling)
+                                   - make_message / make_callback / feed_message / feed_callback
+                                   - count_rows(engine, table)
+  app/tests/test_e2e_vote.py   — seed_active_contest + 2 теста:
+                                   - test_private_vote_flow_e2e (главный: /start->set_like->submit)
+                                   - test_self_like_is_rejected_e2e (образец расширения)
+
+Запуск:
+  # только e2e
+  docker compose -f docker-compose.test.yml run --rm web bash -c "cd app && pytest tests/test_e2e_vote.py -v"
+  # весь набор (как CI)
+  docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from web
+  # уборка
+  docker compose -f docker-compose.test.yml down -v --remove-orphans
+
+Состояние: 68 passed (66 старых + 2 новых). Зелено и в смонтированном исходнике,
+и из собранного образа (CI-путь).
+
+------------------------------------------------------------------------------
+1. ВЕРИФИЦИРОВАННЫЕ ФАКТЫ ПРО aiogram 3.0.0b7 (не переоткрывать!)
+------------------------------------------------------------------------------
+- aiogram 3.0.0b7 на pydantic==1.10.5 (v1!). Конструкторы Message/CallbackQuery/Update
+  работают по именам полей (from_user=, не "from").
+- Bot привязывается к объектам через contextvar Bot.set_current(bot) ВНУТРИ
+  feed_update — НЕ через атрибут объекта (у объектов .bot нет). Поэтому
+  query.message.edit_media / query.answer / message.answer находят бот сами,
+  биндить руками не нужно. НЕ спавнить хендлер в отдельной asyncio.Task — потеряешь contextvar.
+- aiogram.test_utils / MockedBot в пакете НЕТ — поэтому свой в mocked_bot.py.
+- feed_update(bot, update, **kwargs): kwargs уходят в workflow_data -> DI в хендлеры.
+- Токен бота должен быть 35+ символов после двоеточия (см. TEST_TOKEN).
+- pytest.ini: asyncio_mode=auto -> async-фикстуры/тесты без декораторов.
+
+Грабли, на которые уже наступали:
+- handlers/ — namespace-пакет (нет __init__.py) -> handlers.__file__ == None.
+  Пути к ресурсам строить от __file__ САМОГО conftest, не от handlers.
+- Изоляция: старые DB-тесты НЕ имеют per-test изоляции (гасят коллизии random ID).
+  В e2e — детерминированные seed-id (GROUP_ID=100100, OWNER 201/202, VOTER 301),
+  чистая БД даёт фикстура engine. Не использовать random для e2e.
+- callback_set_like привязан к action "nl" (🤍), callback_set_no_like — к "l" (❤️).
+  Это TOGGLE-семантика (action = целевой переход), НЕ баг. Не "чинить".
+
+------------------------------------------------------------------------------
+2. ПРИОРИТЕТНЫЕ ЗАДАЧИ (по убыванию ценности)
+------------------------------------------------------------------------------
+
+[P1] go-api в тестовом стеке + парити-тест (главный недостающий артефакт).
+  - Сейчас MVP гоняет VoteBackend по Python-fallback (GO_API_URL не задан).
+    Добавить сервис go-api в docker-compose.test.yml: build ./go-api,
+    PS_URL на ту же БД, HEALTHCHECK на /health (в dev-compose его НЕТ — без него
+    depends_on: service_healthy зависнет). web: GO_API_URL=http://go-api:8080.
+    ВАЖНО: оставить bridge-сеть (НЕ network_mode: host из dev/prod — там имя
+    go-api не резолвится).
+  - go-api эндпоинты: go-api/internal/handler/vote.go
+    GET /vote/session, /vote/photos/next, /vote/photos/prev,
+    POST/DELETE /vote/likes, POST /vote/submit. Бизнес-коды: 404 no_photos /
+    photo_not_found, 409 no_vote_yet / already_voted / self_like.
+  - Парити-тест: один сценарий ДВАЖДЫ — VoteBackend(engine, api_url=URL) и
+    VoteBackend(engine, api_url=None) — сверить построчно tmp_photo_like /
+    photo_like / contest_user И поля VotePhotoState (liked_state, current_index,
+    total_photos, photo_id).
+  - ТОНКОСТЬ (пинить точными int): set_like по HTTP всегда возвращает 1 при 200
+    (vote_backend.py:191), а fallback — реальный счётчик; liked_state у go-api =
+    счётчик из tmp_photo_like (-1 для владельца). Молчаливая регрессия живёт тут.
+  - Дрейф схемы: go-api гонять против схемы из Base.metadata.create_all
+    (db_classes.py), НЕ против integrationSchema DDL из
+    go-api/internal/service/integration_test.go.
+
+[P2] Circuit breaker / fallback e2e (логика в app/services/vote_backend.py).
+  - Уронить sidecar (остановить контейнер go-api) -> 3 неудачи уводят breaker в
+    OPEN (порог CIRCUIT_FAILURE_THRESHOLD=3, :478), 4-й запрос бросает circuit_open
+    БЕЗ HTTP (:467) -> мгновенный Python-fallback. Ассертить: данные в БД через
+    fallback есть + like_engine._circuit_state is _CircuitState.OPEN.
+  - Через CIRCUIT_COOLDOWN_SEC=15s -> HALF_OPEN -> успешный пробник -> CLOSED.
+  - Отдельно: серия self_like (4xx с известным кодом) НЕ открывает breaker (:430-432).
+  - Часть уже покрыта юнитами в test_vote_backend.py (через FakeSession) —
+    на e2e добавить версию с реальным упавшим контейнером.
+
+[P3] Остальные journeys (харнесс готов, нужны только новые функции).
+  Все хендлеры уже зарегистрированы в conftest.register_handlers, фикстуры готовы.
+  - register_photo (фото в группе): app/handlers/user_action.py:30.
+    Апдейт: make_message(caption="#тема ...", chat_type="group", photo_file_id="...").
+    Гейты: is_stale_message (>24h date режет), get_contest_theme, vote_in_progress
+    блокирует регистрацию. Сначала set_contest_theme(group, "#тема") в seed.
+    Ассерт: Photo/group_photo строка + bot.sent("SendMessage")/reply.
+  - FSM создания челленджа: app/handlers/contest_fsm.py (ContestCreate.name_contest
+    -> will_you_post). Состояние читать:
+    await dp.fsm.resolve_context(bot, chat_id=.., user_id=..).get_state()
+    Сначала прокинуть set_state в нужное FSM-состояние (или пройти весь флоу
+    с /admin -> callback). MemoryStorage по умолчанию годится.
+  - Старт голосования: app/handlers/vote_start_fsm.py (set_vote) — проверить, что
+    vote_in_progress флипается и блокирует register_photo.
+  - Finish vote + winner: app/handlers/admin_handler.py (cmd_finish_vote) +
+    VoteDB.select_winner_from_contest (db_operations.py:595). Сложный winner-расчёт
+    уже покрыт юнитами в test_db.py — на e2e проверить связку хендлер->БД->сообщение.
+  - on_join авто-админ: my_chat_member + ChatMemberUpdated (нужен make_chat_member_updated
+    билдер — добавить в conftest по аналогии).
+  - delete_submission FSM: app/handlers/delete_submission.py.
+
+[P4] CI-обвязка (.github/workflows/python-app.yml).
+  - Шаг "Run tests" уже гоняет docker-compose.test.yml up — после добавления
+    go-api в compose он поднимется сам. Перепроверить таймаут (старт go-api +
+    healthcheck добавит секунд).
+  - Go-юниты (шаг "Run Go API tests", PS_URL) НЕ трогать — дополняют Python-парити.
+
+[P5] (позже, НЕ в PR-гейт) Telethon-смоук — живой клиент против выброшенного
+  тестового бота в тестовой группе. Отдельный workflow: schedule cron +
+  workflow_dispatch, continue-on-error, секреты из Vault. Флейки (flood limits) —
+  @pytest.mark.flaky, но НЕ перезапускать на FloodWait.
+
+------------------------------------------------------------------------------
+3. SEED-ПУТЬ (как готовить состояние через DAO — отлаженный путь)
+------------------------------------------------------------------------------
+  db = AdminDB(engine)
+  await db.register_group(ObjectFactory.build_group(name, GROUP_ID))   # СОЗДАЁТ дефолтный Contest!
+  await db.register_user(ObjectFactory.build_user(name, full, OWNER_ID), GROUP_ID)
+  await db.register_photo_for_contest(OWNER_ID, GROUP_ID, file_get_id="...", type="photo")
+  await db.change_current_vote_status(GROUP_ID)   # False -> True (активирует голосование)
+  pids = await db.select_contest_photos_primary_ids(GROUP_ID)  # PK фото, порядок по id ASC
+Замечания:
+  - register_group уже создаёт Contest("-1", -1) — отдельно создавать не нужно
+    (для submit_vote -> contest_user хватает; для тем — set_contest_theme).
+  - Голосующий регистрируется САМ внутри cmd_start — пред-регистрировать не надо.
+  - Владелец фото != голосующий, иначе self_like (-1).
+  - CallbackVote(prefix "vt"): поля строки, порядок action, current_photo_count,
+    current_photo_id, amount_photos, group_id. Передавать .pack() в make_callback.
+
+------------------------------------------------------------------------------
+4. ПОЛЕЗНЫЕ ОПОРНЫЕ ТОЧКИ
+------------------------------------------------------------------------------
+  DI/регистрация эталон ...... app/bot.py:101-217
+  Флоу голосования (Telegram) . app/handlers/personal_vote_menu.py
+  Валидация deep-link ......... app/handlers/internal_logic/vote_start.py
+  VoteBackend (HTTP+fallback+CB) app/services/vote_backend.py
+  DAO ......................... app/db/db_operations.py
+  Модель данных ............... app/db/db_classes.py
+  Тексты (ассерты) ............ app/handlers/handlers_text/text.toml
+  go-api ...................... go-api/internal/handler/*.go, internal/service/*.go
+  Тексты vote: greeting_message_vote, vote_self, already_voted, thanks_for_vote, no_photos, no_vote_yet
