@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any
 
 from sqlalchemy import and_, delete, exc, select
@@ -22,6 +23,12 @@ from db.db_classes import (
 )
 
 NO_THEME = "-1"
+
+
+class PhotoRegistrationStatus(Enum):
+    FAILED = "failed"
+    NEW = "new"
+    CHANGED = "changed"
 
 
 class ObjectFactory:
@@ -843,7 +850,7 @@ class RegisterDB(SelectDB):
         user_p=None,
         group_p=None,
         type="photo",
-    ) -> bool:
+    ) -> PhotoRegistrationStatus:
         stmt_sel = (
             select(User)
             .options(selectinload(User.photos))
@@ -877,8 +884,11 @@ class RegisterDB(SelectDB):
                     group = g_search.one()
 
                 possible_register = await session.scalars(stmt_photo_sel)
-                if possible_register.one_or_none() is not None:
-                    return False
+                existing_photo = possible_register.one_or_none()
+                if existing_photo is not None:
+                    existing_photo.file_id = file_get_id
+                    existing_photo.telegram_type = type
+                    return PhotoRegistrationStatus.CHANGED
 
                 if user and group:
                     photo = Photo(
@@ -887,7 +897,8 @@ class RegisterDB(SelectDB):
                     user.photos.append(photo)
                     group.photos.append(photo)
                     session.add(photo)
-        return True
+                    return PhotoRegistrationStatus.NEW
+        return PhotoRegistrationStatus.FAILED
 
 
 class AdminDB(RegisterDB):

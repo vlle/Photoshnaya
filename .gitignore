@@ -4,7 +4,10 @@ venv/
 *.pyc
 __pycache__
 *__pycache__*
-*config*
+config.yaml
+config.json
+config.toml
+config.ini
 *.env*
 /playground.sql
 # Byte-compiled / optimized / DLL files
@@ -58,3 +61,7 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 .idea/
+*_BL.md
+*_ARCH.md
+CLAUDE.local.md
+code-style.md

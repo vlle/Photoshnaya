@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from db.db_classes import Base
-from db.db_operations import AdminDB, LikeDB, ObjectFactory, RegisterDB
+from db.db_operations import AdminDB, ObjectFactory, RegisterDB
 from handlers.admin_add_fsm import AdminAdd, set_admin, set_admin_accept_message
 from handlers.admin_del_fsm import AdminDel, del_admin, del_admin_accept_message
 from handlers.admin_handler import (
@@ -54,6 +54,7 @@ from handlers.personal_vote_menu import (
 )
 from handlers.user_action import register_photo, view_leaders, view_overall_participants
 from handlers.vote_start_fsm import VoteStart, set_vote, should_i_post_vote
+from services.vote_backend import VoteBackend
 from utils.admin_keyboard import AdminActions, CallbackManage
 from utils.keyboard import Actions, CallbackVote
 
@@ -92,14 +93,12 @@ async def main():
         await conn.run_sync(Base.metadata.create_all)
 
     register = RegisterDB(engine)
-    like_engine = LikeDB(engine)
+    go_api_url = os.environ.get("GO_API_URL")
+    like_engine = VoteBackend(engine, api_url=go_api_url)
     obj_factory = ObjectFactory()
     admin_unit = AdminDB(engine)
 
     dp.message.register(
-        register_photo, F.caption_entities & ~(F.chat.type == "private")
-    )
-    dp.edited_message.register(
         register_photo, F.caption_entities & ~(F.chat.type == "private")
     )
 
@@ -204,20 +203,24 @@ async def main():
         [view_leader, view_all], scope=BotCommandScopeAllGroupChats()  # type: ignore
     )
 
-    await asyncio.gather(
-        dp.start_polling(
-            bot,
-            engine=engine,
-            register_unit=register,
-            obj_factory=obj_factory,
-            admin_unit=admin_unit,
-            like_engine=like_engine,
-            msg=msg,
-        ),
-        # bugged
-        # send_reminders(bot, msg["contest"]["reminder"]),
-    )
-    await engine.dispose()
+    await like_engine.start()
+    try:
+        await asyncio.gather(
+            dp.start_polling(
+                bot,
+                engine=engine,
+                register_unit=register,
+                obj_factory=obj_factory,
+                admin_unit=admin_unit,
+                like_engine=like_engine,
+                msg=msg,
+            ),
+            # bugged
+            # send_reminders(bot, msg["contest"]["reminder"]),
+        )
+    finally:
+        await like_engine.close()
+        await engine.dispose()
 
 
 if __name__ == "__main__":

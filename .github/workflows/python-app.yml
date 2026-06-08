@@ -1,21 +1,37 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
-name: Python application
+name: CI
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  packages: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15.3-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+        - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v3
@@ -23,10 +39,32 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
     - name: Install flake8
       run: |
         python -m pip install --upgrade pip
         pip install flake8
+    - name: Lint go-api
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.63
+        working-directory: go-api
+    - name: Lint deploy-helper
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.63
+        working-directory: deploy-helper
+    - name: Run Go API tests
+      working-directory: go-api
+      env:
+        PS_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      run: go test ./...
+    - name: Run deploy-helper tests
+      working-directory: deploy-helper
+      run: go test ./...
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -34,4 +72,119 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run tests
-      run: docker-compose -f docker-compose.test.yml up --remove-orphans & sleep 180 && docker-compose down -v --remove-orphans
+      run: docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from web --remove-orphans
+    - name: Tear down test stack
+      if: always()
+      run: docker compose -f docker-compose.test.yml down -v --remove-orphans
+
+  deploy-preflight:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Load SSH key
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+    - name: Configure known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
+    - name: Verify SSH connectivity and DEPLOY_PATH
+      run: |
+        test -n "$DEPLOY_HOST"  || { echo "DEPLOY_HOST empty"; exit 1; }
+        test -n "$DEPLOY_USER"  || { echo "DEPLOY_USER empty"; exit 1; }
+        test -n "$DEPLOY_PATH"  || { echo "DEPLOY_PATH empty"; exit 1; }
+        ssh -p "${DEPLOY_PORT:-22}" -o BatchMode=yes "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          "set -eu; cd '$DEPLOY_PATH'; test -f compose.yaml -o -f docker-compose.yml || { echo missing compose; exit 2; }; test -f ./app/.env || { echo missing app/.env; exit 3; }; test -f ./postgres.env || { echo missing postgres.env; exit 4; }; docker compose version >/dev/null; echo preflight_ok"
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/photoshnaya_bot
+      GO_API_IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/photoshnaya_go_api
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build and push web image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.IMAGE_REPOSITORY }}:latest
+          ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+        cache-from: type=gha,scope=web
+        cache-to: type=gha,scope=web,mode=max
+    - name: Build and push go-api image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./go-api
+        file: ./go-api/Dockerfile
+        push: true
+        tags: |
+          ${{ env.GO_API_IMAGE_REPOSITORY }}:latest
+          ${{ env.GO_API_IMAGE_REPOSITORY }}:${{ github.sha }}
+        cache-from: type=gha,scope=go-api
+        cache-to: type=gha,scope=go-api,mode=max
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/photoshnaya_bot
+      GO_API_IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/photoshnaya_go_api
+      IMAGE_TAG: ${{ github.sha }}
+      GO_API_IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Load SSH key
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+    - name: Configure known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
+    - name: Copy compose.yaml to remote
+      run: |
+        scp -P "${DEPLOY_PORT:-22}" docker-compose.yml "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/compose.yaml"
+    - name: Deploy on remote host
+      env:
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GHCR_USER: ${{ github.actor }}
+      run: |
+        test -n "$DEPLOY_HOST"
+        test -n "$DEPLOY_USER"
+        test -n "$DEPLOY_PATH"
+        ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          "DEPLOY_PATH='$DEPLOY_PATH' IMAGE_REPOSITORY='$IMAGE_REPOSITORY' IMAGE_TAG='$IMAGE_TAG' GO_API_IMAGE_REPOSITORY='$GO_API_IMAGE_REPOSITORY' GO_API_IMAGE_TAG='$GO_API_IMAGE_TAG' GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" \
+          < scripts/deploy_remote.sh
