@@ -3,7 +3,19 @@ services:
     build: .
     environment:
       testps_url: "postgresql+psycopg://postgres:postgres@db:5432/postgres"
+      # parity-тесты go-api читают именно эту переменную; глобальный GO_API_URL
+      # не задаём, поэтому остальные e2e идут по Python-fallback.
+      GO_API_URL_TEST: "http://go-api:8080"
     command: bash -c "cd app && pytest tests -v"
+    depends_on:
+      db:
+        condition: service_healthy
+      go-api:
+        condition: service_healthy
+  go-api:
+    build: ./go-api
+    environment:
+      PS_URL: "postgresql://postgres:postgres@db:5432/postgres"
     depends_on:
       db:
         condition: service_healthy
