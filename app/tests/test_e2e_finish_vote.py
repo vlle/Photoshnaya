@@ -81,6 +81,40 @@ async def test_finish_vote_picks_single_winner(dispatcher, bot, engine, workflow
     assert any(e.text == msg["admin"]["vote_end"] for e in edits)
 
 
+async def _cast_vote(dispatcher, bot, workflow_kwargs, voter: int, photo_id: int, total: int):
+    await feed_message(dispatcher, bot, make_message(f"/start {GID}_3", user_id=voter), **workflow_kwargs)
+    like = CallbackVote(
+        action=Actions.no_like_text, current_photo_count="1",
+        current_photo_id=str(photo_id), amount_photos=str(total), group_id=str(GID),
+    )
+    await feed_callback(dispatcher, bot, make_callback(like, user_id=voter), **workflow_kwargs)
+    submit = CallbackVote(
+        action=Actions.finish_text, current_photo_count="1",
+        current_photo_id=str(photo_id), amount_photos=str(total), group_id=str(GID),
+    )
+    await feed_callback(dispatcher, bot, make_callback(submit, user_id=voter), **workflow_kwargs)
+
+
+async def test_finish_vote_tie_announces_many_winners(dispatcher, bot, engine, workflow_kwargs, msg):
+    await _seed_active_contest(engine)
+    pids = await AdminDB(engine).select_contest_photos_primary_ids(GID)
+    # ничья: по одному голосу на каждое фото
+    await _cast_vote(dispatcher, bot, workflow_kwargs, 911, pids[0], len(pids))
+    await _cast_vote(dispatcher, bot, workflow_kwargs, 912, pids[1], len(pids))
+    bot.clear()
+
+    await feed_callback(
+        dispatcher, bot,
+        make_admin_callback(AdminActions.sure_finish_vote_id, GID, user_id=ADMIN),
+        **workflow_kwargs,
+    )
+
+    assert not [p for p in bot.sent("SendPhoto") if p.chat_id == GID], "при ничьей фото победителя не шлём"
+    msgs = [m for m in bot.sent("SendMessage") if m.chat_id == GID]
+    assert any(m.text == msg["vote"]["many_winners"] for m in msgs), "должно прийти сообщение о нескольких победителях"
+    assert await AdminDB(engine).get_current_vote_status(GID) is False
+
+
 async def test_finish_vote_no_winner_when_nobody_voted(dispatcher, bot, engine, workflow_kwargs, msg):
     await _seed_active_contest(engine)  # фото есть, голосов нет
     bot.clear()
